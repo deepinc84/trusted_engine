@@ -1,0 +1,24 @@
+import QuoteFlow from "@/components/QuoteFlow";
+import { buildMetadata } from "@/lib/seo";
+
+export const metadata = buildMetadata({
+  title: "Instant quote",
+  description: "Start your instant roofing estimate in seconds.",
+  path: "/quote"
+});
+
+export default function QuotePage() {
+  return (
+    <section className="section">
+      <div className="hero" style={{ gridTemplateColumns: "1fr" }}>
+        <div>
+          <h1 className="hero-title">Instant quote</h1>
+          <p className="hero-subtitle">
+            Step through a fast quote flow powered by our data platform.
+          </p>
+        </div>
+      </div>
+      <QuoteFlow />
+    </section>
+  );
+}
