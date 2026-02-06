@@ -26,7 +26,10 @@ If Supabase variables are not set, the app uses mock data stored in `lib/db.ts`.
 
 ### Logos
 
-Replace `/public/logo.svg` and `/public/logo-mark.svg` with the official Trusted Roofing & Exteriors assets. The current files are neutral placeholders wired to the layout.
+The app is wired to `/public/logo.svg` and `/public/logo-mark.svg`.
+
+- Replace these files directly with your official brand exports.
+- If you maintain source references in `logos.md`, export final SVG/PNG assets and place them in `/public`.
 
 ### 3) Run locally
 
@@ -36,11 +39,24 @@ npm run dev
 
 Visit `http://localhost:3000` to view the site.
 
-## Data model notes
+## Geo-Boost + Projects
 
-- Projects are read from Supabase `projects` when configured.
-- Quotes are stored as `quote_events` with two steps (address first, contact second).
-- Public APIs sanitize and round geo coordinates to protect privacy.
+- `POST /api/projects` supports creating a project with an `images[]` array (bulk-ready gallery input).
+- `POST /api/projects` with `{ "mode": "upload_batch", "files": [{"filename":"..."}] }` returns upload stubs for future Supabase/Cloudinary signed URLs.
+- Carousel cards intentionally show only the first project image; full project records can keep multiple gallery images.
+
+## Instant Quote scopes
+
+The quote funnel now begins with radio selection for:
+
+- Roof
+- Soft metals
+- Vinyl siding
+- Hardie siding
+- Solar
+- Full exterior package
+
+Selected scope is stored in `requested_scopes` on step 1 and can be expanded later in your estimator.
 
 ## Deployment (Vercel)
 
@@ -50,9 +66,7 @@ Visit `http://localhost:3000` to view the site.
 
 ## TODO
 
-- Build admin ingestion for projects.
-- Integrate Supabase Storage (or Cloudinary) for photos.
-- Add real GeoBoost-based location feeds.
-- Add real geocoding for postal code lookups.
-- Improve heat map visualization.
-- Connect the instant quote to the production estimator.
+- Integrate real signed upload URLs for Supabase Storage / Cloudinary.
+- Wire Google APIs (address autocomplete, geocoding, and Solar API).
+- Add Geo-Boost legacy ranking and heatmap improvements.
+- Connect Instant Quote legacy calculations for final pricing logic.

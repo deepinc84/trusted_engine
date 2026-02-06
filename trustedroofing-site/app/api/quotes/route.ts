@@ -17,7 +17,8 @@ export async function POST(request: Request) {
       "lng",
       "estimate_low",
       "estimate_high",
-      "service_type"
+      "service_type",
+      "requested_scopes"
     ];
     const missing = required.filter((key) => body[key] === undefined);
     if (missing.length) {

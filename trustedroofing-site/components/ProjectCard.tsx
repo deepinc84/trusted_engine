@@ -2,13 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Project } from "@/lib/db";
 import { getProjectImageUrl } from "@/lib/images";
+import { getCarouselImage } from "@/lib/geoboost";
 
 export default function ProjectCard({ project }: { project: Project }) {
   return (
     <article className="card">
-      {project.images[0] ? (
+      {getCarouselImage(project) ? (
         <Image
-          src={getProjectImageUrl(project.images[0])}
+          src={getProjectImageUrl(getCarouselImage(project))}
           alt={project.title}
           width={320}
           height={180}

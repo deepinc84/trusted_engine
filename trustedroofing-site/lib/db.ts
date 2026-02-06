@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { roundLatLng, sanitizePublicProject } from "./sanitize";
 import { distanceInKm } from "./geo";
+import { roundLatLng, sanitizePublicProject } from "./sanitize";
 
 export type Project = {
   slug: string;
@@ -16,6 +16,11 @@ export type Project = {
   images: string[];
 };
 
+export type ProjectCreateInput = Omit<Project, "sanitized_geo"> & {
+  lat: number;
+  lng: number;
+};
+
 export type QuoteEvent = {
   id: string;
   address: string;
@@ -27,6 +32,7 @@ export type QuoteEvent = {
   estimate_low: number;
   estimate_high: number;
   service_type: string;
+  requested_scopes: string[];
   name?: string;
   phone?: string;
   email?: string;
@@ -47,7 +53,7 @@ const mockProjects: Project[] = [
     description:
       "We completed a full tear-off, installed ice and water shield, and upgraded vents for improved airflow.",
     completed_at: "2024-04-12",
-    images: ["/projects/project-1.svg"]
+    images: ["/projects/project-1.svg", "/projects/project-2.svg"]
   },
   {
     slug: "mahogany-storm-repair",
@@ -80,12 +86,8 @@ const mockProjects: Project[] = [
 ];
 
 let supabase: SupabaseClient | null = null;
-
 const isSupabaseEnabled =
   !!process.env.SUPABASE_URL && !!process.env.SUPABASE_ANON_KEY;
-
-// TODO: build an admin ingestion pipeline for project data updates.
-
 
 function getSupabaseClient() {
   if (!isSupabaseEnabled) return null;
@@ -111,7 +113,7 @@ export async function listProjects(params?: {
         .from("projects")
         .select("*")
         .limit(params?.limit ?? 12);
-      // TODO: apply filters and distance sorting in SQL.
+      // TODO: move filter + geospatial sorting into SQL with PostGIS.
       return (data ?? []).map((project) =>
         sanitizePublicProject(project as Project)
       );
@@ -138,9 +140,8 @@ export async function listProjects(params?: {
       .sort((a, b) => a.distance - b.distance)
       .map((entry) => entry.project);
   }
-  if (params?.limit) {
-    results = results.slice(0, params.limit);
-  }
+
+  if (params?.limit) results = results.slice(0, params.limit);
   return results.map((project) => sanitizePublicProject(project));
 }
 
@@ -156,13 +157,53 @@ export async function getProjectBySlug(slug: string): Promise<Project | null> {
       return data ? sanitizePublicProject(data as Project) : null;
     }
   }
+
   const project = mockProjects.find((item) => item.slug === slug);
   return project ? sanitizePublicProject(project) : null;
 }
 
+export async function createProject(input: ProjectCreateInput) {
+  const project: Project = {
+    slug: input.slug,
+    title: input.title,
+    service_type: input.service_type,
+    neighborhood: input.neighborhood,
+    city: input.city,
+    province: input.province,
+    sanitized_geo: roundLatLng({ lat: input.lat, lng: input.lng }),
+    summary: input.summary,
+    description: input.description,
+    completed_at: input.completed_at,
+    images: input.images
+  };
+
+  if (isSupabaseEnabled) {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from("projects").insert(project);
+      return sanitizePublicProject(project);
+    }
+  }
+
+  mockProjects.unshift(project);
+  return sanitizePublicProject(project);
+}
+
+export async function createProjectUploadBatch(files: { filename: string }[]) {
+  const now = Date.now();
+  // TODO: return signed upload URLs from Supabase Storage or Cloudinary API.
+  return files.map((file, index) => ({
+    filename: file.filename,
+    upload_url: `/api/projects/upload-stub/${now}-${index}`,
+    public_path: `/uploads/${now}-${index}-${file.filename}`
+  }));
+}
+
 const mockQuoteEvents: QuoteEvent[] = [];
 
-export async function createQuoteStep1(input: Omit<QuoteEvent, "id" | "created_at">) {
+export async function createQuoteStep1(
+  input: Omit<QuoteEvent, "id" | "created_at">,
+) {
   const quote = {
     ...input,
     id: `quote_${Date.now()}`,

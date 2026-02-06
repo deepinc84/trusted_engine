@@ -15,6 +15,7 @@ export async function GET() {
     "/services",
     "/services/roofing",
     "/services/roof-repair",
+    "/services/solar",
     "/projects",
     "/quote"
   ];

@@ -14,7 +14,7 @@ export default function QuotePage() {
         <div>
           <h1 className="hero-title">Instant quote</h1>
           <p className="hero-subtitle">
-            Step through a fast quote flow powered by our data platform.
+            Start with a scope selection (roof, siding, soft metals, solar) and move through a fast quote flow.
           </p>
         </div>
       </div>

@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import {
+  defaultServiceTypeFromScope,
+  quoteScopes,
+  type QuoteScope
+} from "@/lib/quote";
 
 type Step1Payload = {
   address: string;
@@ -12,6 +17,7 @@ type Step1Payload = {
   estimate_low: number;
   estimate_high: number;
   service_type: string;
+  requested_scopes: string[];
 };
 
 type Step2Payload = {
@@ -23,7 +29,8 @@ type Step2Payload = {
 };
 
 export default function QuoteFlow() {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,23 +72,85 @@ export default function QuoteFlow() {
           {error}
         </div>
       ) : null}
+
+      {step === 0 ? (
+        <QuoteScopeStep
+          selectedScope={selectedScope}
+          onChangeScope={setSelectedScope}
+          onContinue={() => setStep(1)}
+        />
+      ) : null}
+
       {step === 1 ? (
-        <QuoteStep1 onSubmit={submitStep1} />
-      ) : step === 2 && quoteId ? (
+        <QuoteStep1 onSubmit={submitStep1} selectedScope={selectedScope} />
+      ) : null}
+
+      {step === 2 && quoteId ? (
         <QuoteStep2 quoteId={quoteId} onSubmit={submitStep2} />
-      ) : (
+      ) : null}
+
+      {step === 3 ? (
         <div className="card" style={{ marginTop: 24 }}>
           <h2>Thanks! We will contact you shortly.</h2>
           <p style={{ color: "var(--color-muted)", marginTop: 8 }}>
-            TODO: connect to the Instant Quote workflow and schedule a follow-up.
+            Your request has been staged for Instant Quote and Geo-Boost data
+            sync.
           </p>
         </div>
-      )}
+      ) : null}
     </>
   );
 }
 
-function QuoteStep1({ onSubmit }: { onSubmit: (payload: Step1Payload) => void }) {
+function QuoteScopeStep({
+  selectedScope,
+  onChangeScope,
+  onContinue
+}: {
+  selectedScope: QuoteScope;
+  onChangeScope: (scope: QuoteScope) => void;
+  onContinue: () => void;
+}) {
+  return (
+    <form
+      className="card form-grid"
+      style={{ marginTop: 24 }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onContinue();
+      }}
+    >
+      <h2>What would you like quoted?</h2>
+      <p style={{ color: "var(--color-muted)" }}>
+        Start with one scope. Your estimator can expand to full bundles after
+        review.
+      </p>
+      {quoteScopes.map((scope) => (
+        <label key={scope.value} style={{ display: "flex", gap: 8 }}>
+          <input
+            type="radio"
+            name="quote_scope"
+            value={scope.value}
+            checked={selectedScope === scope.value}
+            onChange={() => onChangeScope(scope.value)}
+          />
+          {scope.label}
+        </label>
+      ))}
+      <button className="button" type="submit">
+        Continue
+      </button>
+    </form>
+  );
+}
+
+function QuoteStep1({
+  onSubmit,
+  selectedScope
+}: {
+  onSubmit: (payload: Step1Payload) => void;
+  selectedScope: QuoteScope;
+}) {
   const [form, setForm] = useState<Step1Payload>({
     address: "",
     city: "Calgary",
@@ -91,7 +160,8 @@ function QuoteStep1({ onSubmit }: { onSubmit: (payload: Step1Payload) => void })
     lng: 0,
     estimate_low: 8500,
     estimate_high: 14500,
-    service_type: "Roofing"
+    service_type: defaultServiceTypeFromScope(selectedScope),
+    requested_scopes: [selectedScope]
   });
 
   return (
@@ -103,6 +173,7 @@ function QuoteStep1({ onSubmit }: { onSubmit: (payload: Step1Payload) => void })
         onSubmit(form);
       }}
     >
+      <div className="badge">Selected: {defaultServiceTypeFromScope(selectedScope)}</div>
       <div>
         <label htmlFor="address">Street address</label>
         <input
@@ -124,21 +195,6 @@ function QuoteStep1({ onSubmit }: { onSubmit: (payload: Step1Payload) => void })
           onChange={(event) => setForm({ ...form, postal: event.target.value })}
           required
         />
-      </div>
-      <div>
-        <label htmlFor="service">Service type</label>
-        <select
-          id="service"
-          className="input"
-          value={form.service_type}
-          onChange={(event) =>
-            setForm({ ...form, service_type: event.target.value })
-          }
-        >
-          <option>Roofing</option>
-          <option>Roof repair</option>
-          <option>Exteriors</option>
-        </select>
       </div>
       <div>
         <label htmlFor="estimateLow">Estimated low</label>

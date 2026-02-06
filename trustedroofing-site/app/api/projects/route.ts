@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getProjectBySlug, listProjects } from "@/lib/db";
+import {
+  createProject,
+  createProjectUploadBatch,
+  getProjectBySlug,
+  listProjects
+} from "@/lib/db";
 import { parseNumber } from "@/lib/geo";
 
 export async function GET(request: Request) {
@@ -26,5 +31,44 @@ export async function GET(request: Request) {
     near_lng: nearLng
   });
 
-  return NextResponse.json({ projects });
+  return NextResponse.json({
+    projects,
+    note: "Carousel cards use the first image only; full project galleries may include multiple images."
+  });
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+
+  if (body.mode === "upload_batch") {
+    const files = Array.isArray(body.files) ? body.files : [];
+    const uploads = await createProjectUploadBatch(files);
+    return NextResponse.json({ uploads });
+  }
+
+  const required = [
+    "slug",
+    "title",
+    "service_type",
+    "neighborhood",
+    "city",
+    "province",
+    "lat",
+    "lng",
+    "summary",
+    "description",
+    "completed_at",
+    "images"
+  ];
+
+  const missing = required.filter((key) => body[key] === undefined);
+  if (missing.length) {
+    return NextResponse.json(
+      { error: `Missing fields: ${missing.join(", ")}` },
+      { status: 400 }
+    );
+  }
+
+  const project = await createProject(body);
+  return NextResponse.json({ project }, { status: 201 });
 }
