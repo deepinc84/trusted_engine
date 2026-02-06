@@ -1,26 +1,23 @@
 export const quoteScopes = [
   { value: "roofing", label: "Roof" },
-  { value: "soft_metals", label: "Soft metals" },
+  { value: "all", label: "All exterior scopes" },
   { value: "vinyl_siding", label: "Vinyl siding" },
   { value: "hardie_siding", label: "Hardie siding" },
-  { value: "solar", label: "Solar" },
-  { value: "full_exterior", label: "Full exterior package" }
+  { value: "eavestrough", label: "Eavestrough" }
 ] as const;
 
 export type QuoteScope = (typeof quoteScopes)[number]["value"];
 
 export function defaultServiceTypeFromScope(scope: QuoteScope) {
   switch (scope) {
-    case "soft_metals":
-      return "Soft metals";
+    case "all":
+      return "All exterior scopes";
     case "vinyl_siding":
       return "Vinyl siding";
     case "hardie_siding":
       return "Hardie siding";
-    case "solar":
-      return "Solar";
-    case "full_exterior":
-      return "Full exterior";
+    case "eavestrough":
+      return "Eavestrough";
     default:
       return "Roofing";
   }

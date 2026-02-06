@@ -177,3 +177,169 @@ main {
     gap: 12px;
   }
 }
+
+.quote-shell {
+  max-width: 860px;
+  margin: 0 auto;
+  display: grid;
+  gap: 22px;
+}
+
+.instant-quote {
+  margin-top: 2px;
+  border-top: 4px solid #dc2626;
+  background: white;
+  border-radius: 14px;
+  padding: 26px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.instant-quote h2 {
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  line-height: 1.1;
+}
+
+.instant-quote__subhead {
+  color: var(--color-muted);
+  margin-top: -4px;
+}
+
+.instant-quote__scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.instant-quote__scope-pill {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.instant-quote__scope-pill input {
+  margin: 0;
+}
+
+.instant-quote__scope-pill.is-active {
+  border-color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.instant-quote__input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.instant-quote__input-row .input {
+  margin-top: 0;
+}
+
+.instant-quote__meta {
+  color: var(--color-muted);
+  font-size: 0.92rem;
+}
+
+.instant-quote__success {
+  margin: 0;
+}
+
+.nearby-quotes {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.05), rgba(56, 189, 248, 0.1));
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.nearby-quotes__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nearby-quotes__kicker {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.nearby-quotes__location {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: white;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nearby-quotes__carousel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.nearby-quotes__card {
+  background: white;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.nearby-quotes__area {
+  font-weight: 700;
+}
+
+.nearby-quotes__range {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.nearby-quotes__time {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.quote-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quote-proof-card {
+  background: white;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.quote-proof-card strong {
+  display: block;
+  font-size: 1.2rem;
+}
+
+.quote-proof-card span {
+  color: var(--color-muted);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 860px) {
+  .nearby-quotes__carousel,
+  .quote-proof-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .instant-quote__input-row {
+    grid-template-columns: 1fr;
+  }
+}
