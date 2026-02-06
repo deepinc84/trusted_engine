@@ -1,0 +1,411 @@
+<?php
+// process_post.php
+// Upload image, build HTML + JSON-LD, save everything to DB, show success screen.
+
+require __DIR__ . '/db.php'; // provides $pdo
+require __DIR__ . '/relevance_score.php'; // provides compute_relevance_score()
+//////////////////////
+// HELPERS
+//////////////////////
+function word_count($text) {
+    $text = trim($text);
+    if ($text === '') return 0;
+    return count(preg_split('/\s+/', $text));
+}
+
+function slugify($text) {
+    $text = strtolower($text);
+    $text = preg_replace('/[^a-z0-9]+/', '-', $text);
+    $text = trim($text, '-');
+    return $text ?: 'file';
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo "Method not allowed.";
+    exit;
+}
+
+//////////////////////
+// COLLECT FIELDS
+//////////////////////
+$author       = trim($_POST['user_name']      ?? '');
+$post_content = trim($_POST['post_content']   ?? '');
+$post_og      = $post_content; // original, unmarked-up post
+$keyword      = trim($_POST['keywords']       ?? '');
+$street       = trim($_POST['street_address'] ?? '');
+$city         = trim($_POST['city']           ?? '');
+$province     = trim($_POST['province']       ?? '');
+$country      = trim($_POST['country']        ?? '');
+$postal_code  = trim($_POST['postal_code']    ?? '');
+$lat          = trim($_POST['latitude']       ?? '');
+$lng          = trim($_POST['longitude']      ?? '');
+$errors = [];
+// Fixed company info (keep in sync with widget.php)
+$companyName    = 'Mega Roofing and Exteriors';
+$companyStreet  = '143 Huggard Rd';
+$companyCity    = 'Calgary';
+$companyRegion  = 'AB';
+$companyPostal  = 'T3Z 2C2';
+$companyCountry = 'CA';
+$companyPhone   = '+1-403-980-1053';
+
+//////////////////////
+// VALIDATION
+//////////////////////
+if ($author === '')        $errors[] = "User name is required.";
+if ($keyword === '')       $errors[] = "Keyword is required.";
+if ($street === '')        $errors[] = "Street address is required.";
+if ($city === '')          $errors[] = "City is required.";
+if ($province === '')      $errors[] = "Province is required.";
+if ($country === '')       $errors[] = "Country is required.";
+if ($postal_code === '')   $errors[] = "Postal code is required.";
+if ($lat === '' || $lng === '') $errors[] = "Latitude and longitude are required.";
+
+$wc = word_count($post_content);
+$relevance_score = compute_relevance_score($keyword, $post_content);
+if ($wc < 10 || $wc > 500) {
+    $errors[] = "Post content must be between 10 and 500 words.";
+}
+
+// Image required
+if (!isset($_FILES['post_image']) || $_FILES['post_image']['error'] === UPLOAD_ERR_NO_FILE) {
+    $errors[] = "Post image is required.";
+}
+
+//////////////////////
+// IMAGE HANDLING
+//////////////////////
+$image_url_path = '';
+$width = $height = 0;
+
+if (empty($errors) && isset($_FILES['post_image'])) {
+    $file = $_FILES['post_image'];
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $errors[] = "Image upload error (code {$file['error']}).";
+    } else {
+        $maxSize     = 5 * 1024 * 1024; // 5MB
+        $allowedExt  = ['jpg', 'jpeg', 'png', 'webp'];
+        $allowedMime = ['image/jpeg','image/png','image/webp'];
+
+        if ($file['size'] > $maxSize) {
+            $errors[] = "Image too large (max 5 MB).";
+        } else {
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowedExt, true)) {
+                $errors[] = "Invalid image type.";
+            } else {
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime  = $finfo->file($file['tmp_name']);
+                if (!in_array($mime, $allowedMime, true)) {
+                    $errors[] = "Invalid image MIME type.";
+                }
+            }
+        }
+
+        if (empty($errors)) {
+            // Timestamped filename for uniqueness
+            $dateStamp = date('Y-m-d-H-i-s'); // e.g. 2025-11-20-13-47-16
+            $location  = trim($street.' '.$city);
+            $rawName   = "{$keyword} near {$location} {$dateStamp}";
+            $slug      = slugify($rawName);
+
+            // Filesystem path
+            $uploadDir = __DIR__ . '/uploads';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+            $filename = $slug.'.'.$ext;
+            $target   = $uploadDir.'/'.$filename;
+
+            if (file_exists($target)) {
+                $filename = $slug.'-'.bin2hex(random_bytes(4)).'.'.$ext;
+                $target   = $uploadDir.'/'.$filename;
+            }
+
+            if (!move_uploaded_file($file['tmp_name'], $target)) {
+                $errors[] = "Failed to move uploaded image file.";
+            } else {
+                // Public URL used in HTML/schema
+                $image_url_path = 'https://megaroofing.ca/geo-app/uploads/'.$filename;
+
+                $info = @getimagesize($target);
+                if ($info) {
+                    $width  = $info[0];
+                    $height = $info[1];
+                }
+            }
+        }
+    }
+}
+
+//////////////////////
+// IF ERRORS, SHOW SIMPLE ERROR PAGE
+//////////////////////
+if (!empty($errors)) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Geo Post Error</title>
+      <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:40px;background:#fef2f2;color:#111827;}
+        .box{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #fee2e2;padding:24px;}
+        h2{margin-top:0;color:#b91c1c;}
+        a.button{display:inline-block;margin-top:16px;padding:10px 16px;border-radius:999px;background:#b91c1c;color:#fff;text-decoration:none;font-weight:600;}
+        a.button:hover{background:#991b1b;}
+      </style>
+    </head>
+    <body>
+      <div class="box">
+        <h2>There were problems with your submission</h2>
+        <ul>
+          <?php foreach ($errors as $e): ?>
+            <li><?php echo htmlspecialchars($e, ENT_QUOTES, 'UTF-8'); ?></li>
+          <?php endforeach; ?>
+        </ul>
+        <a href="index.php" class="button">← Go back and fix the post</a>
+      </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+//////////////////////
+// BUILD HTML SNIPPET ($post_html)
+//////////////////////
+$path    = $image_url_path;
+$dateISO = date('c');      // ISO for JSON-LD & time element
+$dateTxt = date('Y-m-d');  // visible date
+$altTag  = $keyword.' near '.$street.' '.$city.' | Mega Roofing and Exteriors';
+
+$post_html =
+'<div class="geoBoost">
+
+  <div class="boost-img">
+    <img src="'.$path.'" alt="'.$altTag.'" width="'.$width.'" height="'.$height.'" loading="lazy">
+  </div>
+
+  <div class="geo-date">
+    <time datetime="'.$dateISO.'">'.$dateTxt.'</time>
+  </div>
+
+  <div class="geo-post">
+
+    <div class="" itemscope itemtype="https://schema.org/Service">
+
+      <!-- Service core info -->
+      <meta itemprop="name" content="Mega Roofing and Exteriors Local Jobs">
+      <meta itemprop="serviceType" content="'.$keyword.'">
+      <p itemprop="description" class="">'.$post_content.'</p><br>
+
+      <!-- Provider (your roofing company) -->
+      <div itemprop="provider" itemscope itemtype="https://schema.org/LocalBusiness">
+        <meta itemprop="name" content="Mega Roofing and Exteriors">
+        <!-- Optional: who logged this job -->
+        <meta itemprop="employee" content="'.$author.'">
+      </div>
+
+      <!-- Where this service was performed -->
+      <div itemprop="areaServed" itemscope itemtype="https://schema.org/Place">
+
+        <span itemprop="name">'.$keyword.' Near '.$street.'</span>
+
+        <div itemprop="address" itemscope itemtype="https://schema.org/PostalAddress">
+          <span itemprop="streetAddress">'.$street.'</span>,
+          <span itemprop="addressLocality">'.$city.'</span>,
+          <span itemprop="addressRegion">'.$province.'</span>,
+          <span itemprop="postalCode">'.$postal_code.'</span>
+          <meta itemprop="addressCountry" content="'.$country.'">
+        </div>
+
+        <div itemprop="geo" itemscope itemtype="https://schema.org/GeoCoordinates">
+          <meta itemprop="latitude" content="'.$lat.'">
+          <meta itemprop="longitude" content="'.$lng.'">
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>';
+
+
+//////////////////////
+// BUILD JSON-LD ($json_ld)
+//////////////////////
+//////////////////////
+// BUILD JSON-LD ($json_ld) TO MATCH WIDGET MICRODATA
+//////////////////////
+
+// Build a location label similar to $loc in widget.php
+$loc = trim(
+    ($street ? $street . ', ' : '') .
+    $city .
+    ($province ? ' ' . $province : '')
+);
+
+// JSON-LD structure mirrors the microdata in widget.php
+$jsonLDData = [
+    '@context' => 'https://schema.org',
+    '@type'    => 'Service',
+
+    // Matches meta itemprop="name" (ucwords keyword)
+    'name'        => ucwords($keyword),
+
+    // Matches meta itemprop="serviceType"
+    'serviceType' => $keyword,
+
+    // Matches itemprop="description" which uses post_og
+    'description' => $post_og,
+
+    // Matches itemprop="image"
+    'image'       => $path,
+
+    // Matches meta itemprop="temporal"
+    'temporal'    => $dateISO,
+
+    // provider: LocalBusiness + employee (tech) + HQ address + phone
+    'provider' => [
+        '@type'     => 'LocalBusiness',
+        'name'      => $companyName,
+        'telephone' => $companyPhone,
+        'address'   => [
+            '@type'           => 'PostalAddress',
+            'streetAddress'   => $companyStreet,
+            'addressLocality' => $companyCity,
+            'addressRegion'   => $companyRegion,   // "AB" to match widget
+            'postalCode'      => $companyPostal,
+            'addressCountry'  => $companyCountry,
+        ],
+        // tech as employee (hidden in HTML but present in microdata)
+        'employee' => [
+            '@type' => 'Person',
+            'name'  => $author,
+        ],
+    ],
+
+    // areaServed: Place + job address + geo (matches the hidden Place block)
+    'areaServed' => [
+        '@type'  => 'Place',
+        'name'   => trim(($keyword ?: '') . ' near ' . $loc),
+
+        'address' => [
+            '@type'           => 'PostalAddress',
+            'streetAddress'   => $street,
+            'addressLocality' => $city,
+            'addressRegion'   => $province,
+            'postalCode'      => $postal_code,
+            'addressCountry'  => $country,
+        ],
+
+        'geo' => [
+            '@type'     => 'GeoCoordinates',
+            'latitude'  => (float)$lat,
+            'longitude' => (float)$lng,
+        ],
+    ],
+];
+
+$json_ld = json_encode(
+    $jsonLDData,
+    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
+);
+
+//////////////////////
+// INSERT INTO DB
+//////////////////////
+$stmt = $pdo->prepare(
+    'INSERT INTO geo_posts 
+     (user_name, keyword, street_address, city, province, postal_code, country,
+      latitude, longitude, image_url, post_html, post_og, json_ld, word_count, relevance_score)
+     VALUES
+     (:user_name, :keyword, :street_address, :city, :province, :postal_code, :country,
+      :latitude, :longitude, :image_url, :post_html, :post_og, :json_ld, :word_count, :relevance_score)'
+);
+
+
+$stmt->execute([
+    ':user_name'       => $author,
+    ':keyword'         => $keyword,
+    ':street_address'  => $street,
+    ':city'            => $city,
+    ':province'        => $province,
+    ':postal_code'     => $postal_code,
+    ':country'         => $country,
+    ':latitude'        => $lat,
+    ':longitude'       => $lng,
+    ':image_url'       => $path,
+    ':post_html'       => $post_html,
+    ':post_og'         => $post_og,
+    ':json_ld'         => $json_ld,
+    ':word_count'      => $wc,
+    ':relevance_score' => $relevance_score,
+]);
+
+
+//////////////////////
+// CLEAN SUCCESS PAGE
+//////////////////////
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Geo Post Submitted</title>
+  <style>
+    :root{
+      --mega-red:#B22222;
+      --mega-red-dark:#8f1b1b;
+    }
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background: radial-gradient(1200px 800px at 50% -10%, #fff 0, #fff 40%, #fdeaea 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      color:#111827;
+    }
+    .card{
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.08),0 2px 6px rgba(0,0,0,0.04);
+      border:1px solid #eee;
+      max-width:460px;
+      width:100%;
+      padding:28px 24px 24px;
+      text-align:center;
+    }
+    .card h1{margin-top:0;font-size:22px;}
+    .status-ok{color:#166534;margin-bottom:8px;font-weight:600;}
+    .sub{font-size:14px;color:#4b5563;margin-bottom:16px;}
+    .btn{
+      display:inline-block;
+      padding:12px 20px;
+      border-radius:999px;
+      background:var(--mega-red);
+      color:#fff;
+      text-decoration:none;
+      font-weight:700;
+      box-shadow:0 6px 14px rgba(178,34,34,.25);
+    }
+    .btn:hover{background:var(--mega-red-dark);}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Geo-Tagged Post Saved</h1>
+    <div class="status-ok">Your post was saved to the database.</div>
+    <div class="sub">
+      You can now submit another job update.
+    </div>
+    <a href="index.php" class="btn">Submit another post</a>
+  </div>
+</body>
+</html>
