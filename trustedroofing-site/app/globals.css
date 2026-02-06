@@ -49,20 +49,7 @@ a {
 
 .brand {
   display: flex;
-  gap: 12px;
   align-items: center;
-  font-weight: 600;
-}
-
-.brand-text span:first-child {
-  display: block;
-  font-size: 1.1rem;
-}
-
-.brand-text span:last-child {
-  display: block;
-  color: var(--color-muted);
-  font-size: 0.85rem;
 }
 
 .nav {
@@ -188,9 +175,5 @@ main {
 @media (max-width: 720px) {
   .nav {
     gap: 12px;
-  }
-
-  .brand-text span:last-child {
-    display: none;
   }
 }

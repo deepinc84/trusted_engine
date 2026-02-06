@@ -24,6 +24,10 @@ NEXT_PUBLIC_CLOUDINARY_BASE="https://res.cloudinary.com/your-account/image/uploa
 
 If Supabase variables are not set, the app uses mock data stored in `lib/db.ts`.
 
+### Logos
+
+Replace `/public/logo.svg` and `/public/logo-mark.svg` with the official Trusted Roofing & Exteriors assets. The current files are neutral placeholders wired to the layout.
+
 ### 3) Run locally
 
 ```bash

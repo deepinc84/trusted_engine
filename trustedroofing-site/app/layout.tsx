@@ -19,16 +19,12 @@ export default function RootLayout({
           <header className="site-header">
             <Link href="/" className="brand">
               <Image
-                src="/logo-mark.svg"
+                src="/logo.svg"
                 alt="Trusted Roofing & Exteriors"
-                width={40}
-                height={40}
+                width={200}
+                height={72}
                 priority
               />
-              <div className="brand-text">
-                <span>Trusted</span>
-                <span>Roofing & Exteriors</span>
-              </div>
             </Link>
             <nav className="nav">
               <Link href="/services">Services</Link>
@@ -42,9 +38,9 @@ export default function RootLayout({
           <footer className="site-footer">
             <div>
               <Image
-                src="/logo.svg"
+                src="/logo-mark.svg"
                 alt="Trusted Roofing & Exteriors"
-                width={160}
+                width={64}
                 height={64}
               />
             </div>
