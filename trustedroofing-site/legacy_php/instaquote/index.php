@@ -27,7 +27,7 @@
   <script
     async
     defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBs2E64okEx8r7PHBQT_JEFkfXmsYKnxH0&libraries=places&callback=initInstantQuoteAutocomplete"
+    src="https://maps.googleapis.com/maps/api/js?key=GOOGLEapiKEY&libraries=places&callback=initInstantQuoteAutocomplete"
   ></script>
 </head>
 
