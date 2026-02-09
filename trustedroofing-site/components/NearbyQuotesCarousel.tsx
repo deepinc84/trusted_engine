@@ -55,10 +55,9 @@ const recentQuotes: RecentQuote[] = [
   }
 ];
 
-const VISIBLE_CARDS = 3;
-
 export default function NearbyQuotesCarousel() {
   const [cursor, setCursor] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(3);
   const [status, setStatus] = useState<"idle" | "locating" | "granted" | "denied">(
     "idle"
   );
@@ -72,12 +71,23 @@ export default function NearbyQuotesCarousel() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      setVisibleCount(window.innerWidth <= 860 ? 2 : 3);
+    };
+
+    updateVisibleCount();
+    window.addEventListener("resize", updateVisibleCount);
+
+    return () => window.removeEventListener("resize", updateVisibleCount);
+  }, []);
+
   const visibleQuotes = useMemo(() => {
-    return Array.from({ length: VISIBLE_CARDS }).map((_, offset) => {
+    return Array.from({ length: visibleCount }).map((_, offset) => {
       const index = (cursor + offset) % recentQuotes.length;
       return recentQuotes[index];
     });
-  }, [cursor]);
+  }, [cursor, visibleCount]);
 
   const captureLocation = () => {
     if (!("geolocation" in navigator)) {

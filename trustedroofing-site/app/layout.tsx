@@ -23,6 +23,7 @@ export default function RootLayout({
                 alt="Trusted Roofing & Exteriors"
                 width={200}
                 height={72}
+                className="brand-logo"
                 priority
               />
             </Link>

@@ -121,7 +121,7 @@ export default function QuoteFlow() {
 
       <p className="instant-quote__meta">Selected scope: {selectedLabel}</p>
 
-      {error ? <p style={{ color: "#b91c1c", margin: 0 }}>{error}</p> : null}
+      {error ? <p style={{ color: "var(--color-primary)", margin: 0 }}>{error}</p> : null}
       {quoteId ? (
         <p className="instant-quote__success">
           Quote started. Request ID: <strong>{quoteId}</strong>
