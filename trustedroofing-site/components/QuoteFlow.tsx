@@ -20,6 +20,15 @@ type Step1Payload = {
   requested_scopes: string[];
 };
 
+type ResolvedAddress = {
+  fullAddress: string;
+  city: string;
+  province: string;
+  postal: string;
+  lat: number;
+  lng: number;
+};
+
 const quoteHeadlineByScope: Record<QuoteScope, string> = {
   roofing: "Roof",
   all: "Everything",
@@ -28,24 +37,103 @@ const quoteHeadlineByScope: Record<QuoteScope, string> = {
   eavestrough: "Eavestrough"
 };
 
+async function resolveAddress(address: string): Promise<ResolvedAddress | null> {
+  try {
+    const query = new URLSearchParams({
+      q: address,
+      format: "jsonv2",
+      limit: "1",
+      addressdetails: "1"
+    });
+
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?${query.toString()}`,
+      {
+        headers: {
+          Accept: "application/json"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const results = (await response.json()) as Array<{
+      display_name?: string;
+      lat?: string;
+      lon?: string;
+      address?: {
+        city?: string;
+        town?: string;
+        village?: string;
+        municipality?: string;
+        state?: string;
+        postcode?: string;
+      };
+    }>;
+
+    const top = results[0];
+
+    if (!top?.lat || !top?.lon || !top?.display_name) {
+      return null;
+    }
+
+    return {
+      fullAddress: top.display_name,
+      city:
+        top.address?.city ??
+        top.address?.town ??
+        top.address?.village ??
+        top.address?.municipality ??
+        "Calgary",
+      province: top.address?.state ?? "AB",
+      postal: top.address?.postcode ?? "",
+      lat: Number(top.lat),
+      lng: Number(top.lon)
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function QuoteFlow() {
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedAddress, setResolvedAddress] = useState<ResolvedAddress | null>(null);
+  const [addressResolutionNotice, setAddressResolutionNotice] = useState<string | null>(null);
 
   const submit = async () => {
     setError(null);
     setIsSubmitting(true);
+    setAddressResolutionNotice(null);
+
+    let resolved: ResolvedAddress | null = null;
+
+    setIsResolvingAddress(true);
+    resolved = await resolveAddress(address);
+    setIsResolvingAddress(false);
+
+    if (!resolved) {
+      setAddressResolutionNotice(
+        "We could not verify your address automatically yet. Your typed address was saved and we defaulted city-level data to Calgary."
+      );
+    } else {
+      setResolvedAddress(resolved);
+      setAddressResolutionNotice("Address found and matched.");
+    }
 
     const payload: Step1Payload = {
-      address,
-      city: "Calgary",
-      province: "AB",
-      postal: "",
-      lat: 0,
-      lng: 0,
+      address: resolved?.fullAddress ?? address,
+      city: resolved?.city ?? "Calgary",
+      province: resolved?.province ?? "AB",
+      postal: resolved?.postal ?? "",
+      lat: resolved?.lat ?? 0,
+      lng: resolved?.lng ?? 0,
       estimate_low: 0,
       estimate_high: 0,
       service_type: defaultServiceTypeFromScope(selectedScope),
@@ -124,13 +212,25 @@ export default function QuoteFlow() {
           aria-label="Exact address"
           required
         />
-        <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Get My Instant Estimate"}
+        <button className="button" type="submit" disabled={isSubmitting || isResolvingAddress}>
+          {isResolvingAddress
+            ? "Finding address..."
+            : isSubmitting
+              ? "Submitting..."
+              : "Get My Instant Estimate"}
         </button>
       </div>
 
       <p className="instant-quote__meta">Selected scope: {selectedLabel}</p>
 
+      {addressResolutionNotice ? (
+        <p className="instant-quote__resolution-note">{addressResolutionNotice}</p>
+      ) : null}
+      {resolvedAddress ? (
+        <p className="instant-quote__resolution-detail">
+          Matched address: <strong>{resolvedAddress.fullAddress}</strong>
+        </p>
+      ) : null}
       {error ? <p style={{ color: "var(--color-primary)", margin: 0 }}>{error}</p> : null}
       {quoteId ? (
         <p className="instant-quote__success">
