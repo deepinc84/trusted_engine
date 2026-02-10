@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type RecentQuote = {
   id: string;
@@ -9,6 +9,13 @@ type RecentQuote = {
   range: string;
   completed: string;
 };
+
+type LocationStatus =
+  | "idle"
+  | "locating"
+  | "granted"
+  | "ip_fallback"
+  | "defaulted";
 
 const recentQuotes: RecentQuote[] = [
   {
@@ -55,12 +62,27 @@ const recentQuotes: RecentQuote[] = [
   }
 ];
 
+async function getIpCityFallback(): Promise<string | null> {
+  try {
+    const response = await fetch("https://ipapi.co/json/", {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as { city?: string };
+    return data.city?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function NearbyQuotesCarousel() {
   const [cursor, setCursor] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
-  const [status, setStatus] = useState<"idle" | "locating" | "granted" | "denied">(
-    "idle"
-  );
+  const [status, setStatus] = useState<LocationStatus>("idle");
   const [locationText, setLocationText] = useState("Calgary");
 
   useEffect(() => {
@@ -89,25 +111,43 @@ export default function NearbyQuotesCarousel() {
     });
   }, [cursor, visibleCount]);
 
-  const captureLocation = () => {
-    if (!("geolocation" in navigator)) {
-      setStatus("denied");
+  const captureLocation = useCallback(async () => {
+    setStatus("locating");
+
+    const streetLevelLocated = await new Promise<boolean>((resolve) => {
+      if (!("geolocation" in navigator)) {
+        resolve(false);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        () => resolve(true),
+        () => resolve(false),
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+
+    if (streetLevelLocated) {
+      setStatus("granted");
+      setLocationText("near you");
       return;
     }
 
-    setStatus("locating");
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        setStatus("granted");
-        setLocationText("near you");
-      },
-      () => {
-        setStatus("denied");
-        setLocationText("Calgary");
-      },
-      { enableHighAccuracy: false, timeout: 10000 }
-    );
-  };
+    const city = await getIpCityFallback();
+
+    if (city) {
+      setStatus("ip_fallback");
+      setLocationText(city);
+      return;
+    }
+
+    setStatus("defaulted");
+    setLocationText("Calgary");
+  }, []);
+
+  useEffect(() => {
+    void captureLocation();
+  }, [captureLocation]);
 
   return (
     <section className="nearby-quotes">
@@ -116,8 +156,8 @@ export default function NearbyQuotesCarousel() {
           <p className="nearby-quotes__kicker">Geo-view</p>
           <h2>Recent quotes {locationText}</h2>
         </div>
-        <button className="nearby-quotes__location" type="button" onClick={captureLocation}>
-          {status === "locating" ? "Locating..." : "Use my location"}
+        <button className="nearby-quotes__location" type="button" onClick={() => void captureLocation()}>
+          {status === "locating" ? "Locating..." : "My location"}
         </button>
       </div>
 

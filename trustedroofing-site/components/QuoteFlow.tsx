@@ -20,6 +20,14 @@ type Step1Payload = {
   requested_scopes: string[];
 };
 
+const quoteHeadlineByScope: Record<QuoteScope, string> = {
+  roofing: "Roof",
+  all: "Everything",
+  vinyl_siding: "Vinyl siding",
+  hardie_siding: "Hardie siding",
+  eavestrough: "Eavestrough"
+};
+
 export default function QuoteFlow() {
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [address, setAddress] = useState("");
@@ -67,6 +75,8 @@ export default function QuoteFlow() {
     [selectedScope]
   );
 
+  const headingLabel = quoteHeadlineByScope[selectedScope];
+
   return (
     <form
       className="instant-quote form-grid"
@@ -79,7 +89,7 @@ export default function QuoteFlow() {
         void submit();
       }}
     >
-      <h2>Instant Roof Quote</h2>
+      <h2>Instant {headingLabel} Quote</h2>
       <p className="instant-quote__subhead">
         Get a quick ballpark in under 60 seconds. No pressure.
       </p>
