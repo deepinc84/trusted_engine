@@ -70,3 +70,32 @@ Selected scope is stored in `requested_scopes` on step 1 and can be expanded lat
 - Wire Google APIs (address autocomplete, geocoding, and Solar API).
 - Add Geo-Boost legacy ranking and heatmap improvements.
 - Connect Instant Quote legacy calculations for final pricing logic.
+
+
+## Health endpoint (runtime proof)
+
+Use `/api/health` to verify whether the app is running in mock mode or Supabase mode at runtime.
+
+Response fields:
+
+- `appRootPath`: runtime working directory
+- `supabaseEnabled`: `true` only when both `SUPABASE_URL` and `SUPABASE_ANON_KEY` exist
+- `dbReadOk`: result of a safe read probe (`projects` table read in Supabase mode)
+- `dbError`: sanitized error text when probe fails
+- `dataMode`: `"supabase"` or `"mock"`
+- `version`: commit SHA if available from runtime env
+
+### How to verify production DB in 10 seconds
+
+1. Open `https://trustedroofingcalgary.com/api/health`
+2. Check:
+   - `supabaseEnabled: true`
+   - `dbReadOk: true`
+   - `dataMode: "supabase"`
+3. If `supabaseEnabled` is false, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Vercel project env vars.
+4. If `supabaseEnabled` is true but `dbReadOk` is false, verify table existence and RLS/policies for `projects` read access.
+
+## Supabase schema source of truth
+
+SQL migrations are in `supabase/migrations/`.
+Current baseline schema: `supabase/migrations/0001_init.sql`.

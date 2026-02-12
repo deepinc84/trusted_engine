@@ -89,6 +89,42 @@ let supabase: SupabaseClient | null = null;
 const isSupabaseEnabled =
   !!process.env.SUPABASE_URL && !!process.env.SUPABASE_ANON_KEY;
 
+
+export function getDataMode(): "supabase" | "mock" {
+  return isSupabaseEnabled ? "supabase" : "mock";
+}
+
+export async function probeDataRead(): Promise<{ ok: boolean; error: string | null }> {
+  if (isSupabaseEnabled) {
+    const client = getSupabaseClient();
+    if (!client) {
+      return { ok: false, error: "Supabase client unavailable." };
+    }
+
+    try {
+      const { error } = await client.from("projects").select("slug").limit(1);
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+      return { ok: true, error: null };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  try {
+    void mockProjects[0];
+    return { ok: true, error: null };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
 function getSupabaseClient() {
   if (!isSupabaseEnabled) return null;
   if (!supabase) {
