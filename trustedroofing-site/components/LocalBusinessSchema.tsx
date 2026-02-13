@@ -1,18 +1,18 @@
+import { canonicalUrl } from "@/lib/seo";
+
 export default function LocalBusinessSchema() {
   const schema = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": "RoofingContractor",
     name: "Trusted Roofing & Exteriors",
-    areaServed: "Calgary, AB",
+    url: canonicalUrl(""),
+    areaServed: ["Calgary, AB"],
     address: {
       "@type": "PostalAddress",
       addressLocality: "Calgary",
       addressRegion: "AB",
       addressCountry: "CA"
-    },
-    url: "https://trustedroofing.ca",
-    description:
-      "Modern roofing and exterior services with fast, data-driven project insights."
+    }
   };
 
   return (

@@ -1,24 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  defaultServiceTypeFromScope,
-  quoteScopes,
-  type QuoteScope
-} from "@/lib/quote";
-
-type Step1Payload = {
-  address: string;
-  city: string;
-  province: string;
-  postal: string;
-  lat: number;
-  lng: number;
-  estimate_low: number;
-  estimate_high: number;
-  service_type: string;
-  requested_scopes: string[];
-};
+import { quoteScopes, type QuoteScope } from "@/lib/quote";
 
 type ResolvedAddress = {
   fullAddress: string;
@@ -48,18 +31,12 @@ async function resolveAddress(address: string): Promise<ResolvedAddress | null> 
 
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?${query.toString()}`,
-      {
-        headers: {
-          Accept: "application/json"
-        }
-      }
+      { headers: { Accept: "application/json" } }
     );
 
-    if (!response.ok) {
-      return null;
-    }
+    if (!response.ok) return null;
 
-    const results = (await response.json()) as Array<{
+    const [top] = (await response.json()) as Array<{
       display_name?: string;
       lat?: string;
       lon?: string;
@@ -67,26 +44,16 @@ async function resolveAddress(address: string): Promise<ResolvedAddress | null> 
         city?: string;
         town?: string;
         village?: string;
-        municipality?: string;
         state?: string;
         postcode?: string;
       };
     }>;
 
-    const top = results[0];
-
-    if (!top?.lat || !top?.lon || !top?.display_name) {
-      return null;
-    }
+    if (!top?.lat || !top?.lon || !top?.display_name) return null;
 
     return {
       fullAddress: top.display_name,
-      city:
-        top.address?.city ??
-        top.address?.town ??
-        top.address?.village ??
-        top.address?.municipality ??
-        "Calgary",
+      city: top.address?.city ?? top.address?.town ?? top.address?.village ?? "Calgary",
       province: top.address?.state ?? "AB",
       postal: top.address?.postcode ?? "",
       lat: Number(top.lat),
@@ -100,84 +67,89 @@ async function resolveAddress(address: string): Promise<ResolvedAddress | null> 
 export default function QuoteFlow() {
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [address, setAddress] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [resolvedAddress, setResolvedAddress] = useState<ResolvedAddress | null>(null);
-  const [addressResolutionNotice, setAddressResolutionNotice] = useState<string | null>(null);
 
-  const submit = async () => {
-    setError(null);
-    setIsSubmitting(true);
-    setAddressResolutionNotice(null);
-
-    let resolved: ResolvedAddress | null = null;
-
-    setIsResolvingAddress(true);
-    resolved = await resolveAddress(address);
-    setIsResolvingAddress(false);
-
-    if (!resolved) {
-      setAddressResolutionNotice(
-        "We could not verify your address automatically yet. Your typed address was saved and we defaulted city-level data to Calgary."
-      );
-    } else {
-      setResolvedAddress(resolved);
-      setAddressResolutionNotice("Address found and matched.");
-    }
-
-    const payload: Step1Payload = {
-      address: resolved?.fullAddress ?? address,
-      city: resolved?.city ?? "Calgary",
-      province: resolved?.province ?? "AB",
-      postal: resolved?.postal ?? "",
-      lat: resolved?.lat ?? 0,
-      lng: resolved?.lng ?? 0,
-      estimate_low: 0,
-      estimate_high: 0,
-      service_type: defaultServiceTypeFromScope(selectedScope),
-      requested_scopes: [selectedScope]
-    };
-
-    try {
-      const res = await fetch("/api/quotes/step1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Unable to submit your address right now.");
-        return;
-      }
-      setQuoteId(data.quote_id);
-      setAddress("");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [preferredContact, setPreferredContact] = useState("email");
+  const [step2Done, setStep2Done] = useState(false);
 
   const selectedLabel = useMemo(
     () => quoteScopes.find((scope) => scope.value === selectedScope)?.label,
     [selectedScope]
   );
 
-  const headingLabel = quoteHeadlineByScope[selectedScope];
+  const submitStep1 = async () => {
+    setError(null);
+    setIsSubmitting(true);
+    setResolutionMessage(null);
+
+    const resolved = await resolveAddress(address);
+
+    const res = await fetch("/api/quotes/step1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service_slug: selectedScope,
+        place_id: null,
+        address_private: resolved?.fullAddress ?? address,
+        lat_private: resolved?.lat ?? null,
+        lng_private: resolved?.lng ?? null,
+        estimate_low: 0,
+        estimate_high: 0
+      })
+    });
+
+    const data = await res.json();
+    setIsSubmitting(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Unable to start quote.");
+      return;
+    }
+
+    setQuoteId(data.quote_id);
+    setResolutionMessage(
+      resolved
+        ? `Address matched: ${resolved.fullAddress}`
+        : "Address saved. Automatic geocode unavailable; city defaults may apply."
+    );
+  };
+
+  const submitStep2 = async () => {
+    if (!quoteId) return;
+    setError(null);
+    setIsSubmitting(true);
+
+    const res = await fetch("/api/quotes/step2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quote_id: quoteId,
+        name,
+        email,
+        phone,
+        preferred_contact: preferredContact
+      })
+    });
+
+    const data = await res.json();
+    setIsSubmitting(false);
+    if (!res.ok) {
+      setError(data.error ?? "Unable to save contact details.");
+      return;
+    }
+
+    setStep2Done(true);
+  };
 
   return (
-    <form
-      className="instant-quote form-grid"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!address.trim()) {
-          setError("Please enter your exact address.");
-          return;
-        }
-        void submit();
-      }}
-    >
-      <h2>Instant {headingLabel} Quote</h2>
+    <div className="instant-quote form-grid">
+      <h2>Instant {quoteHeadlineByScope[selectedScope]} Quote</h2>
       <p className="instant-quote__subhead">
         Get a quick ballpark in under 60 seconds. No pressure.
       </p>
@@ -202,41 +174,78 @@ export default function QuoteFlow() {
         ))}
       </div>
 
-      <div className="instant-quote__input-row">
-        <input
-          id="address"
-          className="input"
-          value={address}
-          onChange={(event) => setAddress(event.target.value)}
-          placeholder="123 Main St SW, Calgary AB"
-          aria-label="Exact address"
-          required
-        />
-        <button className="button" type="submit" disabled={isSubmitting || isResolvingAddress}>
-          {isResolvingAddress
-            ? "Finding address..."
-            : isSubmitting
-              ? "Submitting..."
-              : "Get My Instant Estimate"}
-        </button>
-      </div>
+      {!quoteId ? (
+        <form
+          className="form-grid"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitStep1();
+          }}
+        >
+          <div className="instant-quote__input-row">
+            <input
+              className="input"
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              placeholder="123 Main St SW, Calgary AB"
+              aria-label="Exact address"
+              required
+            />
+            <button className="button" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Get My Instant Estimate"}
+            </button>
+          </div>
+          <p className="instant-quote__meta">Selected scope: {selectedLabel}</p>
+        </form>
+      ) : (
+        <form
+          className="form-grid"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitStep2();
+          }}
+        >
+          <p className="instant-quote__meta">Quote started. Request ID: {quoteId}</p>
+          <input
+            className="input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Full name"
+            required
+          />
+          <input
+            className="input"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email"
+            type="email"
+            required
+          />
+          <input
+            className="input"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="Phone"
+            required
+          />
+          <select
+            className="input"
+            value={preferredContact}
+            onChange={(event) => setPreferredContact(event.target.value)}
+          >
+            <option value="email">Email</option>
+            <option value="phone">Phone</option>
+            <option value="text">Text</option>
+          </select>
+          <button className="button" type="submit" disabled={isSubmitting || step2Done}>
+            {step2Done ? "Saved" : isSubmitting ? "Saving..." : "Save my contact details"}
+          </button>
+        </form>
+      )}
 
-      <p className="instant-quote__meta">Selected scope: {selectedLabel}</p>
-
-      {addressResolutionNotice ? (
-        <p className="instant-quote__resolution-note">{addressResolutionNotice}</p>
-      ) : null}
-      {resolvedAddress ? (
-        <p className="instant-quote__resolution-detail">
-          Matched address: <strong>{resolvedAddress.fullAddress}</strong>
-        </p>
-      ) : null}
+      {resolutionMessage ? <p className="instant-quote__resolution-detail">{resolutionMessage}</p> : null}
       {error ? <p style={{ color: "var(--color-primary)", margin: 0 }}>{error}</p> : null}
-      {quoteId ? (
-        <p className="instant-quote__success">
-          Quote started. Request ID: <strong>{quoteId}</strong>
-        </p>
-      ) : null}
-    </form>
+      {step2Done ? <p className="instant-quote__success">Thanks — we will contact you shortly.</p> : null}
+    </div>
   );
 }

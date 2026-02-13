@@ -1,25 +1,25 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Project } from "@/lib/db";
-import { getProjectImageUrl } from "@/lib/images";
-import { getCarouselImage } from "@/lib/geoboost";
 
 export default function ProjectCard({ project }: { project: Project }) {
+  const heroImage = project.photos?.[0]?.public_url;
+
   return (
     <article className="card">
-      {getCarouselImage(project) ? (
+      {heroImage ? (
         <Image
-          src={getProjectImageUrl(getCarouselImage(project))}
+          src={heroImage}
           alt={project.title}
           width={320}
           height={180}
           style={{ width: "100%", height: "auto", borderRadius: 12 }}
         />
       ) : null}
-      <div className="badge">{project.service_type}</div>
+      <div className="badge">{project.service_slug}</div>
       <h3 style={{ marginTop: 12 }}>{project.title}</h3>
       <p style={{ color: "var(--color-muted)", marginTop: 8 }}>
-        {project.neighborhood}, {project.city}
+        {project.neighborhood ?? "Calgary"}, {project.city}
       </p>
       <p style={{ marginTop: 12 }}>{project.summary}</p>
       <Link

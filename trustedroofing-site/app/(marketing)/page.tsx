@@ -1,7 +1,8 @@
 import Link from "next/link";
 import HeatMap from "@/components/HeatMap";
+import GeoProjectsRail from "@/components/GeoProjectsRail";
 import LocalBusinessSchema from "@/components/LocalBusinessSchema";
-import LocationProjects from "@/components/LocationProjects";
+import { listProjects } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -11,20 +12,22 @@ export const metadata = buildMetadata({
   path: "/"
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  const initialProjects = await listProjects({ limit: 5, include_unpublished: false });
+
   return (
     <>
       <LocalBusinessSchema />
       <section className="section">
         <div className="hero">
           <div>
-            <span className="badge">Fast estimates • Clean data • Local work</span>
+            <span className="badge">Fast estimates • Clean data • Real project graph</span>
             <h1 className="hero-title">
               Trusted Roofing & Exteriors for Calgary homeowners.
             </h1>
             <p className="hero-subtitle">
-              We blend high-performance roofing crews with data-backed planning to
-              deliver accurate, fast, and transparent projects.
+              Crawl-safe Calgary defaults are rendered server-side, then refined on
+              the client for near-you context after consent.
             </p>
             <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
               <Link href="/quote" className="button">
@@ -43,23 +46,21 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-          <LocationProjects />
+          <GeoProjectsRail initialProjects={initialProjects} />
         </div>
       </section>
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="card-grid">
           <div className="card">
-            <h3>Instant project intelligence</h3>
+            <h3>Hub-spoke content graph</h3>
             <p style={{ color: "var(--color-muted)", marginTop: 12 }}>
-              We capture clean project data to fuel better estimates and smarter
-              planning.
+              Service hubs link to real project nodes. No doorway neighborhood pages.
             </p>
           </div>
           <div className="card">
-            <h3>Certified crews</h3>
+            <h3>GeoBoost data pipeline</h3>
             <p style={{ color: "var(--color-muted)", marginTop: 12 }}>
-              Experienced roofing and exterior specialists focused on quality and
-              speed.
+              Admin publishing writes to Supabase and enqueues GBP posts.
             </p>
           </div>
           <HeatMap />

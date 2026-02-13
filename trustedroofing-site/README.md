@@ -1,101 +1,94 @@
-# Trusted Roofing & Exteriors Site
+# Trusted Roofing & Exteriors (Next.js App)
 
-High-performance lead generation site built with Next.js App Router + TypeScript for Trusted Roofing & Exteriors.
+GeoBoost-ready marketing site + private admin publishing app for trustedroofingcalgary.com.
 
-## Setup
+## Stack
 
-### 1) Install dependencies
+- Next.js App Router + TypeScript
+- Supabase Postgres + Supabase Storage
+- Vercel deployment
+
+## Environment variables
+
+Copy `.env.example` to `.env.local` and set values:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server-only, required for admin writes/uploads/GBP queue worker)
+- `ADMIN_TOKEN` (middleware token gate for `/admin`)
+- `GBP_WORKER_TOKEN` (protects `/api/gbp/worker`)
+- `NEXT_PUBLIC_SITE_URL` (optional; canonical defaults are hardcoded to trustedroofingcalgary.com)
+
+Future GBP placeholders (worker keeps queue pending until configured):
+
+- `GBP_CLIENT_ID`
+- `GBP_CLIENT_SECRET`
+- `GBP_REFRESH_TOKEN`
+- `GBP_LOCATION_ID`
+
+## Database schema
+
+Run SQL from:
+
+- `supabase/schema.sql`
+
+Migration snapshot:
+
+- `supabase/migrations/0001_init.sql`
+
+Tables:
+
+- `services`
+- `projects`
+- `project_photos`
+- `quote_events`
+- `quote_contacts`
+- `gbp_post_queue`
+
+## Local run
 
 ```bash
 npm install
-```
-
-### 2) Environment variables
-
-Create a `.env.local` file:
-
-```bash
-NEXT_PUBLIC_SITE_URL="https://trustedroofing.ca"
-SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_ANON_KEY="your-anon-key"
-NEXT_PUBLIC_IMAGE_PROVIDER="supabase"
-NEXT_PUBLIC_CLOUDINARY_BASE="https://res.cloudinary.com/your-account/image/upload"
-```
-
-If Supabase variables are not set, the app uses mock data stored in `lib/db.ts`.
-
-### Logos
-
-The app is wired to `/public/logo.svg` and `/public/logo-mark.svg`.
-
-- Replace these files directly with your official brand exports.
-- If you maintain source references in `logos.md`, export final SVG/PNG assets and place them in `/public`.
-
-### 3) Run locally
-
-```bash
 npm run dev
 ```
 
-Visit `http://localhost:3000` to view the site.
+Open:
 
-## Geo-Boost + Projects
+- Public site: `http://localhost:3000`
+- Admin: `http://localhost:3000/admin?token=<ADMIN_TOKEN>`
 
-- `POST /api/projects` supports creating a project with an `images[]` array (bulk-ready gallery input).
-- `POST /api/projects` with `{ "mode": "upload_batch", "files": [{"filename":"..."}] }` returns upload stubs for future Supabase/Cloudinary signed URLs.
-- Carousel cards intentionally show only the first project image; full project records can keep multiple gallery images.
+## Admin publishing flow
 
-## Instant Quote scopes
+1. Create/update project in `/admin`
+2. Upload multiple photos via `/admin/upload`
+3. Publish writes to Supabase immediately
+4. GBP payload is enqueued in `gbp_post_queue`
 
-The quote funnel now begins with radio selection for:
+## GBP queue worker
 
-- Roof
-- Soft metals
-- Vinyl siding
-- Hardie siding
-- Solar
-- Full exterior package
+- Endpoint: `POST /api/gbp/worker`
+- Required header: `x-worker-token: <GBP_WORKER_TOKEN>`
+- If GBP credentials are missing, queue remains pending by design.
 
-Selected scope is stored in `requested_scopes` on step 1 and can be expanded later in your estimator.
+## Production DB health check (10 seconds)
 
-## Deployment (Vercel)
+Open:
 
-- Set `NEXT_PUBLIC_SITE_URL` to your Vercel domain.
-- Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Vercel environment variables.
-- The sitemap is available at `/api/sitemap`, and `robots.txt` references it.
+- `https://trustedroofingcalgary.com/api/health`
 
-## TODO
+Expected for live Supabase:
 
-- Integrate real signed upload URLs for Supabase Storage / Cloudinary.
-- Wire Google APIs (address autocomplete, geocoding, and Solar API).
-- Add Geo-Boost legacy ranking and heatmap improvements.
-- Connect Instant Quote legacy calculations for final pricing logic.
+- `supabaseEnabled: true`
+- `dbReadOk: true`
+- `dataMode: "supabase"`
 
+If false:
 
-## Health endpoint (runtime proof)
+- set/verify Supabase env vars on Vercel
+- confirm tables exist from `supabase/schema.sql`
+- verify Supabase policies / service-role availability for server writes
 
-Use `/api/health` to verify whether the app is running in mock mode or Supabase mode at runtime.
+## Notes
 
-Response fields:
-
-- `appRootPath`: runtime working directory
-- `supabaseEnabled`: `true` only when both `SUPABASE_URL` and `SUPABASE_ANON_KEY` exist
-- `dbReadOk`: result of a safe read probe (`projects` table read in Supabase mode)
-- `dbError`: sanitized error text when probe fails
-- `dataMode`: `"supabase"` or `"mock"`
-- `version`: commit SHA if available from runtime env
-
-### How to verify production DB in 10 seconds
-
-1. Open `https://trustedroofingcalgary.com/api/health`
-2. Check:
-   - `supabaseEnabled: true`
-   - `dbReadOk: true`
-   - `dataMode: "supabase"`
-3. If `supabaseEnabled` is false, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Vercel project env vars.
-4. If `supabaseEnabled` is true but `dbReadOk` is false, verify table existence and RLS/policies for `projects` read access.
-
-## Supabase schema source of truth
-
-SQL migrations are in `supabase/migrations/`.
-Current baseline schema: `supabase/migrations/0001_init.sql`.
+- No doorway pages are generated. Only real published project nodes are listed.
+- Homepage is crawl-safe by default (Calgary feed SSR) and client-refines to near-you after geolocation consent.

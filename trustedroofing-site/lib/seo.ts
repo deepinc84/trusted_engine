@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 
-const defaultMeta = {
-  title: "Trusted Roofing & Exteriors",
-  description:
-    "Trusted Roofing & Exteriors delivers fast, data-driven roofing and exterior work across Calgary.",
-  url: "https://trustedroofing.ca"
-};
+export const SITE_URL = "https://trustedroofingcalgary.com";
+
+export function canonicalUrl(path = "") {
+  return `${SITE_URL}${path}`;
+}
 
 export function buildMetadata({
   title,
@@ -13,23 +12,21 @@ export function buildMetadata({
   path = ""
 }: {
   title: string;
-  description?: string;
+  description: string;
   path?: string;
 }): Metadata {
-  const fullTitle = `${title} | ${defaultMeta.title}`;
-  const fullDescription = description ?? defaultMeta.description;
+  const fullTitle = `${title} | Trusted Roofing & Exteriors`;
+
   return {
     title: fullTitle,
-    description: fullDescription,
-    metadataBase: new URL(defaultMeta.url),
-    alternates: {
-      canonical: path ? `${defaultMeta.url}${path}` : defaultMeta.url
-    },
+    description,
+    metadataBase: new URL(SITE_URL),
+    alternates: { canonical: canonicalUrl(path) },
     openGraph: {
       title: fullTitle,
-      description: fullDescription,
-      url: path ? `${defaultMeta.url}${path}` : defaultMeta.url,
-      siteName: defaultMeta.title
+      description,
+      url: canonicalUrl(path),
+      siteName: "Trusted Roofing & Exteriors"
     }
   };
 }

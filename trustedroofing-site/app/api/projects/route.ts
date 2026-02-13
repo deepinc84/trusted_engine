@@ -1,74 +1,46 @@
 import { NextResponse } from "next/server";
-import {
-  createProject,
-  createProjectUploadBatch,
-  getProjectBySlug,
-  listProjects
-} from "@/lib/db";
 import { parseNumber } from "@/lib/geo";
+import { listProjects } from "@/lib/db";
+
+function toPublicProject(project: Awaited<ReturnType<typeof listProjects>>[number]) {
+  return {
+    id: project.id,
+    slug: project.slug,
+    title: project.title,
+    summary: project.summary,
+    description: project.description,
+    service_slug: project.service_slug,
+    city: project.city,
+    province: project.province,
+    neighborhood: project.neighborhood,
+    quadrant: project.quadrant,
+    lat_public: project.lat_public,
+    lng_public: project.lng_public,
+    completed_at: project.completed_at,
+    created_at: project.created_at,
+    is_published: project.is_published,
+    photos: (project.photos ?? []).map((photo) => ({
+      id: photo.id,
+      public_url: photo.public_url,
+      caption: photo.caption,
+      sort_order: photo.sort_order
+    }))
+  };
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const slug = searchParams.get("slug");
-
-  if (slug) {
-    const project = await getProjectBySlug(slug);
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-    return NextResponse.json({ project });
-  }
-
-  const serviceType = searchParams.get("service_type");
-  const limit = parseNumber(searchParams.get("limit"));
-  const nearLat = parseNumber(searchParams.get("near_lat"));
-  const nearLng = parseNumber(searchParams.get("near_lng"));
 
   const projects = await listProjects({
-    service_type: serviceType,
-    limit,
-    near_lat: nearLat,
-    near_lng: nearLng
+    service_slug: searchParams.get("service_slug"),
+    neighborhood: searchParams.get("neighborhood"),
+    limit: parseNumber(searchParams.get("limit")),
+    near_lat: parseNumber(searchParams.get("near_lat")),
+    near_lng: parseNumber(searchParams.get("near_lng")),
+    include_unpublished: false
   });
 
   return NextResponse.json({
-    projects,
-    note: "Carousel cards use the first image only; full project galleries may include multiple images."
+    projects: projects.filter((project) => project.is_published).map(toPublicProject)
   });
-}
-
-export async function POST(request: Request) {
-  const body = await request.json();
-
-  if (body.mode === "upload_batch") {
-    const files = Array.isArray(body.files) ? body.files : [];
-    const uploads = await createProjectUploadBatch(files);
-    return NextResponse.json({ uploads });
-  }
-
-  const required = [
-    "slug",
-    "title",
-    "service_type",
-    "neighborhood",
-    "city",
-    "province",
-    "lat",
-    "lng",
-    "summary",
-    "description",
-    "completed_at",
-    "images"
-  ];
-
-  const missing = required.filter((key) => body[key] === undefined);
-  if (missing.length) {
-    return NextResponse.json(
-      { error: `Missing fields: ${missing.join(", ")}` },
-      { status: 400 }
-    );
-  }
-
-  const project = await createProject(body);
-  return NextResponse.json({ project }, { status: 201 });
 }
