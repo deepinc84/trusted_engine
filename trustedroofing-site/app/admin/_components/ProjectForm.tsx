@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Project, ProjectPhoto, Service } from "@/lib/db";
 
 type Props = {
@@ -18,6 +18,9 @@ type GeocodeResult = {
   lng: number;
   source: string;
 };
+
+const MAX_UPLOAD_FILES = 30;
+const MAX_UPLOAD_MB = 15;
 
 function slugify(value: string) {
   return value
@@ -40,9 +43,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [completedAt, setCompletedAt] = useState(project?.completed_at ?? "");
   const [projectId, setProjectId] = useState(project?.id ?? "");
   const [geocodeSource, setGeocodeSource] = useState(project?.geocode_source ?? "manual");
+  const [locationMode, setLocationMode] = useState<"current" | "manual">("current");
   const [status, setStatus] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
   const [primaryUploadIndex, setPrimaryUploadIndex] = useState(0);
   const [uploadedPhotos, setUploadedPhotos] = useState<ProjectPhoto[]>(project?.photos ?? []);
@@ -81,6 +86,53 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setGeocodeSource(payload.result.source || "api");
     setStatus(`Address matched via ${payload.result.source}. You can edit any field before saving.`);
   };
+
+  const useCurrentLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setStatus("Geolocation is not available in this browser. You can enter address manually.");
+      return;
+    }
+
+    setLocating(true);
+    setStatus("Detecting your current location...");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        setLatPrivate(String(lat));
+        setLngPrivate(String(lng));
+        setGeocodeSource("browser_geolocation");
+
+        const query = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+        const response = await fetch(`/api/geocode?${query.toString()}`);
+        const payload = (await response.json()) as { ok?: boolean; result?: GeocodeResult | null };
+
+        if (response.ok && payload.ok && payload.result) {
+          setAddressPrivate(payload.result.fullAddress);
+          if (!neighborhood) setNeighborhood(payload.result.city || "");
+          setStatus(`Location captured: ${payload.result.fullAddress}`);
+        } else {
+          setStatus("Coordinates captured from current location. Add address manually if needed.");
+        }
+
+        setLocating(false);
+      },
+      () => {
+        setStatus("Location permission denied or unavailable. You can enter address manually.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  useEffect(() => {
+    if (mode === "create" && locationMode === "current" && !project?.lat_private) {
+      useCurrentLocation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async () => {
     setStatus(null);
@@ -123,7 +175,31 @@ export default function ProjectForm({ services, mode, project }: Props) {
     if (data.project?.photos) {
       setUploadedPhotos(data.project.photos as ProjectPhoto[]);
     }
-    setStatus("Project saved.");
+    setStatus("Project saved. You can upload photos now.");
+  };
+
+  const onSelectFiles = (list: FileList | null) => {
+    if (!list) {
+      setFiles(null);
+      return;
+    }
+
+    const asArray = Array.from(list);
+    if (asArray.length > MAX_UPLOAD_FILES) {
+      setStatus(`Please select up to ${MAX_UPLOAD_FILES} images per upload.`);
+      setFiles(null);
+      return;
+    }
+
+    const tooLarge = asArray.find((file) => file.size > MAX_UPLOAD_MB * 1024 * 1024);
+    if (tooLarge) {
+      setStatus(`${tooLarge.name} is larger than ${MAX_UPLOAD_MB}MB. Please resize and try again.`);
+      setFiles(null);
+      return;
+    }
+
+    setFiles(list);
+    setStatus(`${asArray.length} image(s) selected.`);
   };
 
   const uploadPhotos = async () => {
@@ -161,6 +237,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     });
 
     setUploading(false);
+    setFiles(null);
     setStatus("Project photos uploaded and geo-tagged from project location.");
   };
 
@@ -187,7 +264,12 @@ export default function ProjectForm({ services, mode, project }: Props) {
   };
 
   return (
-    <div className="card" style={{ display: "grid", gap: 12 }}>
+    <div className="card" style={{ display: "grid", gap: 14 }}>
+      <h2 style={{ margin: 0, fontSize: 28 }}>Create Geo-Tagged Post</h2>
+      <p style={{ margin: 0, color: "var(--color-muted)" }}>
+        Use your current location by default, or switch to manual address mode.
+      </p>
+
       <label>
         Title
         <input className="input" value={title} onChange={(event) => setTitle(event.target.value)} />
@@ -206,13 +288,44 @@ export default function ProjectForm({ services, mode, project }: Props) {
           ))}
         </select>
       </label>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          className="button"
+          type="button"
+          style={{ opacity: locationMode === "current" ? 1 : 0.8 }}
+          onClick={() => {
+            setLocationMode("current");
+            useCurrentLocation();
+          }}
+          disabled={locating}
+        >
+          {locating ? "Locating..." : "Use my current location"}
+        </button>
+        <button
+          className="button"
+          type="button"
+          style={{ background: locationMode === "manual" ? "var(--color-primary)" : "white", color: locationMode === "manual" ? "white" : "var(--color-primary)", border: "1px solid rgba(30,58,138,0.25)" }}
+          onClick={() => setLocationMode("manual")}
+        >
+          Enter address manually
+        </button>
+      </div>
+
       <label>
         Address (private)
-        <input className="input" value={addressPrivate} onChange={(event) => setAddressPrivate(event.target.value)} placeholder="123 Main St SW, Calgary AB" />
+        <input
+          className="input"
+          value={addressPrivate}
+          onChange={(event) => setAddressPrivate(event.target.value)}
+          placeholder="123 Main St SW, Calgary AB"
+          disabled={locationMode === "current" && locating}
+        />
       </label>
       <button className="button" type="button" onClick={() => void geocodeAddress()} disabled={geocoding}>
         {geocoding ? "Geocoding..." : "Auto-fill lat/lng from address"}
       </button>
+
       <label>
         Neighborhood
         <input className="input" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} />
@@ -253,13 +366,13 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
       <hr />
       <label>
-        Upload multiple photos
-        <input type="file" multiple accept="image/*" onChange={(event) => setFiles(event.target.files)} />
+        Upload project photos (up to {MAX_UPLOAD_FILES} files, {MAX_UPLOAD_MB}MB each)
+        <input type="file" multiple accept="image/*" onChange={(event) => onSelectFiles(event.target.files)} />
       </label>
 
       {selectedFiles.length ? (
         <div style={{ display: "grid", gap: 10 }}>
-          <p style={{ margin: 0, fontWeight: 600 }}>Preview + select main post image</p>
+          <p style={{ margin: 0, fontWeight: 600 }}>Preview + choose main post image</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
             {selectedFiles.map((file, index) => {
               const localUrl = URL.createObjectURL(file);

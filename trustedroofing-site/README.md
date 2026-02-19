@@ -86,10 +86,10 @@ Open:
 ## GeoBoost pipeline walkthrough
 
 1. **Service mapping**: every project is linked to a service via `service_slug` in Admin form and persisted on `projects.service_slug`.
-2. **Address geocoding**: Admin can auto-fill private address + lat/lng using `/api/geocode` (Google secret key first, Nominatim fallback).
+2. **Location capture mode**: admin defaults to **Use my current location** (browser geolocation + reverse geocode) with optional manual address mode still available.
 3. **Privacy split**: private coords remain in `lat_private/lng_private`; rounded public coords are derived for public use.
 4. **Slug collision safety**: if a slug already exists, server appends numeric suffix (`-2`, `-3`, ...).
-5. **Photo ingest**: uploads go to Supabase Storage bucket `project-photos` and each row is written to `project_photos` (includes `is_primary` and `blurhash` placeholder column).
+5. **Photo ingest**: uploads go to Supabase Storage bucket `project-photos` and each row is written to `project_photos` (includes `is_primary` and `blurhash` placeholder column), with higher multi-image limits in Admin UI.
 6. **Image geo-tagging**: each photo row stores inherited geo context (`address_private`, private/public coords, geocode source), and JPEG uploads are written with GPS EXIF coordinates at upload time.
 7. **Primary image**: admin can choose a main image at upload time and re-assign later.
 8. **Alt-text intelligence**: upload route auto-generates geo-context captions when explicit caption is generic/filename-based.
