@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Project } from "@/lib/db";
 
 export default function ProjectCard({ project }: { project: Project }) {
-  const heroImage = project.photos?.[0]?.public_url;
+  const heroImage = project.photos?.find((photo) => photo.is_primary)?.public_url ?? project.photos?.[0]?.public_url;
 
   return (
     <article className="card">

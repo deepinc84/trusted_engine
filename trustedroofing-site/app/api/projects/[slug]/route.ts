@@ -29,7 +29,11 @@ export async function GET(
         id: photo.id,
         public_url: photo.public_url,
         caption: photo.caption,
-        sort_order: photo.sort_order
+        sort_order: photo.sort_order,
+        is_primary: photo.is_primary,
+        lat_public: photo.lat_public,
+        lng_public: photo.lng_public,
+        blurhash: photo.blurhash
       }))
     }
   });

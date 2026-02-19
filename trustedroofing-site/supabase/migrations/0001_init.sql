@@ -19,6 +19,9 @@ create table if not exists projects (
   province text not null default 'AB',
   neighborhood text,
   quadrant text,
+  address_private text,
+  place_id text,
+  geocode_source text,
   lat_private double precision,
   lng_private double precision,
   lat_public double precision,
@@ -35,6 +38,14 @@ create table if not exists project_photos (
   public_url text not null,
   caption text,
   sort_order int default 0,
+  is_primary boolean default false,
+  address_private text,
+  lat_private double precision,
+  lng_private double precision,
+  lat_public double precision,
+  lng_public double precision,
+  geocode_source text,
+  blurhash text,
   created_at timestamptz default now()
 );
 
@@ -74,3 +85,4 @@ create table if not exists gbp_post_queue (
 
 create unique index if not exists projects_slug_idx on projects(slug);
 create index if not exists quote_events_created_at_idx on quote_events(created_at desc);
+create index if not exists project_photos_project_sort_idx on project_photos(project_id, is_primary desc, sort_order asc);

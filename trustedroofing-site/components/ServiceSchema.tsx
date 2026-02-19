@@ -27,6 +27,12 @@ export default function ServiceSchema({
         url: canonicalUrl("")
       },
       {
+        "@type": "CollectionPage",
+        "@id": `${serviceUrl}#serviceHub`,
+        url: serviceUrl,
+        name: `${serviceName} projects in Calgary`
+      },
+      {
         "@type": "Service",
         "@id": `${serviceUrl}#service`,
         name: serviceName,

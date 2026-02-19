@@ -19,6 +19,8 @@ Copy `.env.example` to `.env.local` and set values:
 - `GOOGLE_SECRET_KEY` (server-only key for `/api/geocode` Google Geocoding calls)
 - `ADMIN_TOKEN` (middleware token gate for `/admin`)
 - `GBP_WORKER_TOKEN` (protects `/api/gbp/worker`)
+- `INDEXING_TOKEN` (protects internal indexing trigger endpoint `/api/index-project`)
+- `GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON` (placeholder for future Google Indexing API wiring)
 - `NEXT_PUBLIC_SITE_URL` (optional; canonical defaults are hardcoded to trustedroofingcalgary.com)
 
 Future GBP placeholders (worker keeps queue pending until configured):
@@ -74,9 +76,26 @@ Open:
 ## Admin publishing flow
 
 1. Create/update project in `/admin`
-2. Upload multiple photos via `/admin/upload`
-3. Publish writes to Supabase immediately
-4. GBP payload is enqueued in `gbp_post_queue`
+2. Enter the private address and click **Auto-fill lat/lng from address** (uses `/api/geocode`, Google first, Nominatim fallback)
+3. Review/correct address + coordinates, then save project
+4. Upload multiple photos, preview before upload, and choose a **Main image**
+5. Every uploaded photo is stored with project geo metadata (`address_private`, `lat_private/lng_private`, rounded `lat_public/lng_public`)
+6. Publish writes to Supabase immediately and enqueues GBP payload in `gbp_post_queue`
+
+
+## GeoBoost pipeline walkthrough
+
+1. **Service mapping**: every project is linked to a service via `service_slug` in Admin form and persisted on `projects.service_slug`.
+2. **Address geocoding**: Admin can auto-fill private address + lat/lng using `/api/geocode` (Google secret key first, Nominatim fallback).
+3. **Privacy split**: private coords remain in `lat_private/lng_private`; rounded public coords are derived for public use.
+4. **Slug collision safety**: if a slug already exists, server appends numeric suffix (`-2`, `-3`, ...).
+5. **Photo ingest**: uploads go to Supabase Storage bucket `project-photos` and each row is written to `project_photos` (includes `is_primary` and `blurhash` placeholder column).
+6. **Image geo-tagging**: each photo row stores inherited geo context (`address_private`, private/public coords, geocode source).
+7. **Primary image**: admin can choose a main image at upload time and re-assign later.
+8. **Alt-text intelligence**: upload route auto-generates geo-context captions when explicit caption is generic/filename-based.
+9. **GBP queue**: create/update enqueues payload in `gbp_post_queue` (queue-first behavior).
+10. **Index-on-commit trigger**: create/update performs best-effort ping to `/api/index-project` using `INDEXING_TOKEN` (placeholder until Google auth is fully wired).
+11. **Schema graph linkage**: service hub exposes `#serviceHub` + `#service`; project pages link via `about` and `isPartOf`.
 
 ## GBP queue worker
 

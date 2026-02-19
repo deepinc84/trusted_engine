@@ -17,6 +17,14 @@ export type ProjectPhoto = {
   public_url: string;
   caption: string | null;
   sort_order: number;
+  is_primary: boolean;
+  address_private: string | null;
+  lat_private: number | null;
+  lng_private: number | null;
+  lat_public: number | null;
+  lng_public: number | null;
+  geocode_source: string | null;
+  blurhash: string | null;
   created_at: string;
 };
 
@@ -31,6 +39,9 @@ export type Project = {
   province: string;
   neighborhood: string | null;
   quadrant: string | null;
+  address_private: string | null;
+  place_id: string | null;
+  geocode_source: string | null;
   lat_private: number | null;
   lng_private: number | null;
   lat_public: number | null;
@@ -155,6 +166,7 @@ async function fetchPhotosByProjectIds(projectIds: string[]) {
     .from("project_photos")
     .select("*")
     .in("project_id", projectIds)
+    .order("is_primary", { ascending: false })
     .order("sort_order", { ascending: true });
 
   return (data ?? []) as ProjectPhoto[];
@@ -171,6 +183,48 @@ export async function probeDataRead(): Promise<{ ok: boolean; error: string | nu
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+
+async function resolveUniqueSlug(baseSlug: string, ignoreProjectId?: string) {
+  const normalizedBase = sanitizeText(baseSlug);
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) return normalizedBase;
+
+    const { data, error } = await client
+      .from("projects")
+      .select("id, slug")
+      .ilike("slug", `${normalizedBase}%`);
+
+    if (error || !data?.length) return normalizedBase;
+
+    const existing = data
+      .filter((row) => row.id !== ignoreProjectId)
+      .map((row) => String(row.slug));
+
+    if (!existing.includes(normalizedBase)) return normalizedBase;
+
+    let suffix = 2;
+    while (existing.includes(`${normalizedBase}-${suffix}`)) {
+      suffix += 1;
+    }
+
+    return `${normalizedBase}-${suffix}`;
+  }
+
+  const existing = mockProjects
+    .filter((project) => project.id !== ignoreProjectId)
+    .map((project) => project.slug);
+
+  if (!existing.includes(normalizedBase)) return normalizedBase;
+
+  let suffix = 2;
+  while (existing.includes(`${normalizedBase}-${suffix}`)) {
+    suffix += 1;
+  }
+  return `${normalizedBase}-${suffix}`;
 }
 
 async function seedServicesIfEmpty(client: SupabaseClient) {
@@ -284,7 +338,7 @@ export async function listProjects(filters?: {
 
   output = output.map((project) => ({
     ...project,
-    photos: mockProjectPhotos.filter((photo) => photo.project_id === project.id).sort((a, b) => a.sort_order - b.sort_order)
+    photos: mockProjectPhotos.filter((photo) => photo.project_id === project.id).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
   }));
 
   if (filters?.limit) output = output.slice(0, filters.limit);
@@ -311,7 +365,7 @@ export async function getProjectById(id: string): Promise<Project | null> {
   if (!project) return null;
   return {
     ...project,
-    photos: mockProjectPhotos.filter((photo) => photo.project_id === id).sort((a, b) => a.sort_order - b.sort_order)
+    photos: mockProjectPhotos.filter((photo) => photo.project_id === id).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
   };
 }
 
@@ -325,6 +379,9 @@ type ProjectInput = {
   province?: string;
   neighborhood?: string | null;
   quadrant?: string | null;
+  address_private?: string | null;
+  place_id?: string | null;
+  geocode_source?: string | null;
   lat_private?: number | null;
   lng_private?: number | null;
   completed_at?: string | null;
@@ -344,6 +401,9 @@ function toProjectPayload(data: ProjectInput) {
     province: data.province ?? "AB",
     neighborhood: data.neighborhood ?? null,
     quadrant: data.quadrant ?? null,
+    address_private: data.address_private ? sanitizeText(data.address_private) : null,
+    place_id: data.place_id ? sanitizeText(data.place_id) : null,
+    geocode_source: data.geocode_source ?? null,
     lat_private: data.lat_private ?? null,
     lng_private: data.lng_private ?? null,
     lat_public: rounded.lat,
@@ -355,6 +415,7 @@ function toProjectPayload(data: ProjectInput) {
 
 export async function createProject(data: ProjectInput) {
   const payload = toProjectPayload(data);
+  payload.slug = await resolveUniqueSlug(payload.slug);
 
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
@@ -391,6 +452,9 @@ export async function updateProject(id: string, data: Partial<ProjectInput>) {
     province: data.province,
     neighborhood: data.neighborhood,
     quadrant: data.quadrant,
+    address_private: data.address_private,
+    place_id: data.place_id,
+    geocode_source: data.geocode_source,
     lat_private: data.lat_private,
     lng_private: data.lng_private,
     completed_at: data.completed_at,
@@ -399,7 +463,11 @@ export async function updateProject(id: string, data: Partial<ProjectInput>) {
 
   const payload = Object.fromEntries(
     Object.entries(partialPayload).filter(([_, value]) => value !== "")
-  );
+  ) as Partial<ReturnType<typeof toProjectPayload>>;
+
+  if (typeof payload.slug === "string" && payload.slug.length > 0) {
+    payload.slug = await resolveUniqueSlug(payload.slug, id);
+  }
 
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
@@ -428,14 +496,30 @@ export async function addProjectPhoto(
     public_url: string;
     caption?: string | null;
     sort_order?: number;
+    is_primary?: boolean;
+    address_private?: string | null;
+    lat_private?: number | null;
+    lng_private?: number | null;
+    geocode_source?: string | null;
+    blurhash?: string | null;
   }
 ) {
+  const rounded = roundLatLng(photo.lat_private ?? null, photo.lng_private ?? null, 3);
+
   const payload = {
     project_id,
     storage_path: photo.storage_path,
     public_url: photo.public_url,
     caption: photo.caption ?? null,
-    sort_order: photo.sort_order ?? 0
+    sort_order: photo.sort_order ?? 0,
+    is_primary: photo.is_primary ?? false,
+    address_private: photo.address_private ?? null,
+    lat_private: photo.lat_private ?? null,
+    lng_private: photo.lng_private ?? null,
+    lat_public: rounded.lat,
+    lng_public: rounded.lng,
+    geocode_source: photo.geocode_source ?? null,
+    blurhash: photo.blurhash ?? null
   };
 
   if (getDataMode() === "supabase") {
@@ -458,6 +542,34 @@ export async function addProjectPhoto(
   };
   mockProjectPhotos.push(created);
   return created;
+}
+
+
+export async function setPrimaryProjectPhoto(projectId: string, photoId: string) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+
+    const { error: clearError } = await client
+      .from("project_photos")
+      .update({ is_primary: false })
+      .eq("project_id", projectId);
+    if (clearError) throw new Error(clearError.message);
+
+    const { error: primaryError } = await client
+      .from("project_photos")
+      .update({ is_primary: true })
+      .eq("id", photoId)
+      .eq("project_id", projectId);
+    if (primaryError) throw new Error(primaryError.message);
+    return true;
+  }
+
+  for (const photo of mockProjectPhotos) {
+    if (photo.project_id === projectId) photo.is_primary = photo.id === photoId;
+  }
+
+  return true;
 }
 
 export async function enqueueGbpPost(project_id: string, payload: Record<string, unknown>) {
