@@ -90,7 +90,7 @@ Open:
 3. **Privacy split**: private coords remain in `lat_private/lng_private`; rounded public coords are derived for public use.
 4. **Slug collision safety**: if a slug already exists, server appends numeric suffix (`-2`, `-3`, ...).
 5. **Photo ingest**: uploads go to Supabase Storage bucket `project-photos` and each row is written to `project_photos` (includes `is_primary` and `blurhash` placeholder column).
-6. **Image geo-tagging**: each photo row stores inherited geo context (`address_private`, private/public coords, geocode source).
+6. **Image geo-tagging**: each photo row stores inherited geo context (`address_private`, private/public coords, geocode source), and JPEG uploads are written with GPS EXIF coordinates at upload time.
 7. **Primary image**: admin can choose a main image at upload time and re-assign later.
 8. **Alt-text intelligence**: upload route auto-generates geo-context captions when explicit caption is generic/filename-based.
 9. **GBP queue**: create/update enqueues payload in `gbp_post_queue` (queue-first behavior).

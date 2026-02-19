@@ -6,6 +6,7 @@ import {
   setPrimaryProjectPhoto,
   getProjectById
 } from "@/lib/db";
+import { embedGpsExifIfPossible } from "@/lib/exif";
 
 function humanizeFilename(name: string) {
   return name
@@ -85,10 +86,15 @@ export async function POST(request: Request) {
   }
 
   const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  const originalBuffer = Buffer.from(arrayBuffer);
+  const uploadBuffer = embedGpsExifIfPossible(
+    originalBuffer,
+    Number.isFinite(latPrivate as number) ? latPrivate : null,
+    Number.isFinite(lngPrivate as number) ? lngPrivate : null
+  );
   const path = `${projectId}/${Date.now()}-${file.name}`;
 
-  const { error } = await client.storage.from("project-photos").upload(path, buffer, {
+  const { error } = await client.storage.from("project-photos").upload(path, uploadBuffer, {
     contentType: file.type || "application/octet-stream",
     upsert: false
   });
