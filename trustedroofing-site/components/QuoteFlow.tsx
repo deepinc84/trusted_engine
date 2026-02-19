@@ -22,43 +22,19 @@ const quoteHeadlineByScope: Record<QuoteScope, string> = {
 
 async function resolveAddress(address: string): Promise<ResolvedAddress | null> {
   try {
-    const query = new URLSearchParams({
-      q: address,
-      format: "jsonv2",
-      limit: "1",
-      addressdetails: "1"
+    const query = new URLSearchParams({ address });
+    const response = await fetch(`/api/geocode?${query.toString()}`, {
+      headers: { Accept: "application/json" }
     });
-
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?${query.toString()}`,
-      { headers: { Accept: "application/json" } }
-    );
 
     if (!response.ok) return null;
 
-    const [top] = (await response.json()) as Array<{
-      display_name?: string;
-      lat?: string;
-      lon?: string;
-      address?: {
-        city?: string;
-        town?: string;
-        village?: string;
-        state?: string;
-        postcode?: string;
-      };
-    }>;
-
-    if (!top?.lat || !top?.lon || !top?.display_name) return null;
-
-    return {
-      fullAddress: top.display_name,
-      city: top.address?.city ?? top.address?.town ?? top.address?.village ?? "Calgary",
-      province: top.address?.state ?? "AB",
-      postal: top.address?.postcode ?? "",
-      lat: Number(top.lat),
-      lng: Number(top.lon)
+    const payload = (await response.json()) as {
+      ok?: boolean;
+      result?: ResolvedAddress | null;
     };
+
+    return payload.ok ? payload.result ?? null : null;
   } catch {
     return null;
   }

@@ -15,6 +15,8 @@ Copy `.env.example` to `.env.local` and set values:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only, required for admin writes/uploads/GBP queue worker)
+- `NEXT_PUBLIC_GOOGLE_PLACES_KEY` (client key for address autocomplete widgets, if enabled)
+- `GOOGLE_SECRET_KEY` (server-only key for `/api/geocode` Google Geocoding calls)
 - `ADMIN_TOKEN` (middleware token gate for `/admin`)
 - `GBP_WORKER_TOKEN` (protects `/api/gbp/worker`)
 - `NEXT_PUBLIC_SITE_URL` (optional; canonical defaults are hardcoded to trustedroofingcalgary.com)
@@ -56,6 +58,18 @@ Open:
 
 - Public site: `http://localhost:3000`
 - Admin: `http://localhost:3000/admin?token=<ADMIN_TOKEN>`
+
+## Quick Vercel setup (GeoBoost admin + geocoding)
+
+1. In Vercel project settings, add all variables from `.env.example`.
+2. Make sure `ADMIN_TOKEN` is a long random string.
+3. Add your existing keys exactly as:
+   - `NEXT_PUBLIC_GOOGLE_PLACES_KEY` = browser autocomplete key
+   - `GOOGLE_SECRET_KEY` = server geocoding key
+4. Redeploy the latest production deployment.
+5. Verify health: `https://trustedroofingcalgary.com/api/health`
+6. Open admin with token once: `https://trustedroofingcalgary.com/admin?token=<ADMIN_TOKEN>`
+   - middleware stores `admin_token` cookie, then `/admin` works directly.
 
 ## Admin publishing flow
 
