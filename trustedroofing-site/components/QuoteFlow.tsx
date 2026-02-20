@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
 
 type ResolvedAddress = {
@@ -43,6 +43,7 @@ async function resolveAddress(address: string): Promise<ResolvedAddress | null> 
 export default function QuoteFlow() {
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [address, setAddress] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
@@ -59,41 +60,67 @@ export default function QuoteFlow() {
     [selectedScope]
   );
 
+  useEffect(() => {
+    if (address.trim().length < 3 || quoteId) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      const query = new URLSearchParams({ q: address.trim() });
+      fetch(`/api/geocode/suggest?${query.toString()}`)
+        .then(async (res) => {
+          if (!res.ok) return { suggestions: [] as string[] };
+          return (await res.json()) as { suggestions?: string[] };
+        })
+        .then((data) => setAddressSuggestions(data.suggestions ?? []))
+        .catch(() => setAddressSuggestions([]));
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [address, quoteId]);
+
   const submitStep1 = async () => {
     setError(null);
     setIsSubmitting(true);
     setResolutionMessage(null);
 
-    const resolved = await resolveAddress(address);
+    try {
+      const resolved = await resolveAddress(address);
 
-    const res = await fetch("/api/quotes/step1", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        service_slug: selectedScope,
-        place_id: null,
-        address_private: resolved?.fullAddress ?? address,
-        lat_private: resolved?.lat ?? null,
-        lng_private: resolved?.lng ?? null,
-        estimate_low: 0,
-        estimate_high: 0
-      })
-    });
+      const res = await fetch("/api/quotes/step1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service_slug: selectedScope,
+          place_id: null,
+          address_private: resolved?.fullAddress ?? address,
+          lat_private: resolved?.lat ?? null,
+          lng_private: resolved?.lng ?? null,
+          estimate_low: 0,
+          estimate_high: 0
+        })
+      });
 
-    const data = await res.json();
-    setIsSubmitting(false);
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as { error?: string; quote_id?: string }) : {};
+      setIsSubmitting(false);
 
-    if (!res.ok) {
-      setError(data.error ?? "Unable to start quote.");
-      return;
+      if (!res.ok) {
+        setError(data.error ?? "Unable to start quote.");
+        return;
+      }
+
+      setQuoteId(data.quote_id ?? null);
+      setResolutionMessage(
+        resolved
+          ? `Address matched: ${resolved.fullAddress}`
+          : "Address saved. Automatic geocode unavailable; city defaults may apply."
+      );
+    } catch {
+      setIsSubmitting(false);
+      setError("Unable to start quote right now. Please try again.");
     }
-
-    setQuoteId(data.quote_id);
-    setResolutionMessage(
-      resolved
-        ? `Address matched: ${resolved.fullAddress}`
-        : "Address saved. Automatic geocode unavailable; city defaults may apply."
-    );
   };
 
   const submitStep2 = async () => {
@@ -101,26 +128,32 @@ export default function QuoteFlow() {
     setError(null);
     setIsSubmitting(true);
 
-    const res = await fetch("/api/quotes/step2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        quote_id: quoteId,
-        name,
-        email,
-        phone,
-        preferred_contact: preferredContact
-      })
-    });
+    try {
+      const res = await fetch("/api/quotes/step2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quote_id: quoteId,
+          name,
+          email,
+          phone,
+          preferred_contact: preferredContact
+        })
+      });
 
-    const data = await res.json();
-    setIsSubmitting(false);
-    if (!res.ok) {
-      setError(data.error ?? "Unable to save contact details.");
-      return;
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as { error?: string }) : {};
+      setIsSubmitting(false);
+      if (!res.ok) {
+        setError(data.error ?? "Unable to save contact details.");
+        return;
+      }
+
+      setStep2Done(true);
+    } catch {
+      setIsSubmitting(false);
+      setError("Unable to save contact details right now. Please try again.");
     }
-
-    setStep2Done(true);
   };
 
   return (
@@ -165,8 +198,14 @@ export default function QuoteFlow() {
               onChange={(event) => setAddress(event.target.value)}
               placeholder="123 Main St SW, Calgary AB"
               aria-label="Exact address"
+              list="quote-address-suggestions"
               required
             />
+            <datalist id="quote-address-suggestions">
+              {addressSuggestions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
             <button className="button" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting..." : "Get My Instant Estimate"}
             </button>

@@ -696,3 +696,135 @@ export async function updateQuoteStep2(input: {
 export function getStorageAdminClient() {
   return getServiceClient();
 }
+
+export type InstaquoteAddressQuery = {
+  id: string;
+  address: string;
+  place_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  roof_area_sqft: number | null;
+  pitch_degrees: number | null;
+  complexity_band: string | null;
+  area_source: string | null;
+  data_source: string | null;
+  queried_at: string;
+};
+
+export type InstaquoteLead = {
+  id: string;
+  address_query_id: string | null;
+  address: string;
+  place_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  name: string;
+  email: string;
+  phone: string;
+  budget_response: "yes" | "financing" | "too_expensive";
+  timeline: string | null;
+  roof_area_sqft: number | null;
+  roof_squares: number | null;
+  pitch: string | null;
+  good_low: number | null;
+  good_high: number | null;
+  better_low: number | null;
+  better_high: number | null;
+  best_low: number | null;
+  best_high: number | null;
+  eaves_low: number | null;
+  eaves_high: number | null;
+  siding_low: number | null;
+  siding_high: number | null;
+  lead_score: number | null;
+  lead_grade: string | null;
+  data_source: string | null;
+  source: string;
+  email_sent: boolean;
+  email_sent_at: string | null;
+  raw_json: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddressQuery, "id" | "queried_at">) {
+  const payload = {
+    id: crypto.randomUUID(),
+    queried_at: new Date().toISOString(),
+    ...input
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+    const { error } = await client.from("instaquote_address_queries").insert(payload);
+    if (error) throw new Error(error.message);
+    return payload.id;
+  }
+
+  return payload.id;
+}
+
+export async function createInstaquoteLead(input: Omit<InstaquoteLead, "id" | "created_at" | "email_sent" | "source">) {
+  const payload = {
+    id: crypto.randomUUID(),
+    created_at: new Date().toISOString(),
+    source: "instantquote",
+    email_sent: false,
+    ...input
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+    const { error } = await client.from("instaquote_leads").insert(payload);
+    if (error) throw new Error(error.message);
+    return payload.id;
+  }
+
+  return payload.id;
+}
+
+export async function createInstaquoteRegionalFeedback(input: {
+  address: string | null;
+  place_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  base_sqft: number | null;
+  shown_sqft: number | null;
+  final_sqft: number | null;
+  size_choice: string | null;
+  complexity_choice: string | null;
+  reason: string | null;
+}) {
+  const payload = {
+    id: crypto.randomUUID(),
+    created_at: new Date().toISOString(),
+    ...input
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+    const { error } = await client.from("instaquote_regional_feedback").insert(payload);
+    if (error) throw new Error(error.message);
+    return payload.id;
+  }
+
+  return payload.id;
+}
+
+export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<InstaquoteAddressQuery[]> {
+  if (getDataMode() === "supabase") {
+    const client = getAnonClient();
+    if (!client) return [];
+    const { data } = await client
+      .from("instaquote_address_queries")
+      .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,queried_at")
+      .order("queried_at", { ascending: false })
+      .limit(limit);
+
+    return (data ?? []) as InstaquoteAddressQuery[];
+  }
+
+  return [];
+}

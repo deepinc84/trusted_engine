@@ -22,6 +22,8 @@ Copy `.env.example` to `.env.local` and set values:
 - `INDEXING_TOKEN` (protects internal indexing trigger endpoint `/api/index-project`)
 - `GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON` (placeholder for future Google Indexing API wiring)
 - `NEXT_PUBLIC_SITE_URL` (optional; canonical defaults are hardcoded to trustedroofingcalgary.com)
+- `GOOGLE_SOLAR_API_KEY` (server-only, Solar building insights for InstantQuote)
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (client Google Maps script key for future map widgets)
 
 Future GBP placeholders (worker keeps queue pending until configured):
 
@@ -125,3 +127,19 @@ If false:
 
 - No doorway pages are generated. Only real published project nodes are listed.
 - Homepage is crawl-safe by default (Calgary feed SSR) and client-refines to near-you after geolocation consent.
+
+
+## InstantQuote (Next.js)
+
+Public routes:
+
+- `/instaquote`
+- `/api/instaquote/estimate`
+- `/api/instaquote/save-lead`
+- `/api/instaquote/regional-feedback`
+- `/api/instaquote/nearby`
+
+Behavior:
+- Every estimate request logs an address query row (`instaquote_address_queries`).
+- Lead submissions link back via `address_query_id`.
+- Nearby endpoint returns only non-personal query data.

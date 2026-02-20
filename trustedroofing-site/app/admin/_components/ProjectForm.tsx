@@ -22,6 +22,15 @@ type GeocodeResult = {
 const MAX_UPLOAD_FILES = 30;
 const MAX_UPLOAD_MB = 15;
 
+
+function parseJsonSafe<T>(text: string): T {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -51,6 +60,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [files, setFiles] = useState<FileList | null>(null);
   const [primaryUploadIndex, setPrimaryUploadIndex] = useState(0);
   const [uploadedPhotos, setUploadedPhotos] = useState<ProjectPhoto[]>(project?.photos ?? []);
+  const [adminToken, setAdminToken] = useState<string>("");
 
   const generatedSlug = useMemo(() => {
     if (!title) return "";
@@ -134,10 +144,32 @@ export default function ProjectForm({ services, mode, project }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const fromQuery = new URLSearchParams(window.location.search).get("token");
+    const fromStorage = window.localStorage.getItem("admin_token") ?? "";
+    const token = fromQuery || fromStorage;
+    if (!token) return;
+
+    setAdminToken(token);
+    if (fromQuery && fromQuery !== fromStorage) {
+      window.localStorage.setItem("admin_token", fromQuery);
+    }
+  }, []);
+
+  const adminFetch = (url: string, init?: RequestInit) => {
+    const headers = new Headers(init?.headers ?? {});
+    if (adminToken) headers.set("x-admin-token", adminToken);
+    return fetch(url, { ...init, headers });
+  };
+
   const submit = async () => {
     setStatus(null);
 
-    const payload = {
+    try {
+      const payload = {
       title,
       slug: slug || generatedSlug,
       service_slug: serviceSlug,
@@ -158,13 +190,14 @@ export default function ProjectForm({ services, mode, project }: Props) {
     const url = mode === "create" ? "/admin/projects" : `/admin/projects/${project?.id}`;
     const method = mode === "create" ? "POST" : "PATCH";
 
-    const res = await fetch(url, {
+    const res = await adminFetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
+    const text = await res.text();
+    const data = text ? parseJsonSafe<{ error?: string; project?: Project }>(text) : {};
     if (!res.ok) {
       setStatus(data.error ?? "Unable to save project.");
       return;
@@ -175,7 +208,10 @@ export default function ProjectForm({ services, mode, project }: Props) {
     if (data.project?.photos) {
       setUploadedPhotos(data.project.photos as ProjectPhoto[]);
     }
-    setStatus("Project saved. You can upload photos now.");
+      setStatus("Project saved. You can upload photos now.");
+    } catch {
+      setStatus("Unable to save project right now. Please refresh and try again.");
+    }
   };
 
   const onSelectFiles = (list: FileList | null) => {
@@ -206,7 +242,8 @@ export default function ProjectForm({ services, mode, project }: Props) {
     if (!projectId || !selectedFiles.length) return;
     setUploading(true);
 
-    const created: ProjectPhoto[] = [];
+    try {
+      const created: ProjectPhoto[] = [];
     for (let index = 0; index < selectedFiles.length; index += 1) {
       const file = selectedFiles[index];
       const form = new FormData();
@@ -220,8 +257,9 @@ export default function ProjectForm({ services, mode, project }: Props) {
       form.set("lat_private", latPrivate || "");
       form.set("lng_private", lngPrivate || "");
 
-      const res = await fetch("/admin/upload", { method: "POST", body: form });
-      const data = await res.json();
+      const res = await adminFetch("/admin/upload", { method: "POST", body: form });
+      const text = await res.text();
+      const data = text ? parseJsonSafe<{ error?: string; photo?: ProjectPhoto }>(text) : {};
       if (!res.ok) {
         setStatus(data.error ?? "Upload failed.");
         setUploading(false);
@@ -236,31 +274,41 @@ export default function ProjectForm({ services, mode, project }: Props) {
       return merged.sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order);
     });
 
-    setUploading(false);
-    setFiles(null);
-    setStatus("Project photos uploaded and geo-tagged from project location.");
+      setUploading(false);
+      setFiles(null);
+      setStatus("Project photos uploaded and geo-tagged from project location.");
+    } catch {
+      setUploading(false);
+      setStatus("Upload failed due to a network or auth issue. Reload admin with ?token=... and try again.");
+    }
   };
 
   const setPrimary = async (photoId: string) => {
     if (!projectId) return;
-    const res = await fetch(`/admin/photos/${photoId}/primary`, {
+
+    try {
+      const res = await adminFetch(`/admin/photos/${photoId}/primary`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ project_id: projectId })
     });
 
     if (!res.ok) {
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? parseJsonSafe<{ error?: string }>(text) : {};
       setStatus(data.error ?? "Unable to set primary image.");
       return;
     }
 
-    setUploadedPhotos((current) =>
-      current
-        .map((photo) => ({ ...photo, is_primary: photo.id === photoId }))
-        .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
-    );
-    setStatus("Primary image updated.");
+      setUploadedPhotos((current) =>
+        current
+          .map((photo) => ({ ...photo, is_primary: photo.id === photoId }))
+          .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
+      );
+      setStatus("Primary image updated.");
+    } catch {
+      setStatus("Unable to update primary image right now.");
+    }
   };
 
   return (
