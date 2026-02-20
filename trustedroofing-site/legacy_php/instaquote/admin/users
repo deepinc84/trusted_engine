@@ -1,0 +1,455 @@
+<?php
+// /instaquote/admin/users.php
+session_start();
+require __DIR__ . '/db.php';
+
+$errors  = [];
+$notices = [];
+
+// ---- HELPERS ------------------------------------------------------------
+
+function getCurrentUser(PDO $pdo): ?array {
+    if (!isset($_SESSION['admin_user_id'])) {
+        return null;
+    }
+    $stmt = $pdo->prepare(
+        "SELECT id, email, name, role, status
+         FROM instaquote_admin_users
+         WHERE id = :id"
+    );
+    $stmt->execute([':id' => $_SESSION['admin_user_id']]);
+    $user = $stmt->fetch();
+    if (!$user || $user['status'] !== 'active') {
+        return null;
+    }
+    return $user;
+}
+
+$currentUser = getCurrentUser($pdo);
+if (!$currentUser || $currentUser['role'] !== 'master') {
+    // Only master admins can use this page
+    header('Location: index.php');
+    exit;
+}
+
+// CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrfToken = $_SESSION['csrf_token'];
+
+function requireCsrf(string $tokenFromPost): void {
+    if (
+        !isset($_SESSION['csrf_token']) ||
+        !hash_equals($_SESSION['csrf_token'], $tokenFromPost)
+    ) {
+        die('Invalid CSRF token.');
+    }
+}
+
+// ---- HANDLE POST ACTIONS ------------------------------------------------
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    $csrf   = $_POST['csrf'] ?? '';
+    requireCsrf($csrf);
+
+    // CREATE USER ---------------------------------------------------------
+    if ($action === 'create_user') {
+        $name     = trim($_POST['name'] ?? '');
+        $email    = trim($_POST['email'] ?? '');
+        $role     = trim($_POST['role'] ?? 'admin');
+        $password = (string)($_POST['password'] ?? '');
+        $confirm  = (string)($_POST['confirm_password'] ?? '');
+
+        if ($name === '' || $email === '' || $password === '' || $confirm === '') {
+            $errors[] = 'Please fill in all fields for the new user.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Please enter a valid email address.';
+        } elseif (!preg_match('/@megaroofing\.ca$/i', $email)) {
+            $errors[] = 'Only @megaroofing.ca email addresses are allowed.';
+        } elseif ($password !== $confirm) {
+            $errors[] = 'Passwords do not match.';
+        } elseif (!in_array($role, ['admin', 'master'], true)) {
+            $errors[] = 'Invalid role selected.';
+        } else {
+            // Check if email already exists
+            $stmt = $pdo->prepare(
+                "SELECT id, status FROM instaquote_admin_users WHERE email = :email"
+            );
+            $stmt->execute([':email' => $email]);
+            $existing = $stmt->fetch();
+
+            if ($existing && $existing['status'] === 'active') {
+                $errors[] = 'An active account already exists for this email.';
+            } else {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                if ($existing) {
+                    // Reuse row if it exists but is pending/revoked
+                    $stmt = $pdo->prepare(
+                        "UPDATE instaquote_admin_users
+                         SET name = :name,
+                             password_hash = :hash,
+                             role = :role,
+                             status = 'active',
+                             approved_at = NOW()
+                         WHERE id = :id"
+                    );
+                    $stmt->execute([
+                        ':name' => $name,
+                        ':hash' => $hash,
+                        ':role' => $role,
+                        ':id'   => $existing['id'],
+                    ]);
+                } else {
+                    $stmt = $pdo->prepare(
+                        "INSERT INTO instaquote_admin_users
+                         (email, name, password_hash, role, status, approved_at)
+                         VALUES (:email, :name, :hash, :role, 'active', NOW())"
+                    );
+                    $stmt->execute([
+                        ':email' => $email,
+                        ':name'  => $name,
+                        ':hash'  => $hash,
+                        ':role'  => $role,
+                    ]);
+                }
+                $notices[] = 'User created/activated successfully.';
+            }
+        }
+    }
+
+    // UPDATE STATUS -------------------------------------------------------
+    if ($action === 'update_status') {
+        $userId     = (int)($_POST['user_id'] ?? 0);
+        $newStatus  = trim($_POST['new_status'] ?? '');
+
+        if ($userId <= 0) {
+            $errors[] = 'Invalid user selected.';
+        } elseif (!in_array($newStatus, ['pending', 'active', 'revoked'], true)) {
+            $errors[] = 'Invalid status.';
+        } elseif ($userId === (int)$currentUser['id']) {
+            $errors[] = 'You cannot change your own status.';
+        } else {
+            $stmt = $pdo->prepare(
+                "UPDATE instaquote_admin_users
+                 SET status = :status,
+                     approved_at = CASE WHEN :status = 'active' THEN NOW() ELSE approved_at END
+                 WHERE id = :id"
+            );
+            $stmt->execute([
+                ':status' => $newStatus,
+                ':id'     => $userId,
+            ]);
+            $notices[] = 'User status updated.';
+        }
+    }
+
+    // DELETE USER ---------------------------------------------------------
+    if ($action === 'delete_user') {
+        $userId = (int)($_POST['user_id'] ?? 0);
+
+        if ($userId <= 0) {
+            $errors[] = 'Invalid user selected.';
+        } elseif ($userId === (int)$currentUser['id']) {
+            $errors[] = 'You cannot delete your own account.';
+        } else {
+            $stmt = $pdo->prepare(
+                "DELETE FROM instaquote_admin_users WHERE id = :id"
+            );
+            $stmt->execute([':id' => $userId]);
+            $notices[] = 'User deleted.';
+        }
+    }
+
+    // SET PASSWORD --------------------------------------------------------
+    if ($action === 'set_password') {
+        $userId     = (int)($_POST['user_id'] ?? 0);
+        $newPass    = (string)($_POST['new_password'] ?? '');
+        $confirm    = (string)($_POST['confirm_password'] ?? '');
+
+        if ($userId <= 0) {
+            $errors[] = 'Invalid user selected.';
+        } elseif ($newPass === '' || $confirm === '') {
+            $errors[] = 'Please enter and confirm the new password.';
+        } elseif ($newPass !== $confirm) {
+            $errors[] = 'New password and confirmation do not match.';
+        } elseif (strlen($newPass) < 8) {
+            $errors[] = 'New password should be at least 8 characters.';
+        } else {
+            $hash = password_hash($newPass, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare(
+                "UPDATE instaquote_admin_users
+                 SET password_hash = :hash
+                 WHERE id = :id"
+            );
+            $stmt->execute([
+                ':hash' => $hash,
+                ':id'   => $userId,
+            ]);
+            $notices[] = 'Password updated for that user.';
+        }
+    }
+}
+
+// ---- LOAD USERS FOR DISPLAY --------------------------------------------
+
+$stmt = $pdo->query(
+    "SELECT id, email, name, role, status, created_at, approved_at, last_login_at
+     FROM instaquote_admin_users
+     ORDER BY role DESC, created_at DESC"
+);
+$users = $stmt->fetchAll();
+
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Management | RoofQuote Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50">
+<div class="min-h-screen flex flex-col">
+
+  <header class="bg-white border-b">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-gray-900">RoofQuote Admin</span>
+        <span class="text-xs text-gray-500">
+          Master: <?= htmlspecialchars($currentUser['email']) ?>
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="index.php"
+           class="text-xs text-slate-600 border border-slate-200 px-3 py-1 rounded-full hover:bg-slate-50">
+          Dashboard
+        </a>
+        <a href="change-password.php"
+           class="text-xs text-slate-600 border border-slate-200 px-3 py-1 rounded-full hover:bg-slate-50">
+          Change password
+        </a>
+        <a href="index.php?action=logout"
+           class="text-xs text-red-600 border border-red-200 px-3 py-1 rounded-full hover:bg-red-50">
+          Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1">
+    <div class="max-w-6xl mx-auto px-4 py-6">
+
+      <?php if (!empty($errors)): ?>
+        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <?php foreach ($errors as $e): ?>
+            <div><?= htmlspecialchars($e) ?></div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if (!empty($notices)): ?>
+        <div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+          <?php foreach ($notices as $n): ?>
+            <div><?= htmlspecialchars($n) ?></div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+
+      <!-- Create new user -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
+        <h1 class="text-lg font-semibold mb-1">Create / Activate User</h1>
+        <p class="text-xs text-slate-500 mb-4">
+          Create a new admin account or activate an existing one. Only <span class="font-semibold">@megaroofing.ca</span> emails are allowed.
+        </p>
+        <form method="post" class="grid md:grid-cols-4 gap-4 items-end">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+          <input type="hidden" name="action" value="create_user">
+
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" name="name" required
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" name="email" required
+                   placeholder="user@megaroofing.ca"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Role</label>
+            <select name="role"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
+              <option value="admin">Admin</option>
+              <option value="master">Master</option>
+            </select>
+          </div>
+          <div class="md:col-span-2 grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Password</label>
+              <input type="password" name="password" required
+                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Confirm</label>
+              <input type="password" name="confirm_password" required
+                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
+            </div>
+          </div>
+          <div class="md:col-span-4">
+            <button type="submit"
+                    class="inline-flex justify-center rounded-lg bg-red-600 text-white text-sm font-semibold px-4 py-2 hover:bg-red-700">
+              Save User
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- User list -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-slate-900">All Admin Users</h2>
+          <span class="text-[11px] text-slate-400">
+            Master, active, pending, and revoked accounts
+          </span>
+        </div>
+
+        <?php if (empty($users)): ?>
+          <p class="text-xs text-slate-500">
+            No users found.
+          </p>
+        <?php else: ?>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead>
+                <tr class="text-left text-slate-500 border-b border-slate-100">
+                  <th class="py-2 pr-4">Name</th>
+                  <th class="py-2 pr-4">Email</th>
+                  <th class="py-2 pr-4">Role</th>
+                  <th class="py-2 pr-4">Status</th>
+                  <th class="py-2 pr-4">Created</th>
+                  <th class="py-2 pr-4">Approved</th>
+                  <th class="py-2 pr-4">Last login</th>
+                  <th class="py-2 pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($users as $u): ?>
+                  <?php
+                    $isSelf = ((int)$u['id'] === (int)$currentUser['id']);
+                    $roleLabelClass = $u['role'] === 'master'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-slate-100 text-slate-700';
+
+                    $status = $u['status'];
+                    $statusClass = 'bg-slate-100 text-slate-600';
+                    if ($status === 'active')  $statusClass = 'bg-emerald-100 text-emerald-700';
+                    if ($status === 'pending') $statusClass = 'bg-amber-100 text-amber-700';
+                    if ($status === 'revoked') $statusClass = 'bg-red-100 text-red-700';
+                  ?>
+                  <tr class="border-b border-slate-50 align-top">
+                    <td class="py-2 pr-4">
+                      <div class="font-semibold text-slate-900">
+                        <?= htmlspecialchars($u['name'] ?? 'Unknown') ?>
+                        <?php if ($isSelf): ?>
+                          <span class="ml-1 text-[10px] text-slate-400">(you)</span>
+                        <?php endif; ?>
+                      </div>
+                    </td>
+                    <td class="py-2 pr-4">
+                      <div class="text-slate-700">
+                        <?= htmlspecialchars($u['email'] ?? '') ?>
+                      </div>
+                    </td>
+                    <td class="py-2 pr-4">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium <?= $roleLabelClass ?>">
+                        <?= htmlspecialchars($u['role']) ?>
+                      </span>
+                    </td>
+                    <td class="py-2 pr-4">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium <?= $statusClass ?>">
+                        <?= htmlspecialchars($u['status']) ?>
+                      </span>
+                    </td>
+                    <td class="py-2 pr-4 text-slate-500">
+                      <?= htmlspecialchars($u['created_at'] ?? '') ?>
+                    </td>
+                    <td class="py-2 pr-4 text-slate-500">
+                      <?= htmlspecialchars($u['approved_at'] ?? '') ?>
+                    </td>
+                    <td class="py-2 pr-4 text-slate-500">
+                      <?= htmlspecialchars($u['last_login_at'] ?? '') ?>
+                    </td>
+                    <td class="py-2 pr-4">
+                      <div class="flex flex-col gap-1">
+                        <!-- Status form -->
+                        <form method="post" class="inline">
+                          <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                          <input type="hidden" name="action" value="update_status">
+                          <input type="hidden" name="user_id" value="<?= (int)$u['id'] ?>">
+                          <select name="new_status"
+                                  class="w-full mb-1 rounded border border-slate-200 px-2 py-1 text-[11px] <?= $isSelf ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : '' ?>"
+                                  <?= $isSelf ? 'disabled' : '' ?>>
+                            <option value="active"  <?= $u['status'] === 'active'  ? 'selected' : '' ?>>active</option>
+                            <option value="pending" <?= $u['status'] === 'pending' ? 'selected' : '' ?>>pending</option>
+                            <option value="revoked" <?= $u['status'] === 'revoked' ? 'selected' : '' ?>>revoked</option>
+                          </select>
+                          <?php if (!$isSelf): ?>
+                            <button type="submit"
+                                    class="w-full rounded bg-slate-800 text-white text-[11px] py-1 hover:bg-black">
+                              Update status
+                            </button>
+                          <?php endif; ?>
+                        </form>
+
+                        <!-- Set password -->
+                        <form method="post" class="inline mt-2">
+                          <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                          <input type="hidden" name="action" value="set_password">
+                          <input type="hidden" name="user_id" value="<?= (int)$u['id'] ?>">
+                          <input type="password" name="new_password"
+                                 placeholder="New password"
+                                 class="w-full mb-1 rounded border border-slate-200 px-2 py-1 text-[11px]">
+                          <input type="password" name="confirm_password"
+                                 placeholder="Confirm"
+                                 class="w-full mb-1 rounded border border-slate-200 px-2 py-1 text-[11px]">
+                          <button type="submit"
+                                  class="w-full rounded bg-amber-500 text-white text-[11px] py-1 hover:bg-amber-600">
+                            Set password
+                          </button>
+                        </form>
+
+                        <!-- Delete user -->
+                        <?php if (!$isSelf): ?>
+                          <form method="post" class="inline mt-2"
+                                onsubmit="return confirm('Delete this user account? This cannot be undone.');">
+                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                            <input type="hidden" name="action" value="delete_user">
+                            <input type="hidden" name="user_id" value="<?= (int)$u['id'] ?>">
+                            <button type="submit"
+                                    class="w-full rounded bg-red-600 text-white text-[11px] py-1 hover:bg-red-700">
+                              Delete user
+                            </button>
+                          </form>
+                        <?php endif; ?>
+                      </div>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="text-center text-[11px] text-gray-400 py-4">
+    © <?= date('Y') ?> Mega Roofing · RoofQuote Admin
+  </footer>
+</div>
+</body>
+</html>
