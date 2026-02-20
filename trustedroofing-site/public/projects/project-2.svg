@@ -1,0 +1,6 @@
+<svg width="640" height="360" viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="360" rx="24" fill="#0F172A"/>
+  <path d="M160 240V140L320 80L480 140V240" stroke="#38BDF8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="290" y="180" width="60" height="50" fill="#38BDF8"/>
+  <text x="60" y="320" font-family="Arial" font-size="28" fill="#E2E8F0">Mahogany storm repair</text>
+</svg>
