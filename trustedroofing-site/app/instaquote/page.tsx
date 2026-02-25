@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 type EstimateResult = {
   address: string;
-  addressQueryId: string; // quote_events.id
+  addressQueryId: string;
   roofAreaSqft: number;
   roofSquares: number;
   pitchDegrees: number;
@@ -51,19 +51,19 @@ function timeAgo(iso: string) {
 
 export default function InstaquotePage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState<string>("");
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   const [nearby, setNearby] = useState<NearbyItem[]>([]);
   const [nearbyStatus, setNearbyStatus] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
   const [budgetResponse, setBudgetResponse] = useState<"yes" | "financing" | "too_expensive">("yes");
-  const [timeline, setTimeline] = useState("");
+  const [timeline, setTimeline] = useState<string>("");
 
   const quoteBanner = useMemo(() => {
     if (!estimate) return null;
@@ -176,6 +176,12 @@ export default function InstaquotePage() {
     setTimeline("");
   };
 
+  // Derived: only show Refresh / use coords when both are confirmed non-null numbers
+  const estimateCoords =
+    estimate != null && estimate.lat !== null && estimate.lng !== null
+      ? { lat: estimate.lat, lng: estimate.lng }
+      : null;
+
   return (
     <section className="section" style={{ maxWidth: 960, margin: "0 auto" }}>
       <div className="card" style={{ display: "grid", gap: 16 }}>
@@ -206,7 +212,11 @@ export default function InstaquotePage() {
               Note, detached garages, additions, and multi-structure properties can change the final scope.
             </p>
 
-            <button className="button" onClick={() => void requestEstimate()} disabled={submitting || !address.trim()}>
+            <button
+              className="button"
+              onClick={() => void requestEstimate()}
+              disabled={submitting || !address.trim()}
+            >
               {submitting ? "Calculating..." : "Get My Instant Estimate"}
             </button>
           </>
@@ -261,11 +271,11 @@ export default function InstaquotePage() {
                     <button
                       type="button"
                       className={budgetResponse === "yes" ? "button" : "button secondary"}
-                      onClick={() => {  
-                        const lat = estimate?.lat
-                        const lng = estimate?.lng
-                        if (lat == null || lng == null) return
-                        void loadNearby(lat, lng)
+                      onClick={() => {
+                        setBudgetResponse("yes");
+                        if (estimateCoords) {
+                          void loadNearby(estimateCoords.lat, estimateCoords.lng);
+                        }
                       }}
                     >
                       Yes
@@ -299,7 +309,11 @@ export default function InstaquotePage() {
                 </label>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="button" onClick={() => void submitLead()} disabled={submitting || !name || !email || !phone}>
+                  <button
+                    className="button"
+                    onClick={() => void submitLead()}
+                    disabled={submitting || !name || !email || !phone}
+                  >
                     {submitting ? "Submitting..." : "Submit"}
                   </button>
                   <button className="button secondary" type="button" onClick={resetAll} disabled={submitting}>
@@ -313,13 +327,12 @@ export default function InstaquotePage() {
 
         {step === 3 ? (
           <div className="card" style={{ borderColor: "#b7e2c2", background: "#f2fff6" }}>
-            <div style={{ fontWeight: 800, color: "#1e7f3f" }}>Thanks, you’re in.</div>
+            <div style={{ fontWeight: 800, color: "#1e7f3f" }}>Thanks, you're in.</div>
             <ol style={{ marginTop: 10, marginBottom: 0, paddingLeft: 20 }}>
               <li>We review your roof data and confirm the scope.</li>
               <li>We contact you to book a quick on-site verification.</li>
               <li>You get a firm written quote and schedule options.</li>
             </ol>
-
             <div style={{ marginTop: 12 }}>
               <button className="button" type="button" onClick={resetAll}>
                 Price another property
@@ -332,10 +345,23 @@ export default function InstaquotePage() {
       </div>
 
       <div className="card" style={{ marginTop: 18, display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "baseline",
+            flexWrap: "wrap"
+          }}
+        >
           <h2 style={{ margin: 0, color: "#C9362E" }}>Recently Quoted Projects Near You</h2>
-          {estimate?.lat !== null && estimate?.lng !== null ? (
-            <button className="button secondary" type="button" onClick={() => void loadNearby(estimate.lat!, estimate.lng!)}>
+          {/* Only render Refresh when coords are confirmed non-null */}
+          {estimateCoords ? (
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => void loadNearby(estimateCoords.lat, estimateCoords.lng)}
+            >
               Refresh
             </button>
           ) : null}
@@ -348,7 +374,8 @@ export default function InstaquotePage() {
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {nearby.map((item, idx) => {
-              const label = item.city ? `${item.city}${item.province ? `, ${item.province}` : ""}` : "Nearby";
+              const label =
+                item.city ? `${item.city}${item.province ? `, ${item.province}` : ""}` : "Nearby";
               const price =
                 item.estimate_low !== null && item.estimate_high !== null
                   ? `$${Number(item.estimate_low).toLocaleString()} – $${Number(item.estimate_high).toLocaleString()}`
