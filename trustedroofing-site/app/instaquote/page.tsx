@@ -261,7 +261,11 @@ export default function InstaquotePage() {
                     <button
                       type="button"
                       className={budgetResponse === "yes" ? "button" : "button secondary"}
-                      onClick={() => {     if (estimate?.lat == null || estimate?.lng == null) return     void loadNearby(lat, lng)   }} 
+                      onClick={() => {  
+                        const lat = estimate?.lat
+                        const lng = estimate?.lng
+                        if (lat == null || lng == null) return void loadNearby(lat, lng)
+                      }}
                     >
                       Yes
                     </button>
