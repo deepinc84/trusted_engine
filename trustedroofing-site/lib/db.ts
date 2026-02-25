@@ -812,7 +812,105 @@ export async function createInstaquoteRegionalFeedback(input: {
 
   return payload.id;
 }
+export async function createInstantQuoteEvent(input: {
+  service_type: string;
+  requested_scopes: string[] | null;
+  address: string;
+  city: string | null;
+  province: string | null;
+  postal: string | null;
+  place_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  estimate_low: number;
+  estimate_high: number;
+  notes: Record<string, unknown> | null;
+}) {
+  const now = new Date().toISOString();
 
+  const payload: Record<string, unknown> = {
+    id: crypto.randomUUID(),
+    created_at: now,
+    updated_at: now,
+    status: "instantquote_estimated",
+    service_type: input.service_type,
+    requested_scopes: input.requested_scopes,
+    address: input.address,
+    city: input.city,
+    province: input.province,
+    postal: input.postal,
+    lat: input.lat,
+    lng: input.lng,
+    estimate_low: Math.round(input.estimate_low),
+    estimate_high: Math.round(input.estimate_high),
+    name: null,
+    phone: null,
+    email: null,
+    notes: input.notes ? JSON.stringify(input.notes) : null
+  };
+
+  // Your quote_events schema screenshot doesn’t include place_id, store it inside notes.
+  if (input.place_id) {
+    const merged = { ...(input.notes ?? {}), place_id: input.place_id };
+    payload.notes = JSON.stringify(merged);
+  }
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+    const { error } = await client.from("quote_events").insert(payload);
+    if (error) throw new Error(error.message);
+    return payload.id as string;
+  }
+
+  return payload.id as string;
+}
+
+export async function attachInstantQuoteLead(input: {
+  quote_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  notes?: Record<string, unknown> | null;
+}) {
+  const now = new Date().toISOString();
+
+  const updatePayload: Record<string, unknown> = {
+    updated_at: now,
+    status: "instantquote_lead",
+    name: input.name,
+    email: input.email,
+    phone: input.phone
+  };
+
+  if (input.notes) updatePayload.notes = JSON.stringify(input.notes);
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+    const { error } = await client.from("quote_events").update(updatePayload).eq("id", input.quote_id);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  return true;
+}
+
+export async function listRecentQuoteEvents(limit: number) {
+  if (getDataMode() === "supabase") {
+    const client = getAnonClient();
+    if (!client) return [] as any[];
+    const { data } = await client
+      .from("quote_events")
+      .select("id, created_at, service_type, address, city, province, postal, lat, lng, estimate_low, estimate_high, status, notes")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    return (data ?? []) as any[];
+  }
+
+  return [] as any[];
+}
 export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<InstaquoteAddressQuery[]> {
   if (getDataMode() === "supabase") {
     const client = getAnonClient();
