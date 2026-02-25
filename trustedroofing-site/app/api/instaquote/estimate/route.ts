@@ -173,8 +173,8 @@ export async function POST(request: Request) {
     place_id: body.placeId ?? null,
     lat,
     lng,
-    estimate_low: ranges.ranges.good.low,
-    estimate_high: ranges.ranges.good.high,
+    estimate_low: ranges.good.low,
+    estimate_high: ranges.good.high,
     notes: {
       roofAreaSqft: ranges.roofAreaSqft,
       roofSquares: ranges.roofSquares,
@@ -201,7 +201,7 @@ export async function POST(request: Request) {
       estimateResult.areaSource === "regional"
         ? regionalRoofEstimate({ address: normalizedAddress, lat, lng }).regionalRanges
         : null,
-    ranges: ranges.ranges,
+    ranges: {   good: ranges.good,   better: ranges.better,   best: ranges.best,   eaves: ranges.eaves,   siding: ranges.siding, },
     addressQueryId: quoteEventId,
     address: resolvedAddress
   });
