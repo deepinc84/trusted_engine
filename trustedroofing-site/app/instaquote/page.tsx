@@ -264,7 +264,8 @@ export default function InstaquotePage() {
                       onClick={() => {  
                         const lat = estimate?.lat
                         const lng = estimate?.lng
-                        if (lat == null || lng == null) return void loadNearby(lat, lng)
+                        if (lat == null || lng == null) return 
+                        void loadNearby(lat, lng)
                       }}
                     >
                       Yes
