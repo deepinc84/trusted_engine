@@ -1,0 +1,25 @@
+{
+  "name": "trustedroofing-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "sitemap": "ts-node --esm scripts/generate-sitemap.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.1",
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "ts-node": "10.9.2",
+    "typescript": "5.5.4"
+  }
+}
