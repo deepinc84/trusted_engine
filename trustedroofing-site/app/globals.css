@@ -300,6 +300,12 @@ main {
 }
 
 
+.instant-quote__error {
+  color: var(--color-primary);
+  margin: 0;
+}
+
+
 .instant-quote__resolution-note {
   margin: 0;
   color: var(--color-muted);

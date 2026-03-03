@@ -1,176 +1,115 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { buildEstimateRanges, type ComplexityBand } from "@/lib/quote";
 
-type RecentQuote = {
-  id: string;
-  area: string;
-  service: string;
-  range: string;
-  completed: string;
+type NearbyItem = {
+  lat: number;
+  lng: number;
+  address: string;
+  roof_area_sqft: number | null;
+  complexity_band: string | null;
+  queried_at: string;
 };
 
-type LocationStatus =
-  | "idle"
-  | "locating"
-  | "granted"
-  | "ip_fallback"
-  | "defaulted";
+type Props = {
+  coords: { lat: number; lng: number } | null;
+};
 
-const recentQuotes: RecentQuote[] = [
-  {
-    id: "q-1001",
-    area: "Mahogany",
-    service: "Roof",
-    range: "$11.8k - $15.4k",
-    completed: "2 hours ago"
-  },
-  {
-    id: "q-1002",
-    area: "Seton",
-    service: "All exterior scopes",
-    range: "$18.2k - $27.9k",
-    completed: "4 hours ago"
-  },
-  {
-    id: "q-1003",
-    area: "Auburn Bay",
-    service: "Eavestrough",
-    range: "$2.4k - $3.5k",
-    completed: "today"
-  },
-  {
-    id: "q-1004",
-    area: "Brentwood",
-    service: "Vinyl siding",
-    range: "$10.7k - $14.1k",
-    completed: "today"
-  },
-  {
-    id: "q-1005",
-    area: "Signal Hill",
-    service: "Hardie siding",
-    range: "$15.3k - $21.9k",
-    completed: "yesterday"
-  },
-  {
-    id: "q-1006",
-    area: "Evanston",
-    service: "Roof",
-    range: "$9.9k - $13.2k",
-    completed: "yesterday"
-  }
-];
-
-async function getIpCityFallback(): Promise<string | null> {
-  try {
-    const response = await fetch("https://ipapi.co/json/", {
-      cache: "no-store"
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = (await response.json()) as { city?: string };
-    return data.city?.trim() || null;
-  } catch {
-    return null;
-  }
+function timeAgo(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.max(1, Math.round(diffMs / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 48) return `${hours} hr ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-export default function NearbyQuotesCarousel() {
-  const [cursor, setCursor] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(3);
-  const [status, setStatus] = useState<LocationStatus>("idle");
-  const [locationText, setLocationText] = useState("Calgary");
+function normalizeComplexity(input: string | null): ComplexityBand {
+  return input === "simple" || input === "complex" ? input : "moderate";
+}
+
+export default function NearbyQuotesCarousel({ coords }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<NearbyItem[]>([]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setCursor((prev) => (prev + 1) % recentQuotes.length);
-    }, 2800);
+    if (!coords) {
+      setItems([]);
+      return;
+    }
 
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const updateVisibleCount = () => {
-      setVisibleCount(window.innerWidth <= 860 ? 2 : 3);
+    const controller = new AbortController();
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const query = new URLSearchParams({ lat: String(coords.lat), lng: String(coords.lng), radiusKm: "25" });
+        const res = await fetch(`/api/instaquote/nearby?${query.toString()}`, { signal: controller.signal });
+        const payload = (await res.json().catch(() => ({}))) as { items?: NearbyItem[]; error?: string };
+        if (!res.ok) {
+          setError(payload.error ?? "Unable to load nearby quotes.");
+          setLoading(false);
+          return;
+        }
+        setItems(payload.items ?? []);
+      } catch {
+        if (!controller.signal.aborted) {
+          setError("Unable to load nearby quotes right now.");
+        }
+      }
+      setLoading(false);
     };
 
-    updateVisibleCount();
-    window.addEventListener("resize", updateVisibleCount);
+    void run();
+    return () => controller.abort();
+  }, [coords]);
 
-    return () => window.removeEventListener("resize", updateVisibleCount);
-  }, []);
-
-  const visibleQuotes = useMemo(() => {
-    return Array.from({ length: visibleCount }).map((_, offset) => {
-      const index = (cursor + offset) % recentQuotes.length;
-      return recentQuotes[index];
+  const cards = useMemo(() => {
+    return items.slice(0, 6).map((item, index) => {
+      const area = Math.max(1200, item.roof_area_sqft ?? 1800);
+      const complexity = normalizeComplexity(item.complexity_band);
+      const ranges = buildEstimateRanges({ roofAreaSqft: area, pitchDegrees: 25, complexityBand: complexity });
+      return {
+        id: `${item.queried_at}-${index}`,
+        address: item.address,
+        complexity,
+        roofArea: area,
+        range: `$${ranges.good.low.toLocaleString()} - $${ranges.good.high.toLocaleString()}`,
+        completed: timeAgo(item.queried_at)
+      };
     });
-  }, [cursor, visibleCount]);
-
-  const captureLocation = useCallback(async () => {
-    setStatus("locating");
-
-    const streetLevelLocated = await new Promise<boolean>((resolve) => {
-      if (!("geolocation" in navigator)) {
-        resolve(false);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        () => resolve(true),
-        () => resolve(false),
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    });
-
-    if (streetLevelLocated) {
-      setStatus("granted");
-      setLocationText("near you");
-      return;
-    }
-
-    const city = await getIpCityFallback();
-
-    if (city) {
-      setStatus("ip_fallback");
-      setLocationText(city);
-      return;
-    }
-
-    setStatus("defaulted");
-    setLocationText("Calgary");
-  }, []);
-
-  useEffect(() => {
-    void captureLocation();
-  }, [captureLocation]);
+  }, [items]);
 
   return (
     <section className="nearby-quotes">
       <div className="nearby-quotes__head">
         <div>
-          <p className="nearby-quotes__kicker">Geo-view</p>
-          <h2>Recent quotes {locationText}</h2>
+          <p className="nearby-quotes__kicker">Nearby estimate activity</p>
+          <h2>Recent quotes within 25km</h2>
         </div>
-        <button className="nearby-quotes__location" type="button" onClick={() => void captureLocation()}>
-          {status === "locating" ? "Locating..." : "My location"}
-        </button>
       </div>
 
-      <div className="nearby-quotes__carousel" aria-live="polite">
-        {visibleQuotes.map((quote) => (
-          <article key={quote.id} className="nearby-quotes__card">
-            <p className="nearby-quotes__area">{quote.area}</p>
-            <p>{quote.service}</p>
-            <p className="nearby-quotes__range">{quote.range}</p>
-            <p className="nearby-quotes__time">{quote.completed}</p>
-          </article>
-        ))}
-      </div>
+      {!coords ? <p className="instant-quote__meta">Estimate first to load nearby quote activity.</p> : null}
+      {loading ? <p className="instant-quote__meta">Loading nearby quotes…</p> : null}
+      {error ? <p className="instant-quote__error">{error}</p> : null}
+
+      {cards.length > 0 ? (
+        <div className="nearby-quotes__carousel" aria-live="polite">
+          {cards.map((quote) => (
+            <article key={quote.id} className="nearby-quotes__card">
+              <p className="nearby-quotes__area">{quote.address}</p>
+              <p>Service: Roofing</p>
+              <p>Roof size: {quote.roofArea} sqft</p>
+              <p>Complexity: {quote.complexity}</p>
+              <p className="nearby-quotes__range">{quote.range}</p>
+              <p className="nearby-quotes__time">{quote.completed}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

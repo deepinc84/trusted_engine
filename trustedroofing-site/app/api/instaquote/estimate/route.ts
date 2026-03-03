@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
-import { createInstantQuoteEvent } from "@/lib/db";
+import { createInstaquoteAddressQuery } from "@/lib/db";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
 type EstimateBody = {
@@ -14,7 +14,13 @@ async function geocodeAddress(address: string) {
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
 
-  const params = new URLSearchParams({ address, key, region: "ca" });
+  const params = new URLSearchParams({
+    address,
+    key,
+    region: "ca",
+    components: "country:CA"
+  });
+
   const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`, {
     cache: "no-store"
   });
@@ -22,10 +28,7 @@ async function geocodeAddress(address: string) {
 
   const payload = (await response.json()) as {
     status?: string;
-    results?: Array<{
-      formatted_address?: string;
-      geometry?: { location?: { lat?: number; lng?: number } };
-    }>;
+    results?: Array<{ formatted_address?: string; place_id?: string; geometry?: { location?: { lat?: number; lng?: number } } }>;
   };
 
   const top = payload.results?.[0];
@@ -33,13 +36,13 @@ async function geocodeAddress(address: string) {
 
   return {
     address: top.formatted_address,
+    placeId: top.place_id ?? null,
     lat: top.geometry?.location?.lat ?? null,
     lng: top.geometry?.location?.lng ?? null
   };
 }
 
 async function solarEstimate(lat: number, lng: number) {
-  // You said GOOGLE_SECRET_KEY is your Solar key, keep that convention.
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
 
@@ -50,12 +53,11 @@ async function solarEstimate(lat: number, lng: number) {
       "location.longitude": String(lng),
       requiredQuality: quality
     });
-
     const response = await fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params.toString()}`, {
       cache: "no-store"
     });
-    if (!response.ok) return null;
 
+    if (!response.ok) return null;
     return (await response.json()) as {
       solarPotential?: {
         wholeRoofStats?: { areaMeters2?: number; pitchDegrees?: number };
@@ -66,7 +68,6 @@ async function solarEstimate(lat: number, lng: number) {
 
   const high = await call("HIGH");
   const data = high ?? (await call("MEDIUM"));
-
   const roof = data?.solarPotential?.wholeRoofStats;
   const segments = data?.solarPotential?.roofSegmentStats ?? [];
 
@@ -95,20 +96,20 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as EstimateBody;
-
   if (!body.address && (body.lat === null || body.lat === undefined || body.lng === null || body.lng === undefined)) {
     return NextResponse.json({ error: "address or lat/lng is required" }, { status: 400 });
   }
 
   let normalizedAddress = body.address?.trim() ?? "";
+  let placeId = body.placeId ?? null;
   let lat = body.lat ?? null;
   let lng = body.lng ?? null;
 
-  // If the frontend didn’t send lat/lng, geocode from address.
   if ((lat === null || lng === null) && normalizedAddress) {
     const geocoded = await geocodeAddress(normalizedAddress);
     if (geocoded) {
       normalizedAddress = geocoded.address;
+      placeId = geocoded.placeId;
       lat = geocoded.lat;
       lng = geocoded.lng;
     }
@@ -145,49 +146,30 @@ export async function POST(request: Request) {
     complexityBand: estimateResult.complexityBand
   });
 
-  // === SERVER-SIDE STEP 1 DATA CAPTURE INTO quote_events ===
-  const resolvedAddress = normalizedAddress || "Calgary, AB, Canada";
-
-  const parts = resolvedAddress.split(",").map((p) => p.trim()).filter(Boolean);
-  // Often: "123 Main St SW, Calgary, AB T2X 1Y2, Canada"
-  const city = parts.length >= 2 ? parts[1] : null;
-
-  let province: string | null = null;
-  let postal: string | null = null;
-  if (parts.length >= 3) {
-    const provPostal = parts[2];
-    const match = provPostal.match(/\b([A-Z]{2})\b\s*([A-Z]\d[A-Z]\s?\d[A-Z]\d)?/i);
-    if (match) {
-      province = match[1]?.toUpperCase() ?? null;
-      postal = match[2] ? match[2].toUpperCase().replace(/\s+/g, " ").trim() : null;
-    }
+  let addressQueryId = crypto.randomUUID();
+  try {
+    addressQueryId = await createInstaquoteAddressQuery({
+      address: normalizedAddress || "Calgary, AB",
+      place_id: placeId,
+      lat,
+      lng,
+      roof_area_sqft: ranges.roofAreaSqft,
+      pitch_degrees: ranges.pitchDegrees,
+      complexity_band: ranges.complexityBand,
+      area_source: estimateResult.areaSource,
+      data_source: estimateResult.dataSource
+    });
+  } catch (error) {
+    console.error("instaquote estimate query insert failed", error);
   }
-
-  const quoteEventId = await createInstantQuoteEvent({
-    service_type: "InstantQuote",
-    requested_scopes: ["roof"],
-    address: resolvedAddress,
-    city,
-    province,
-    postal,
-    place_id: body.placeId ?? null,
-    lat,
-    lng,
-    estimate_low: ranges.good.low,
-    estimate_high: ranges.good.high,
-    notes: {
-      roofAreaSqft: ranges.roofAreaSqft,
-      roofSquares: ranges.roofSquares,
-      pitchDegrees: ranges.pitchDegrees,
-      complexityBand: ranges.complexityBand,
-      complexityScore: ranges.complexityScore,
-      dataSource: estimateResult.dataSource,
-      areaSource: estimateResult.areaSource
-    }
-  });
 
   return NextResponse.json({
     ok: true,
+    addressQueryId,
+    address: normalizedAddress || "Calgary, AB",
+    placeId,
+    lat,
+    lng,
     roofAreaSqft: ranges.roofAreaSqft,
     roofSquares: ranges.roofSquares,
     pitchDegrees: ranges.pitchDegrees,
@@ -195,14 +177,6 @@ export async function POST(request: Request) {
     areaSource: estimateResult.areaSource,
     complexityBand: ranges.complexityBand,
     complexityScore: ranges.complexityScore,
-    lat,
-    lng,
-    regionalRanges:
-      estimateResult.areaSource === "regional"
-        ? regionalRoofEstimate({ address: normalizedAddress, lat, lng }).regionalRanges
-        : null,
-    ranges: {   good: ranges.good,   better: ranges.better,   best: ranges.best,   eaves: ranges.eaves,   siding: ranges.siding, },
-    addressQueryId: quoteEventId,
-    address: resolvedAddress
+    ranges
   });
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { attachInstantQuoteLead } from "@/lib/db";
+import { createInstaquoteLead } from "@/lib/db";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
@@ -22,18 +22,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid budgetResponse" }, { status: 400 });
   }
 
-  const quoteId = String(body.addressQueryId ?? "").trim();
-  if (!quoteId) {
-    return NextResponse.json({ error: "Missing addressQueryId" }, { status: 400 });
+  try {
+    await createInstaquoteLead({
+      address_query_id: body.addressQueryId as string,
+      address: String(body.address),
+      place_id: (body.placeId as string) || null,
+      lat: typeof body.lat === "number" ? body.lat : null,
+      lng: typeof body.lng === "number" ? body.lng : null,
+      name: String(body.name),
+      email: String(body.email),
+      phone: String(body.phone),
+      budget_response: budget as "yes" | "financing" | "too_expensive",
+      timeline: (body.timeline as string) || null,
+      roof_area_sqft: typeof body.roofAreaSqft === "number" ? Math.round(body.roofAreaSqft) : null,
+      roof_squares: typeof body.roofSquares === "number" ? body.roofSquares : null,
+      pitch: (body.pitch as string) || null,
+      good_low: typeof body.goodLow === "number" ? body.goodLow : null,
+      good_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      better_low: typeof body.betterLow === "number" ? body.betterLow : null,
+      better_high: typeof body.betterHigh === "number" ? body.betterHigh : null,
+      best_low: typeof body.bestLow === "number" ? body.bestLow : null,
+      best_high: typeof body.bestHigh === "number" ? body.bestHigh : null,
+      eaves_low: typeof body.eavesLow === "number" ? body.eavesLow : null,
+      eaves_high: typeof body.eavesHigh === "number" ? body.eavesHigh : null,
+      siding_low: typeof body.sidingLow === "number" ? body.sidingLow : null,
+      siding_high: typeof body.sidingHigh === "number" ? body.sidingHigh : null,
+      lead_score: typeof body.leadScore === "number" ? body.leadScore : null,
+      lead_grade: typeof body.leadGrade === "string" ? body.leadGrade : null,
+      data_source: typeof body.dataSource === "string" ? body.dataSource : null,
+      email_sent_at: null,
+      raw_json: body
+    });
+  } catch (error) {
+    console.error("instaquote lead insert failed", error);
   }
-
-  await attachInstantQuoteLead({
-    quote_id: quoteId,
-    name: String(body.name),
-    email: String(body.email),
-    phone: String(body.phone),
-    notes: body
-  });
 
   return NextResponse.json({ ok: true });
 }

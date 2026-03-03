@@ -1,16 +1,55 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import NearbyQuotesCarousel from "@/components/NearbyQuotesCarousel";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
 
-type ResolvedAddress = {
-  fullAddress: string;
-  city: string;
-  province: string;
-  postal: string;
-  lat: number;
-  lng: number;
+type BudgetResponse = "yes" | "financing" | "too_expensive";
+
+type EstimateResult = {
+  ok: true;
+  addressQueryId: string;
+  address: string;
+  placeId: string | null;
+  lat: number | null;
+  lng: number | null;
+  roofAreaSqft: number;
+  roofSquares: number;
+  pitchDegrees: number;
+  dataSource: string;
+  areaSource: string;
+  complexityBand: string;
+  complexityScore: number;
+  ranges: {
+    good: { low: number; high: number };
+    better: { low: number; high: number };
+    best: { low: number; high: number };
+    eaves: { low: number; high: number };
+    siding: { low: number; high: number };
+  };
 };
+
+declare global {
+  interface Window {
+    google?: {
+      maps?: {
+        places?: {
+          Autocomplete: new (
+            input: HTMLInputElement,
+            opts?: Record<string, unknown>
+          ) => {
+            addListener: (eventName: string, callback: () => void) => void;
+            getPlace: () => {
+              place_id?: string;
+              formatted_address?: string;
+              geometry?: { location?: { lat: () => number; lng: () => number } };
+            };
+          };
+        };
+      };
+    };
+  }
+}
 
 const quoteHeadlineByScope: Record<QuoteScope, string> = {
   roofing: "Roof",
@@ -20,156 +59,206 @@ const quoteHeadlineByScope: Record<QuoteScope, string> = {
   eavestrough: "Eavestrough"
 };
 
-async function resolveAddress(address: string): Promise<ResolvedAddress | null> {
+function parseJsonSafe(text: string) {
   try {
-    const query = new URLSearchParams({ address });
-    const response = await fetch(`/api/geocode?${query.toString()}`, {
-      headers: { Accept: "application/json" }
-    });
-
-    if (!response.ok) return null;
-
-    const payload = (await response.json()) as {
-      ok?: boolean;
-      result?: ResolvedAddress | null;
-    };
-
-    return payload.ok ? payload.result ?? null : null;
+    return text ? (JSON.parse(text) as Record<string, unknown>) : {};
   } catch {
-    return null;
+    return {};
   }
 }
 
 export default function QuoteFlow() {
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
-  const [address, setAddress] = useState("");
-  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
-  const [quoteId, setQuoteId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [address, setAddress] = useState("");
+  const [placeId, setPlaceId] = useState<string | null>(null);
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+
+  const [estimate, setEstimate] = useState<EstimateResult | null>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [preferredContact, setPreferredContact] = useState("email");
-  const [step2Done, setStep2Done] = useState(false);
+  const [budgetResponse, setBudgetResponse] = useState<BudgetResponse>("yes");
+  const [timeline, setTimeline] = useState("");
 
   const selectedLabel = useMemo(
     () => quoteScopes.find((scope) => scope.value === selectedScope)?.label,
     [selectedScope]
   );
 
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
-    if (address.trim().length < 3 || quoteId) {
-      setAddressSuggestions([]);
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!key || !addressInputRef.current) return;
+
+    const setupAutocomplete = () => {
+      if (!window.google?.maps?.places || !addressInputRef.current) return;
+      const ac = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+        fields: ["formatted_address", "place_id", "geometry"],
+        componentRestrictions: { country: "ca" }
+      });
+
+      ac.addListener("place_changed", () => {
+        const place = ac.getPlace();
+        const formattedAddress = place.formatted_address ?? "";
+        setAddress(formattedAddress || addressInputRef.current?.value || "");
+        setPlaceId(place.place_id ?? null);
+        setLat(place.geometry?.location?.lat?.() ?? null);
+        setLng(place.geometry?.location?.lng?.() ?? null);
+      });
+    };
+
+    if (window.google?.maps?.places) {
+      setupAutocomplete();
       return;
     }
 
-    const timeout = setTimeout(() => {
-      const query = new URLSearchParams({ q: address.trim() });
-      fetch(`/api/geocode/suggest?${query.toString()}`)
-        .then(async (res) => {
-          if (!res.ok) return { suggestions: [] as string[] };
-          return (await res.json()) as { suggestions?: string[] };
-        })
-        .then((data) => setAddressSuggestions(data.suggestions ?? []))
-        .catch(() => setAddressSuggestions([]));
-    }, 250);
+    const scriptId = "google-maps-places-script";
+    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", setupAutocomplete, { once: true });
+      return;
+    }
 
-    return () => clearTimeout(timeout);
-  }, [address, quoteId]);
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.async = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places`;
+    script.onload = setupAutocomplete;
+    document.head.appendChild(script);
+  }, []);
+
+  const estimateCoords = estimate && estimate.lat !== null && estimate.lng !== null
+    ? { lat: estimate.lat, lng: estimate.lng }
+    : null;
 
   const submitStep1 = async () => {
+    setSubmitting(true);
     setError(null);
-    setIsSubmitting(true);
-    setResolutionMessage(null);
+    setStatus(null);
 
     try {
-      const resolved = await resolveAddress(address);
-
-      const res = await fetch("/api/quotes/step1", {
+      const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          service_slug: selectedScope,
-          place_id: null,
-          address_private: resolved?.fullAddress ?? address,
-          lat_private: resolved?.lat ?? null,
-          lng_private: resolved?.lng ?? null,
-          estimate_low: 0,
-          estimate_high: 0
-        })
+        body: JSON.stringify({ address, placeId, lat, lng })
       });
 
       const text = await res.text();
-      const data = text ? (JSON.parse(text) as { error?: string; quote_id?: string }) : {};
-      setIsSubmitting(false);
+      const payload = parseJsonSafe(text);
 
-      if (!res.ok) {
-        setError(data.error ?? "Unable to start quote.");
+      if (!res.ok || !payload.ok) {
+        setError(String(payload.error ?? "Unable to calculate estimate."));
+        setSubmitting(false);
         return;
       }
 
-      setQuoteId(data.quote_id ?? null);
-      setResolutionMessage(
-        resolved
-          ? `Address matched: ${resolved.fullAddress}`
-          : "Address saved. Automatic geocode unavailable; city defaults may apply."
-      );
+      const result = payload as unknown as EstimateResult;
+      setEstimate(result);
+      setAddress(result.address ?? address);
+      setPlaceId(result.placeId ?? placeId);
+      setLat(result.lat ?? lat);
+      setLng(result.lng ?? lng);
+      setStep(2);
+      setStatus("Estimate ready. Complete your details to lock in next steps.");
     } catch {
-      setIsSubmitting(false);
-      setError("Unable to start quote right now. Please try again.");
+      setError("Unable to calculate estimate right now.");
     }
+
+    setSubmitting(false);
   };
 
   const submitStep2 = async () => {
-    if (!quoteId) return;
+    if (!estimate) return;
+    setSubmitting(true);
     setError(null);
-    setIsSubmitting(true);
+    setStatus(null);
 
     try {
-      const res = await fetch("/api/quotes/step2", {
+      const res = await fetch("/api/instaquote/save-lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          quote_id: quoteId,
+          addressQueryId: estimate.addressQueryId,
+          address: estimate.address,
+          placeId: estimate.placeId,
+          lat: estimate.lat,
+          lng: estimate.lng,
           name,
           email,
           phone,
-          preferred_contact: preferredContact
+          budgetResponse,
+          timeline,
+          roofAreaSqft: estimate.roofAreaSqft,
+          roofSquares: estimate.roofSquares,
+          pitch: `${estimate.pitchDegrees}°`,
+          goodLow: estimate.ranges.good.low,
+          goodHigh: estimate.ranges.good.high,
+          betterLow: estimate.ranges.better.low,
+          betterHigh: estimate.ranges.better.high,
+          bestLow: estimate.ranges.best.low,
+          bestHigh: estimate.ranges.best.high,
+          eavesLow: estimate.ranges.eaves.low,
+          eavesHigh: estimate.ranges.eaves.high,
+          sidingLow: estimate.ranges.siding.low,
+          sidingHigh: estimate.ranges.siding.high,
+          leadScore: estimate.complexityScore,
+          dataSource: estimate.dataSource,
+          serviceScope: selectedScope
         })
       });
 
       const text = await res.text();
-      const data = text ? (JSON.parse(text) as { error?: string }) : {};
-      setIsSubmitting(false);
-      if (!res.ok) {
-        setError(data.error ?? "Unable to save contact details.");
+      const payload = parseJsonSafe(text);
+
+      if (!res.ok || !payload.ok) {
+        setError(String(payload.error ?? "Unable to save lead."));
+        setSubmitting(false);
         return;
       }
 
-      setStep2Done(true);
+      setStep(3);
+      setStatus("Thanks — your request is in.");
     } catch {
-      setIsSubmitting(false);
-      setError("Unable to save contact details right now. Please try again.");
+      setError("Unable to submit lead right now.");
     }
+
+    setSubmitting(false);
+  };
+
+  const resetAll = () => {
+    setStep(1);
+    setEstimate(null);
+    setAddress("");
+    setPlaceId(null);
+    setLat(null);
+    setLng(null);
+    setName("");
+    setEmail("");
+    setPhone("");
+    setBudgetResponse("yes");
+    setTimeline("");
+    setStatus(null);
+    setError(null);
   };
 
   return (
     <div className="instant-quote form-grid">
       <h2>Instant {quoteHeadlineByScope[selectedScope]} Quote</h2>
-      <p className="instant-quote__subhead">
-        Get a quick ballpark in under 60 seconds. No pressure.
-      </p>
+      <p className="instant-quote__subhead">Address first, instant estimate second, follow-up third.</p>
 
       <div className="instant-quote__scope-row">
         {quoteScopes.map((scope) => (
           <label
             key={scope.value}
-            className={`instant-quote__scope-pill ${
-              selectedScope === scope.value ? "is-active" : ""
-            }`}
+            className={`instant-quote__scope-pill ${selectedScope === scope.value ? "is-active" : ""}`}
           >
             <input
               type="radio"
@@ -183,7 +272,7 @@ export default function QuoteFlow() {
         ))}
       </div>
 
-      {!quoteId ? (
+      {step === 1 ? (
         <form
           className="form-grid"
           onSubmit={(event) => {
@@ -193,74 +282,70 @@ export default function QuoteFlow() {
         >
           <div className="instant-quote__input-row">
             <input
+              ref={addressInputRef}
               className="input"
               value={address}
               onChange={(event) => setAddress(event.target.value)}
               placeholder="123 Main St SW, Calgary AB"
               aria-label="Exact address"
-              list="quote-address-suggestions"
               required
             />
-            <datalist id="quote-address-suggestions">
-              {addressSuggestions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-            <button className="button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Get My Instant Estimate"}
+            <button className="button" type="submit" disabled={submitting || !address.trim()}>
+              {submitting ? "Calculating..." : "Get My Instant Estimate"}
             </button>
           </div>
           <p className="instant-quote__meta">Selected scope: {selectedLabel}</p>
         </form>
-      ) : (
-        <form
-          className="form-grid"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitStep2();
-          }}
-        >
-          <p className="instant-quote__meta">Quote started. Request ID: {quoteId}</p>
-          <input
-            className="input"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Full name"
-            required
-          />
-          <input
-            className="input"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="Email"
-            type="email"
-            required
-          />
-          <input
-            className="input"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="Phone"
-            required
-          />
-          <select
-            className="input"
-            value={preferredContact}
-            onChange={(event) => setPreferredContact(event.target.value)}
-          >
-            <option value="email">Email</option>
-            <option value="phone">Phone</option>
-            <option value="text">Text</option>
-          </select>
-          <button className="button" type="submit" disabled={isSubmitting || step2Done}>
-            {step2Done ? "Saved" : isSubmitting ? "Saving..." : "Save my contact details"}
-          </button>
-        </form>
-      )}
+      ) : null}
 
-      {resolutionMessage ? <p className="instant-quote__resolution-detail">{resolutionMessage}</p> : null}
-      {error ? <p style={{ color: "var(--color-primary)", margin: 0 }}>{error}</p> : null}
-      {step2Done ? <p className="instant-quote__success">Thanks — we will contact you shortly.</p> : null}
+      {step === 2 && estimate ? (
+        <>
+          <div className="card">
+            <p style={{ fontWeight: 700 }}>{estimate.address}</p>
+            <p>Good: ${estimate.ranges.good.low.toLocaleString()} - ${estimate.ranges.good.high.toLocaleString()}</p>
+            <p>Better: ${estimate.ranges.better.low.toLocaleString()} - ${estimate.ranges.better.high.toLocaleString()}</p>
+            <p>Best: ${estimate.ranges.best.low.toLocaleString()} - ${estimate.ranges.best.high.toLocaleString()}</p>
+            <p>
+              Roof area: {estimate.roofAreaSqft} sqft ({estimate.roofSquares} squares) · Pitch {estimate.pitchDegrees}° ·
+              Complexity {estimate.complexityBand}
+            </p>
+            <p>Source: {estimate.dataSource} ({estimate.areaSource})</p>
+          </div>
+
+          <form
+            className="form-grid"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitStep2();
+            }}
+          >
+            <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" required />
+            <input className="input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" required />
+            <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Phone" required />
+            <select className="input" value={budgetResponse} onChange={(event) => setBudgetResponse(event.target.value as BudgetResponse)}>
+              <option value="yes">Budget approved</option>
+              <option value="financing">Need financing options</option>
+              <option value="too_expensive">Likely too expensive</option>
+            </select>
+            <input className="input" value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="Timeline (optional)" />
+            <button className="button" type="submit" disabled={submitting || !name || !email || !phone}>
+              {submitting ? "Submitting..." : "Submit quote request"}
+            </button>
+          </form>
+        </>
+      ) : null}
+
+      {step === 3 ? (
+        <div className="card">
+          <p className="instant-quote__success">Thanks — your request is in.</p>
+          <button className="button" type="button" onClick={resetAll}>Start a new quote</button>
+        </div>
+      ) : null}
+
+      {status ? <p className="instant-quote__meta">{status}</p> : null}
+      {error ? <p className="instant-quote__error">{error}</p> : null}
+
+      <NearbyQuotesCarousel coords={estimateCoords} />
     </div>
   );
 }
