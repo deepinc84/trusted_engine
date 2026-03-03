@@ -55,6 +55,51 @@ async function geocodeAddress(address: string) {
   };
 }
 
+async function geocodeAddressNominatim(address: string) {
+  const params = new URLSearchParams({
+    q: `${address}, Calgary, AB, Canada`,
+    format: "json",
+    limit: "1",
+    addressdetails: "1"
+  });
+
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+    headers: {
+      "User-Agent": "TrustedRoofing/1.0",
+      Accept: "application/json"
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as Array<{
+    lat?: string;
+    lon?: string;
+    display_name?: string;
+  }>;
+
+  const top = payload[0];
+  if (!top?.lat || !top?.lon) return null;
+
+  const lat = Number(top.lat);
+  const lng = Number(top.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  return {
+    address: top.display_name ?? address,
+    placeId: null,
+    lat,
+    lng
+  };
+}
+
+function degreesToPitchRatio(pitchDegrees: number) {
+  const rise = Math.tan((pitchDegrees * Math.PI) / 180) * 12;
+  const rounded = Math.max(1, Math.min(13, Math.round(rise)));
+  return `${rounded}/12`;
+}
+
 async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateResult> {
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) {
@@ -141,7 +186,7 @@ export async function POST(request: Request) {
   let lng = body.lng ?? null;
 
   if ((lat === null || lng === null) && normalizedAddress) {
-    const geocoded = await geocodeAddress(normalizedAddress);
+    const geocoded = (await geocodeAddress(normalizedAddress)) ?? (await geocodeAddressNominatim(normalizedAddress));
     if (geocoded) {
       normalizedAddress = geocoded.address;
       placeId = geocoded.placeId;
@@ -214,6 +259,7 @@ export async function POST(request: Request) {
     roofAreaSqft: ranges.roofAreaSqft,
     roofSquares: ranges.roofSquares,
     pitchDegrees: ranges.pitchDegrees,
+    pitchRatio: degreesToPitchRatio(ranges.pitchDegrees),
     dataSource: estimateResult.dataSource,
     areaSource: estimateResult.areaSource,
     complexityBand: ranges.complexityBand,

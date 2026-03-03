@@ -16,6 +16,7 @@ type EstimateResult = {
   roofAreaSqft: number;
   roofSquares: number;
   pitchDegrees: number;
+  pitchRatio?: string;
   dataSource: string;
   areaSource: string;
   complexityBand: string;
@@ -224,7 +225,7 @@ export default function QuoteFlow() {
           timeline,
           roofAreaSqft: estimate.roofAreaSqft,
           roofSquares: estimate.roofSquares,
-          pitch: `${estimate.pitchDegrees}°`,
+          pitch: estimate.pitchRatio ?? `${estimate.pitchDegrees}°`,
           goodLow: estimate.ranges.good.low,
           goodHigh: estimate.ranges.good.high,
           betterLow: estimate.ranges.better.low,
@@ -372,7 +373,7 @@ export default function QuoteFlow() {
               </div>
               <div>
                 <span>Pitch</span>
-                <strong>{estimate.pitchDegrees}°</strong>
+                <strong>{estimate.pitchRatio ?? `${estimate.pitchDegrees}°`}</strong>
               </div>
               <div>
                 <span>Complexity</span>
