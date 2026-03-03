@@ -122,6 +122,12 @@ main {
   cursor: pointer;
 }
 
+.button--ghost {
+  background: white;
+  color: var(--color-primary);
+  border: 1px solid rgba(30, 58, 138, 0.32);
+}
+
 .input {
   border: 1px solid rgba(148, 163, 184, 0.5);
   border-radius: 999px;
@@ -364,6 +370,12 @@ main {
   font-size: 0.96rem;
 }
 
+.instant-quote__step-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .nearby-quotes__badge {
   margin: 0 0 4px;
   color: var(--color-primary);
@@ -531,6 +543,10 @@ main {
 
   .instant-quote__input-row {
     grid-template-columns: 1fr;
+  }
+
+  .instant-quote__step-actions .button {
+    width: 100%;
   }
 
   .instant-quote__stats-grid {

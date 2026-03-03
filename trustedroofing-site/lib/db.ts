@@ -746,6 +746,19 @@ export type InstaquoteLead = {
   created_at: string;
 };
 
+function parseAddressParts(address: string) {
+  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+  const city = parts[1] ?? null;
+  const provinceMatch = address.match(/\b(AB|Alberta)\b/i);
+  const postalMatch = address.match(/\b([A-Z]\d[A-Z]\s?\d[A-Z]\d)\b/i);
+
+  return {
+    city,
+    province: provinceMatch?.[1] ? "AB" : null,
+    postal: postalMatch?.[1]?.toUpperCase().replace(/\s+/g, " ") ?? null
+  };
+}
+
 export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddressQuery, "id" | "queried_at">) {
   const payload = {
     id: crypto.randomUUID(),
@@ -756,8 +769,43 @@ export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddress
   if (getDataMode() === "supabase") {
     const client = getServiceClient() ?? getAnonClient();
     if (!client) throw new Error("Supabase client unavailable");
-    const { error } = await client.from("instaquote_address_queries").insert(payload);
-    if (error) throw new Error(error.message);
+
+    let instaquoteInsertError: string | null = null;
+    const { error: primaryError } = await client.from("instaquote_address_queries").insert(payload);
+    if (primaryError) {
+      instaquoteInsertError = primaryError.message;
+    }
+
+    const { city, province, postal } = parseAddressParts(payload.address);
+    const { error: quoteEventsError } = await client.from("quote_events").upsert({
+      id: payload.id,
+      created_at: payload.queried_at,
+      updated_at: payload.queried_at,
+      status: "instaquote_estimated",
+      service_type: "InstantQuote",
+      requested_scopes: ["roof"],
+      address: payload.address,
+      city,
+      province,
+      postal,
+      lat: payload.lat,
+      lng: payload.lng,
+      estimate_low: null,
+      estimate_high: null,
+      notes: JSON.stringify({
+        source: payload.data_source,
+        area_source: payload.area_source,
+        complexity_band: payload.complexity_band,
+        roof_area_sqft: payload.roof_area_sqft,
+        pitch_degrees: payload.pitch_degrees,
+        place_id: payload.place_id
+      })
+    });
+
+    if (quoteEventsError && instaquoteInsertError) {
+      throw new Error(`instaquote_address_queries: ${instaquoteInsertError}; quote_events: ${quoteEventsError.message}`);
+    }
+
     return payload.id;
   }
 
@@ -776,8 +824,38 @@ export async function createInstaquoteLead(input: Omit<InstaquoteLead, "id" | "c
   if (getDataMode() === "supabase") {
     const client = getServiceClient() ?? getAnonClient();
     if (!client) throw new Error("Supabase client unavailable");
+
+    let leadInsertError: string | null = null;
     const { error } = await client.from("instaquote_leads").insert(payload);
-    if (error) throw new Error(error.message);
+    if (error) {
+      leadInsertError = error.message;
+    }
+
+    if (payload.address_query_id) {
+      const leadNotes = [
+        `budget=${payload.budget_response}`,
+        payload.timeline ? `timeline=${payload.timeline}` : null,
+        payload.data_source ? `source=${payload.data_source}` : null
+      ].filter(Boolean).join(" | ");
+
+      await client
+        .from("quote_events")
+        .update({
+          updated_at: new Date().toISOString(),
+          status: "instaquote_lead_submitted",
+          name: payload.name,
+          email: payload.email,
+          phone: payload.phone,
+          notes: leadNotes || null
+        })
+        .eq("id", payload.address_query_id);
+    }
+
+    if (leadInsertError) {
+      // Legacy schema compatibility: still report success to caller routes that degrade gracefully.
+      throw new Error(leadInsertError);
+    }
+
     return payload.id;
   }
 
@@ -817,13 +895,38 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
   if (getDataMode() === "supabase") {
     const client = getAnonClient();
     if (!client) return [];
-    const { data } = await client
+
+    const { data: primaryData, error: primaryError } = await client
       .from("instaquote_address_queries")
       .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,queried_at")
       .order("queried_at", { ascending: false })
       .limit(limit);
 
-    return (data ?? []) as InstaquoteAddressQuery[];
+    if (!primaryError && (primaryData?.length ?? 0) > 0) {
+      return (primaryData ?? []) as InstaquoteAddressQuery[];
+    }
+
+    const { data: legacyData } = await client
+      .from("quote_events")
+      .select("id,address,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
+      .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted")
+      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    return (legacyData ?? []).map((row: Record<string, unknown>) => ({
+      id: String(row.id),
+      address: String(row.address ?? "Calgary, AB"),
+      place_id: null,
+      lat: typeof row.lat === "number" ? row.lat : null,
+      lng: typeof row.lng === "number" ? row.lng : null,
+      roof_area_sqft: null,
+      pitch_degrees: null,
+      complexity_band: null,
+      area_source: null,
+      data_source: "quote_events_fallback",
+      queried_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString())
+    }));
   }
 
   return [];

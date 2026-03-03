@@ -10,6 +10,19 @@ type EstimateBody = {
   lng?: number | null;
 };
 
+type SolarEstimateResult = {
+  result:
+    | {
+        roofAreaSqft: number;
+        pitchDegrees: number;
+        complexityBand: "simple" | "moderate" | "complex";
+        dataSource: string;
+        areaSource: "solar";
+      }
+    | null;
+  debugReason: string | null;
+};
+
 async function geocodeAddress(address: string) {
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
@@ -42,9 +55,11 @@ async function geocodeAddress(address: string) {
   };
 }
 
-async function solarEstimate(lat: number, lng: number) {
+async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateResult> {
   const key = process.env.GOOGLE_SECRET_KEY;
-  if (!key) return null;
+  if (!key) {
+    return { result: null, debugReason: "missing GOOGLE_SECRET_KEY" };
+  }
 
   const call = async (quality: "HIGH" | "MEDIUM") => {
     const params = new URLSearchParams({
@@ -53,25 +68,42 @@ async function solarEstimate(lat: number, lng: number) {
       "location.longitude": String(lng),
       requiredQuality: quality
     });
+
     const response = await fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params.toString()}`, {
       cache: "no-store"
     });
 
-    if (!response.ok) return null;
-    return (await response.json()) as {
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      return {
+        data: null,
+        error: `quality=${quality} http=${response.status}${text ? ` body=${text.slice(0, 180)}` : ""}`
+      };
+    }
+
+    const data = (await response.json()) as {
       solarPotential?: {
         wholeRoofStats?: { areaMeters2?: number; pitchDegrees?: number };
         roofSegmentStats?: Array<{ pitchDegrees?: number }>;
       };
+      imageryQuality?: string;
+      name?: string;
     };
+
+    return { data, error: null as string | null };
   };
 
   const high = await call("HIGH");
-  const data = high ?? (await call("MEDIUM"));
+  const medium = high.data ? null : await call("MEDIUM");
+  const data = high.data ?? medium?.data ?? null;
+
   const roof = data?.solarPotential?.wholeRoofStats;
   const segments = data?.solarPotential?.roofSegmentStats ?? [];
 
-  if (!roof?.areaMeters2) return null;
+  if (!roof?.areaMeters2) {
+    const reason = [high.error, medium?.error ?? null].filter(Boolean).join(" | ") || "solar response missing wholeRoofStats.areaMeters2";
+    return { result: null, debugReason: reason };
+  }
 
   const areaSqft = Math.round(roof.areaMeters2 * 10.7639);
   const avgPitch =
@@ -80,11 +112,14 @@ async function solarEstimate(lat: number, lng: number) {
       : (roof.pitchDegrees ?? 25);
 
   return {
-    roofAreaSqft: areaSqft,
-    pitchDegrees: Math.round(avgPitch * 10) / 10,
-    complexityBand: complexityBandFromSegments(segments.length || 4),
-    dataSource: "google_solar",
-    areaSource: "solar" as const
+    result: {
+      roofAreaSqft: areaSqft,
+      pitchDegrees: Math.round(avgPitch * 10) / 10,
+      complexityBand: complexityBandFromSegments(segments.length || 4),
+      dataSource: "google_solar",
+      areaSource: "solar"
+    },
+    debugReason: null
   };
 }
 
@@ -125,8 +160,14 @@ export async function POST(request: Request) {
       }
     | null = null;
 
+  let solarDebug: string | null = null;
+
   if (lat !== null && lng !== null) {
-    estimateResult = await solarEstimate(lat, lng);
+    const solar = await solarEstimate(lat, lng);
+    estimateResult = solar.result;
+    solarDebug = solar.debugReason;
+  } else {
+    solarDebug = "no lat/lng available for solar lookup";
   }
 
   if (!estimateResult) {
@@ -177,6 +218,7 @@ export async function POST(request: Request) {
     areaSource: estimateResult.areaSource,
     complexityBand: ranges.complexityBand,
     complexityScore: ranges.complexityScore,
-    ranges
+    ranges,
+    solarDebug
   });
 }

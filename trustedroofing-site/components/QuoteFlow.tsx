@@ -20,6 +20,7 @@ type EstimateResult = {
   areaSource: string;
   complexityBand: string;
   complexityScore: number;
+  solarDebug?: string | null;
   ranges: {
     good: { low: number; high: number };
     better: { low: number; high: number };
@@ -188,7 +189,11 @@ export default function QuoteFlow() {
       setLat(result.lat ?? lat);
       setLng(result.lng ?? lng);
       setStep(2);
-      setStatus("Estimate ready. Complete your details to lock in next steps.");
+      setStatus(
+        result.areaSource === "regional"
+          ? `Estimate ready using regional fallback. Solar debug: ${result.solarDebug ?? "no debug message"}`
+          : "Estimate ready with Google Solar data. Complete your details to lock in next steps."
+      );
     } catch {
       setError("Unable to calculate estimate right now.");
     }
@@ -252,6 +257,24 @@ export default function QuoteFlow() {
     }
 
     setSubmitting(false);
+  };
+
+
+  const restartFromStep2 = () => {
+    setStep(1);
+    setEstimate(null);
+    setAddress("");
+    setAddressSuggestions([]);
+    setPlaceId(null);
+    setLat(null);
+    setLng(null);
+    setName("");
+    setEmail("");
+    setPhone("");
+    setBudgetResponse("yes");
+    setTimeline("");
+    setStatus(null);
+    setError(null);
   };
 
   const resetAll = () => {
@@ -360,6 +383,11 @@ export default function QuoteFlow() {
                 <strong>{estimate.dataSource}</strong>
               </div>
             </div>
+          </div>
+
+          <div className="instant-quote__step-actions">
+            <button className="button" type="button" onClick={restartFromStep2}>Estimate another address</button>
+            <button className="button button--ghost" type="button" onClick={restartFromStep2}>Cancel step 2</button>
           </div>
 
           <form
