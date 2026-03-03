@@ -7,6 +7,9 @@ type NearbyItem = {
   lat: number;
   lng: number;
   address: string;
+  neighborhood: string | null;
+  quadrant: string | null;
+  city: string | null;
   roof_area_sqft: number | null;
   complexity_band: string | null;
   queried_at: string;
@@ -14,6 +17,7 @@ type NearbyItem = {
 
 type Props = {
   coords: { lat: number; lng: number } | null;
+  address: string | null;
 };
 
 function timeAgo(iso: string) {
@@ -30,7 +34,7 @@ function normalizeComplexity(input: string | null): ComplexityBand {
   return input === "simple" || input === "complex" ? input : "moderate";
 }
 
-export default function NearbyQuotesCarousel({ coords }: Props) {
+export default function NearbyQuotesCarousel({ coords, address }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<NearbyItem[]>([]);
@@ -47,6 +51,9 @@ export default function NearbyQuotesCarousel({ coords }: Props) {
       setError(null);
       try {
         const query = new URLSearchParams({ lat: String(coords.lat), lng: String(coords.lng), radiusKm: "25" });
+        if (address?.trim()) {
+          query.set("address", address.trim());
+        }
         const res = await fetch(`/api/instaquote/nearby?${query.toString()}`, { signal: controller.signal });
         const payload = (await res.json().catch(() => ({}))) as { items?: NearbyItem[]; error?: string };
         if (!res.ok) {
@@ -65,7 +72,7 @@ export default function NearbyQuotesCarousel({ coords }: Props) {
 
     void run();
     return () => controller.abort();
-  }, [coords]);
+  }, [coords, address]);
 
   const cards = useMemo(() => {
     return items.slice(0, 6).map((item, index) => {
@@ -74,6 +81,7 @@ export default function NearbyQuotesCarousel({ coords }: Props) {
       const ranges = buildEstimateRanges({ roofAreaSqft: area, pitchDegrees: 25, complexityBand: complexity });
       return {
         id: `${item.queried_at}-${index}`,
+        locationLabel: item.neighborhood ?? item.quadrant ?? item.city ?? "Calgary",
         address: item.address,
         complexity,
         roofArea: area,
@@ -88,7 +96,7 @@ export default function NearbyQuotesCarousel({ coords }: Props) {
       <div className="nearby-quotes__head">
         <div>
           <p className="nearby-quotes__kicker">Nearby estimate activity</p>
-          <h2>Recent quotes within 25km</h2>
+          <h2>Recent quotes near your address</h2>
         </div>
       </div>
 
@@ -100,11 +108,9 @@ export default function NearbyQuotesCarousel({ coords }: Props) {
         <div className="nearby-quotes__carousel" aria-live="polite">
           {cards.map((quote) => (
             <article key={quote.id} className="nearby-quotes__card">
-              <p className="nearby-quotes__area">{quote.address}</p>
-              <p>Service: Roofing</p>
-              <p>Roof size: {quote.roofArea} sqft</p>
-              <p>Complexity: {quote.complexity}</p>
-              <p className="nearby-quotes__range">{quote.range}</p>
+              <p className="nearby-quotes__badge">{quote.locationLabel}</p>
+              <p className="nearby-quotes__area">{quote.range}</p>
+              <p className="nearby-quotes__detail">Roof size: {quote.roofArea} sqft · Complexity: {quote.complexity}</p>
               <p className="nearby-quotes__time">{quote.completed}</p>
             </article>
           ))}

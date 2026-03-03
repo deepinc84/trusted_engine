@@ -75,6 +75,7 @@ export default function QuoteFlow() {
   const [submitting, setSubmitting] = useState(false);
 
   const [address, setAddress] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
@@ -93,6 +94,26 @@ export default function QuoteFlow() {
   );
 
   const addressInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (address.trim().length < 3 || step !== 1) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const query = new URLSearchParams({ q: address.trim() });
+      fetch(`/api/geocode/suggest?${query.toString()}`)
+        .then(async (res) => {
+          if (!res.ok) return { suggestions: [] as string[] };
+          return (await res.json()) as { suggestions?: string[] };
+        })
+        .then((data) => setAddressSuggestions(data.suggestions ?? []))
+        .catch(() => setAddressSuggestions([]));
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [address, step]);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -237,6 +258,7 @@ export default function QuoteFlow() {
     setStep(1);
     setEstimate(null);
     setAddress("");
+    setAddressSuggestions([]);
     setPlaceId(null);
     setLat(null);
     setLng(null);
@@ -285,11 +307,22 @@ export default function QuoteFlow() {
               ref={addressInputRef}
               className="input"
               value={address}
-              onChange={(event) => setAddress(event.target.value)}
+              onChange={(event) => {
+                setAddress(event.target.value);
+                setPlaceId(null);
+                setLat(null);
+                setLng(null);
+              }}
               placeholder="123 Main St SW, Calgary AB"
               aria-label="Exact address"
+              list="quote-address-suggestions"
               required
             />
+            <datalist id="quote-address-suggestions">
+              {addressSuggestions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
             <button className="button" type="submit" disabled={submitting || !address.trim()}>
               {submitting ? "Calculating..." : "Get My Instant Estimate"}
             </button>
@@ -300,16 +333,33 @@ export default function QuoteFlow() {
 
       {step === 2 && estimate ? (
         <>
-          <div className="card">
-            <p style={{ fontWeight: 700 }}>{estimate.address}</p>
-            <p>Good: ${estimate.ranges.good.low.toLocaleString()} - ${estimate.ranges.good.high.toLocaleString()}</p>
-            <p>Better: ${estimate.ranges.better.low.toLocaleString()} - ${estimate.ranges.better.high.toLocaleString()}</p>
-            <p>Best: ${estimate.ranges.best.low.toLocaleString()} - ${estimate.ranges.best.high.toLocaleString()}</p>
-            <p>
-              Roof area: {estimate.roofAreaSqft} sqft ({estimate.roofSquares} squares) · Pitch {estimate.pitchDegrees}° ·
-              Complexity {estimate.complexityBand}
-            </p>
-            <p>Source: {estimate.dataSource} ({estimate.areaSource})</p>
+          <div className="instant-quote__estimate-panel">
+            <p className="instant-quote__address">{estimate.address}</p>
+            <div className="instant-quote__range-hero">
+              <p className="instant-quote__range-label">Estimated range</p>
+              <h3>
+                ${estimate.ranges.good.low.toLocaleString()} - ${estimate.ranges.good.high.toLocaleString()}
+              </h3>
+              <p>Precise options available after we confirm complexity and access.</p>
+            </div>
+            <div className="instant-quote__stats-grid">
+              <div>
+                <span>Roof size</span>
+                <strong>{estimate.roofAreaSqft} sqft ({estimate.roofSquares} squares)</strong>
+              </div>
+              <div>
+                <span>Pitch</span>
+                <strong>{estimate.pitchDegrees}°</strong>
+              </div>
+              <div>
+                <span>Complexity</span>
+                <strong>{estimate.complexityBand}</strong>
+              </div>
+              <div>
+                <span>Data source</span>
+                <strong>{estimate.dataSource}</strong>
+              </div>
+            </div>
           </div>
 
           <form
@@ -323,13 +373,13 @@ export default function QuoteFlow() {
             <input className="input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" required />
             <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Phone" required />
             <select className="input" value={budgetResponse} onChange={(event) => setBudgetResponse(event.target.value as BudgetResponse)}>
-              <option value="yes">Budget approved</option>
-              <option value="financing">Need financing options</option>
-              <option value="too_expensive">Likely too expensive</option>
+              <option value="yes">Yes, ready to move forward</option>
+              <option value="financing">I need monthly payment options</option>
+              <option value="too_expensive">Too high, I’m price checking</option>
             </select>
             <input className="input" value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="Timeline (optional)" />
             <button className="button" type="submit" disabled={submitting || !name || !email || !phone}>
-              {submitting ? "Submitting..." : "Submit quote request"}
+              {submitting ? "Submitting..." : "Request My Detailed Quote"}
             </button>
           </form>
         </>
@@ -345,7 +395,7 @@ export default function QuoteFlow() {
       {status ? <p className="instant-quote__meta">{status}</p> : null}
       {error ? <p className="instant-quote__error">{error}</p> : null}
 
-      <NearbyQuotesCarousel coords={estimateCoords} />
+      <NearbyQuotesCarousel coords={estimateCoords} address={estimate?.address ?? address} />
     </div>
   );
 }
