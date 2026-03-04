@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NearbyQuotesCarousel from "@/components/NearbyQuotesCarousel";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
 
@@ -30,28 +30,6 @@ type EstimateResult = {
     siding: { low: number; high: number };
   };
 };
-
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        places?: {
-          Autocomplete: new (
-            input: HTMLInputElement,
-            opts?: Record<string, unknown>
-          ) => {
-            addListener: (eventName: string, callback: () => void) => void;
-            getPlace: () => {
-              place_id?: string;
-              formatted_address?: string;
-              geometry?: { location?: { lat: () => number; lng: () => number } };
-            };
-          };
-        };
-      };
-    };
-  }
-}
 
 const quoteHeadlineByScope: Record<QuoteScope, string> = {
   roofing: "Roof",
@@ -96,7 +74,6 @@ export default function QuoteFlow() {
     [selectedScope]
   );
 
-  const addressInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (address.trim().length < 2 || step !== 1) {
@@ -125,48 +102,6 @@ export default function QuoteFlow() {
 
     return () => clearTimeout(timer);
   }, [address, step]);
-
-  useEffect(() => {
-    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!key || !addressInputRef.current) return;
-
-    const setupAutocomplete = () => {
-      if (!window.google?.maps?.places || !addressInputRef.current) return;
-      const ac = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-        fields: ["formatted_address", "place_id", "geometry"],
-        componentRestrictions: { country: "ca" }
-      });
-
-      ac.addListener("place_changed", () => {
-        const place = ac.getPlace();
-        const formattedAddress = place.formatted_address ?? "";
-        setAddress(formattedAddress || addressInputRef.current?.value || "");
-        setPlaceId(place.place_id ?? null);
-        setLat(place.geometry?.location?.lat?.() ?? null);
-        setLng(place.geometry?.location?.lng?.() ?? null);
-        setSuggestionsOpen(false);
-      });
-    };
-
-    if (window.google?.maps?.places) {
-      setupAutocomplete();
-      return;
-    }
-
-    const scriptId = "google-maps-places-script";
-    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener("load", setupAutocomplete, { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = scriptId;
-    script.async = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places`;
-    script.onload = setupAutocomplete;
-    document.head.appendChild(script);
-  }, []);
 
   const estimateCoords = estimate && estimate.lat !== null && estimate.lng !== null
     ? { lat: estimate.lat, lng: estimate.lng }
@@ -341,8 +276,7 @@ export default function QuoteFlow() {
           <div className="instant-quote__input-row">
             <div className="instant-quote__address-wrap">
               <input
-                ref={addressInputRef}
-                className="input"
+                  className="input"
                 value={address}
                 onChange={(event) => {
                   setAddress(event.target.value);
