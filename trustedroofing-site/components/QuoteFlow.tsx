@@ -78,6 +78,7 @@ export default function QuoteFlow() {
 
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
@@ -98,8 +99,9 @@ export default function QuoteFlow() {
   const addressInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (address.trim().length < 3 || step !== 1) {
+    if (address.trim().length < 2 || step !== 1) {
       setAddressSuggestions([]);
+      setSuggestionsOpen(false);
       return;
     }
 
@@ -110,9 +112,16 @@ export default function QuoteFlow() {
           if (!res.ok) return { suggestions: [] as string[] };
           return (await res.json()) as { suggestions?: string[] };
         })
-        .then((data) => setAddressSuggestions(data.suggestions ?? []))
-        .catch(() => setAddressSuggestions([]));
-    }, 250);
+        .then((data) => {
+          const next = data.suggestions ?? [];
+          setAddressSuggestions(next);
+          setSuggestionsOpen(next.length > 0);
+        })
+        .catch(() => {
+          setAddressSuggestions([]);
+          setSuggestionsOpen(false);
+        });
+    }, 220);
 
     return () => clearTimeout(timer);
   }, [address, step]);
@@ -135,6 +144,7 @@ export default function QuoteFlow() {
         setPlaceId(place.place_id ?? null);
         setLat(place.geometry?.location?.lat?.() ?? null);
         setLng(place.geometry?.location?.lng?.() ?? null);
+        setSuggestionsOpen(false);
       });
     };
 
@@ -166,6 +176,7 @@ export default function QuoteFlow() {
     setSubmitting(true);
     setError(null);
     setStatus(null);
+    setSuggestionsOpen(false);
 
     try {
       const res = await fetch("/api/instaquote/estimate", {
@@ -260,12 +271,12 @@ export default function QuoteFlow() {
     setSubmitting(false);
   };
 
-
   const restartFromStep2 = () => {
     setStep(1);
     setEstimate(null);
     setAddress("");
     setAddressSuggestions([]);
+    setSuggestionsOpen(false);
     setPlaceId(null);
     setLat(null);
     setLng(null);
@@ -283,6 +294,7 @@ export default function QuoteFlow() {
     setEstimate(null);
     setAddress("");
     setAddressSuggestions([]);
+    setSuggestionsOpen(false);
     setPlaceId(null);
     setLat(null);
     setLng(null);
@@ -327,26 +339,46 @@ export default function QuoteFlow() {
           }}
         >
           <div className="instant-quote__input-row">
-            <input
-              ref={addressInputRef}
-              className="input"
-              value={address}
-              onChange={(event) => {
-                setAddress(event.target.value);
-                setPlaceId(null);
-                setLat(null);
-                setLng(null);
-              }}
-              placeholder="123 Main St SW, Calgary AB"
-              aria-label="Exact address"
-              list="quote-address-suggestions"
-              required
-            />
-            <datalist id="quote-address-suggestions">
-              {addressSuggestions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
+            <div className="instant-quote__address-wrap">
+              <input
+                ref={addressInputRef}
+                className="input"
+                value={address}
+                onChange={(event) => {
+                  setAddress(event.target.value);
+                  setPlaceId(null);
+                  setLat(null);
+                  setLng(null);
+                }}
+                onFocus={() => setSuggestionsOpen(addressSuggestions.length > 0)}
+                onBlur={() => {
+                  window.setTimeout(() => setSuggestionsOpen(false), 120);
+                }}
+                placeholder="123 Main St SW, Calgary AB"
+                aria-label="Exact address"
+                autoComplete="off"
+                required
+              />
+              {suggestionsOpen && addressSuggestions.length > 0 ? (
+                <ul className="instant-quote__suggestions" role="listbox" aria-label="Address suggestions">
+                  {addressSuggestions.map((option) => (
+                    <li key={option}>
+                      <button
+                        type="button"
+                        className="instant-quote__suggestion-btn"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          setAddress(option);
+                          setSuggestionsOpen(false);
+                        }}
+                      >
+                        {option}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
             <button className="button" type="submit" disabled={submitting || !address.trim()}>
               {submitting ? "Calculating..." : "Get My Instant Estimate"}
             </button>
