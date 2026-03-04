@@ -21,6 +21,18 @@ type SolarEstimateResult = {
       }
     | null;
   debugReason: string | null;
+  diagnostics: {
+    requestId: string;
+    keyPresent: boolean;
+    attempts: Array<{
+      quality: "HIGH" | "MEDIUM";
+      ok: boolean;
+      status: number | null;
+      error: string | null;
+      imageryQuality: string | null;
+      hasWholeRoofArea: boolean;
+    }>;
+  };
 };
 
 async function geocodeAddress(address: string) {
@@ -102,8 +114,17 @@ function degreesToPitchRatio(pitchDegrees: number) {
 
 async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateResult> {
   const key = process.env.GOOGLE_SECRET_KEY;
+  const requestId = crypto.randomUUID();
   if (!key) {
-    return { result: null, debugReason: "missing GOOGLE_SECRET_KEY" };
+    return {
+      result: null,
+      debugReason: "missing GOOGLE_SECRET_KEY",
+      diagnostics: {
+        requestId,
+        keyPresent: false,
+        attempts: []
+      }
+    };
   }
 
   const call = async (quality: "HIGH" | "MEDIUM") => {
@@ -122,6 +143,7 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
       const text = await response.text().catch(() => "");
       return {
         data: null,
+        status: response.status,
         error: `quality=${quality} http=${response.status}${text ? ` body=${text.slice(0, 180)}` : ""}`
       };
     }
@@ -135,7 +157,7 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
       name?: string;
     };
 
-    return { data, error: null as string | null };
+    return { data, status: response.status, error: null as string | null };
   };
 
   const high = await call("HIGH");
@@ -147,7 +169,22 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
 
   if (!roof?.areaMeters2) {
     const reason = [high.error, medium?.error ?? null].filter(Boolean).join(" | ") || "solar response missing wholeRoofStats.areaMeters2";
-    return { result: null, debugReason: reason };
+    return {
+      result: null,
+      debugReason: reason,
+      diagnostics: {
+        requestId,
+        keyPresent: true,
+        attempts: [high, medium].filter(Boolean).map((attempt) => ({
+          quality: attempt!.data?.imageryQuality === "HIGH" ? "HIGH" : attempt === high ? "HIGH" : "MEDIUM",
+          ok: !attempt!.error,
+          status: attempt!.status ?? null,
+          error: attempt!.error,
+          imageryQuality: attempt!.data?.imageryQuality ?? null,
+          hasWholeRoofArea: Boolean(attempt!.data?.solarPotential?.wholeRoofStats?.areaMeters2)
+        }))
+      }
+    };
   }
 
   const areaSqft = Math.round(roof.areaMeters2 * 10.7639);
@@ -164,7 +201,19 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
       dataSource: "google_solar",
       areaSource: "solar"
     },
-    debugReason: null
+    debugReason: null,
+    diagnostics: {
+      requestId,
+      keyPresent: true,
+      attempts: [high, medium].filter(Boolean).map((attempt) => ({
+        quality: attempt!.data?.imageryQuality === "HIGH" ? "HIGH" : attempt === high ? "HIGH" : "MEDIUM",
+        ok: !attempt!.error,
+        status: attempt!.status ?? null,
+        error: attempt!.error,
+        imageryQuality: attempt!.data?.imageryQuality ?? null,
+        hasWholeRoofArea: Boolean(attempt!.data?.solarPotential?.wholeRoofStats?.areaMeters2)
+      }))
+    }
   };
 }
 
@@ -182,16 +231,38 @@ export async function POST(request: Request) {
 
   let normalizedAddress = body.address?.trim() ?? "";
   let placeId = body.placeId ?? null;
-  let lat = body.lat ?? null;
-  let lng = body.lng ?? null;
+  const inputLat = body.lat ?? null;
+  const inputLng = body.lng ?? null;
+  let lat = inputLat;
+  let lng = inputLng;
 
-  if ((lat === null || lng === null) && normalizedAddress) {
-    const geocoded = (await geocodeAddress(normalizedAddress)) ?? (await geocodeAddressNominatim(normalizedAddress));
-    if (geocoded) {
-      normalizedAddress = geocoded.address;
-      placeId = geocoded.placeId;
-      lat = geocoded.lat;
-      lng = geocoded.lng;
+  let geocodeSource: "input" | "google_geocode" | "nominatim" | "none" = lat !== null && lng !== null ? "input" : "none";
+  let geocodeDebug: string | null = null;
+
+  if (normalizedAddress) {
+    const googleGeocoded = await geocodeAddress(normalizedAddress);
+    if (googleGeocoded) {
+      normalizedAddress = googleGeocoded.address;
+      placeId = googleGeocoded.placeId;
+      lat = googleGeocoded.lat;
+      lng = googleGeocoded.lng;
+      geocodeSource = "google_geocode";
+    } else {
+      const nominatimGeocoded = await geocodeAddressNominatim(normalizedAddress);
+      if (nominatimGeocoded) {
+        normalizedAddress = nominatimGeocoded.address;
+        placeId = nominatimGeocoded.placeId;
+        lat = nominatimGeocoded.lat;
+        lng = nominatimGeocoded.lng;
+        geocodeSource = "nominatim";
+        geocodeDebug = "google geocode failed; used nominatim coordinates";
+      } else if (inputLat !== null && inputLng !== null) {
+        geocodeSource = "input";
+        geocodeDebug = "address geocode failed; using provided coordinates";
+      } else {
+        geocodeSource = "none";
+        geocodeDebug = "address geocode failed and no fallback coordinates provided";
+      }
     }
   }
 
@@ -206,11 +277,17 @@ export async function POST(request: Request) {
     | null = null;
 
   let solarDebug: string | null = null;
+  let solarDiagnostics: SolarEstimateResult["diagnostics"] = {
+    requestId: crypto.randomUUID(),
+    keyPresent: Boolean(process.env.GOOGLE_SECRET_KEY),
+    attempts: []
+  };
 
   if (lat !== null && lng !== null) {
     const solar = await solarEstimate(lat, lng);
     estimateResult = solar.result;
     solarDebug = solar.debugReason;
+    solarDiagnostics = solar.diagnostics;
   } else {
     solarDebug = "no lat/lng available for solar lookup";
   }
@@ -243,10 +320,29 @@ export async function POST(request: Request) {
       pitch_degrees: ranges.pitchDegrees,
       complexity_band: ranges.complexityBand,
       area_source: estimateResult.areaSource,
-      data_source: estimateResult.dataSource
+      data_source: estimateResult.dataSource,
+      solar_status: estimateResult.areaSource === "solar" ? "success" : "fallback",
+      solar_debug: {
+        geocodeSource,
+        geocodeDebug,
+        reason: solarDebug,
+        requestId: solarDiagnostics.requestId,
+        keyPresent: solarDiagnostics.keyPresent,
+        attempts: solarDiagnostics.attempts
+      }
     });
   } catch (error) {
     console.error("instaquote estimate query insert failed", error);
+  }
+
+  if (estimateResult.areaSource !== "solar") {
+    console.warn("[instaquote][solar_fallback]", {
+      address: normalizedAddress || "Calgary, AB",
+      geocodeSource,
+      solarDebug,
+      solarRequestId: solarDiagnostics.requestId,
+      attempts: solarDiagnostics.attempts
+    });
   }
 
   return NextResponse.json({
@@ -265,6 +361,10 @@ export async function POST(request: Request) {
     complexityBand: ranges.complexityBand,
     complexityScore: ranges.complexityScore,
     ranges,
-    solarDebug
+    solarDebug,
+    solarRequestId: solarDiagnostics.requestId,
+    geocodeSource,
+    geocodeDebug,
+    solarAttempts: solarDiagnostics.attempts
   });
 }

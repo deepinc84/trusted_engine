@@ -22,6 +22,7 @@ type EstimateResult = {
   complexityBand: string;
   complexityScore: number;
   solarDebug?: string | null;
+  solarRequestId?: string;
   ranges: {
     good: { low: number; high: number };
     better: { low: number; high: number };
@@ -138,7 +139,7 @@ export default function QuoteFlow() {
       setStep(2);
       setStatus(
         result.areaSource === "regional"
-          ? `Estimate ready using regional fallback. Solar debug: ${result.solarDebug ?? "no debug message"}`
+          ? `Estimate ready using regional fallback. Solar debug: ${result.solarDebug ?? "no debug message"} (trace: ${result.solarRequestId ?? "n/a"})`
           : "Estimate ready with Google Solar data. Complete your details to lock in next steps."
       );
     } catch {

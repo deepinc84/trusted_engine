@@ -708,6 +708,8 @@ export type InstaquoteAddressQuery = {
   complexity_band: string | null;
   area_source: string | null;
   data_source: string | null;
+  solar_status: string | null;
+  solar_debug: Record<string, unknown> | null;
   queried_at: string;
 };
 
@@ -795,6 +797,8 @@ export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddress
       notes: JSON.stringify({
         source: payload.data_source,
         area_source: payload.area_source,
+        solar_status: payload.solar_status,
+        solar_debug: payload.solar_debug,
         complexity_band: payload.complexity_band,
         roof_area_sqft: payload.roof_area_sqft,
         pitch_degrees: payload.pitch_degrees,
@@ -898,7 +902,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
 
     const { data: primaryData, error: primaryError } = await client
       .from("instaquote_address_queries")
-      .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,queried_at")
+      .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,solar_status,solar_debug,queried_at")
       .order("queried_at", { ascending: false })
       .limit(limit);
 
@@ -925,6 +929,8 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
       complexity_band: null,
       area_source: null,
       data_source: "quote_events_fallback",
+      solar_status: null,
+      solar_debug: null,
       queried_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString())
     }));
   }
