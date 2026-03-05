@@ -87,6 +87,11 @@ export default function QuoteFlow() {
 
 
   useEffect(() => {
+    if (selectedScope === "hardie_siding") setSidingMaterial("hardie");
+    else if (selectedScope === "vinyl_siding") setSidingMaterial("vinyl");
+  }, [selectedScope]);
+
+  useEffect(() => {
     if (address.trim().length < 2 || step !== 1) {
       setAddressSuggestions([]);
       setSuggestionsOpen(false);
@@ -120,6 +125,25 @@ export default function QuoteFlow() {
 
   const selectedSidingRange = estimate
     ? (sidingMaterial === "hardie" ? estimate.extras.sidingHardie : estimate.extras.sidingVinyl)
+    : null;
+
+  const combinedAllRange = estimate && selectedSidingRange
+    ? {
+      low: estimate.ranges.good.low + estimate.extras.eaves.low + selectedSidingRange.low,
+      high: estimate.ranges.good.high + estimate.extras.eaves.high + selectedSidingRange.high
+    }
+    : null;
+
+  const primaryRange = estimate
+    ? (selectedScope === "vinyl_siding"
+      ? estimate.extras.sidingVinyl
+      : selectedScope === "hardie_siding"
+        ? estimate.extras.sidingHardie
+        : selectedScope === "eavestrough"
+          ? estimate.extras.eaves
+          : selectedScope === "all"
+            ? combinedAllRange ?? estimate.ranges.good
+            : estimate.ranges.good)
     : null;
 
   const submitStep1 = async () => {
@@ -345,15 +369,16 @@ export default function QuoteFlow() {
             <div className="instant-quote__range-hero">
               <p className="instant-quote__range-label">Estimated range</p>
               <h3>
-                ${estimate.ranges.good.low.toLocaleString()} - ${estimate.ranges.good.high.toLocaleString()}
+                ${primaryRange?.low.toLocaleString()} - ${primaryRange?.high.toLocaleString()}
               </h3>
               <p>Precise options available after we confirm complexity and access.</p>
               <p>
-                Siding ({sidingMaterial === "hardie" ? "Hardie" : "Vinyl"}) range: ${selectedSidingRange?.low.toLocaleString()} - ${selectedSidingRange?.high.toLocaleString()}
+                Secondary siding ({sidingMaterial === "hardie" ? "Hardie" : "Vinyl"}) range: ${selectedSidingRange?.low.toLocaleString()} - ${selectedSidingRange?.high.toLocaleString()}
               </p>
             </div>
-            <div className="instant-quote__scope-row">
-              <label className={`instant-quote__scope-pill ${sidingMaterial === "vinyl" ? "is-active" : ""}`}>
+            {selectedScope === "roofing" || selectedScope === "eavestrough" ? null : (
+              <div className="instant-quote__scope-row">
+                <label className={`instant-quote__scope-pill ${sidingMaterial === "vinyl" ? "is-active" : ""}`}>
                 <input
                   type="radio"
                   name="siding_material"
@@ -363,17 +388,18 @@ export default function QuoteFlow() {
                 />
                 <span>Vinyl siding</span>
               </label>
-              <label className={`instant-quote__scope-pill ${sidingMaterial === "hardie" ? "is-active" : ""}`}>
-                <input
-                  type="radio"
-                  name="siding_material"
-                  value="hardie"
-                  checked={sidingMaterial === "hardie"}
-                  onChange={() => setSidingMaterial("hardie")}
-                />
-                <span>Hardie siding</span>
-              </label>
-            </div>
+                <label className={`instant-quote__scope-pill ${sidingMaterial === "hardie" ? "is-active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="siding_material"
+                    value="hardie"
+                    checked={sidingMaterial === "hardie"}
+                    onChange={() => setSidingMaterial("hardie")}
+                  />
+                  <span>Hardie siding</span>
+                </label>
+              </div>
+            )}
             <div className="instant-quote__stats-grid">
               <div>
                 <span>Roof size</span>
