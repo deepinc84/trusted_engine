@@ -8,6 +8,7 @@ type Row = {
   lng: number;
   address: string;
   roof_area_sqft: number | null;
+  pitch_degrees: number | null;
   complexity_band: string | null;
   queried_at: string;
 };
@@ -79,16 +80,15 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const lat = Number(searchParams.get("lat"));
-  const lng = Number(searchParams.get("lng"));
+  const rawLat = searchParams.get("lat");
+  const rawLng = searchParams.get("lng");
+  const lat = rawLat === null ? NaN : Number(rawLat);
+  const lng = rawLng === null ? NaN : Number(rawLng);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
   const radiusKm = Number(searchParams.get("radiusKm") ?? 25);
   const address = searchParams.get("address");
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return NextResponse.json({ error: "lat and lng are required" }, { status: 400 });
-  }
-
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || radiusKm <= 0 || radiusKm > 100) {
+  if (hasCoords && (lat < -90 || lat > 90 || lng < -180 || lng > 180 || radiusKm <= 0 || radiusKm > 100)) {
     return NextResponse.json({ error: "invalid bounds" }, { status: 400 });
   }
 
@@ -100,14 +100,17 @@ export async function GET(request: Request) {
       lng: Number(row.lng),
       address: row.address,
       roof_area_sqft: row.roof_area_sqft,
+      pitch_degrees: row.pitch_degrees,
       complexity_band: row.complexity_band,
       queried_at: row.queried_at
     }));
 
-  const withinRadius = recentRows
-    .map((row) => ({ row, distance: haversineKm(lat, lng, row.lat, row.lng) }))
-    .filter((entry) => entry.distance <= radiusKm)
-    .map((entry) => entry.row);
+  const withinRadius = hasCoords
+    ? recentRows
+      .map((row) => ({ row, distance: haversineKm(lat, lng, row.lat, row.lng) }))
+      .filter((entry) => entry.distance <= radiusKm)
+      .map((entry) => entry.row)
+    : [];
 
   const rankedPrimary = rankRows(withinRadius, address);
   const rankedFallback = rankRows(recentRows, address);
@@ -121,6 +124,7 @@ export async function GET(request: Request) {
     quadrant: extractQuadrant(row.address),
     city: extractCity(row.address),
     roof_area_sqft: row.roof_area_sqft,
+    pitch_degrees: row.pitch_degrees,
     complexity_band: row.complexity_band,
     queried_at: row.queried_at
   }));

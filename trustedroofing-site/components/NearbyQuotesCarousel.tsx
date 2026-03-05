@@ -11,6 +11,7 @@ type NearbyItem = {
   quadrant: string | null;
   city: string | null;
   roof_area_sqft: number | null;
+  pitch_degrees: number | null;
   complexity_band: string | null;
   queried_at: string;
 };
@@ -40,17 +41,16 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
   const [items, setItems] = useState<NearbyItem[]>([]);
 
   useEffect(() => {
-    if (!coords) {
-      setItems([]);
-      return;
-    }
-
     const controller = new AbortController();
     const run = async () => {
       setLoading(true);
       setError(null);
       try {
-        const query = new URLSearchParams({ lat: String(coords.lat), lng: String(coords.lng), radiusKm: "25" });
+        const query = new URLSearchParams({ radiusKm: "25" });
+        if (coords) {
+          query.set("lat", String(coords.lat));
+          query.set("lng", String(coords.lng));
+        }
         if (address?.trim()) {
           query.set("address", address.trim());
         }
@@ -76,9 +76,12 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
 
   const cards = useMemo(() => {
     return items.slice(0, 6).map((item, index) => {
-      const area = Math.max(1200, item.roof_area_sqft ?? 1800);
+      const area = item.roof_area_sqft ?? 1800;
+      const pitchDegrees = typeof item.pitch_degrees === "number" && Number.isFinite(item.pitch_degrees)
+        ? item.pitch_degrees
+        : 25;
       const complexity = normalizeComplexity(item.complexity_band);
-      const ranges = buildEstimateRanges({ roofAreaSqft: area, pitchDegrees: 25, complexityBand: complexity });
+      const ranges = buildEstimateRanges({ roofAreaSqft: area, pitchDegrees, complexityBand: complexity });
       return {
         id: `${item.queried_at}-${index}`,
         locationLabel: item.neighborhood ?? item.quadrant ?? item.city ?? "Calgary",
@@ -100,7 +103,7 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
         </div>
       </div>
 
-      {!coords ? <p className="instant-quote__meta">Estimate first to load nearby quote activity.</p> : null}
+      {!coords && !loading ? <p className="instant-quote__meta">Showing recent quote activity across nearby areas.</p> : null}
       {loading ? <p className="instant-quote__meta">Loading nearby quotes…</p> : null}
       {error ? <p className="instant-quote__error">{error}</p> : null}
 

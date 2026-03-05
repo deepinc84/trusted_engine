@@ -112,6 +112,8 @@ function degreesToPitchRatio(pitchDegrees: number) {
   return `${rounded}/12`;
 }
 
+const MINIMUM_PRICING_ROOF_AREA_SQFT = 1200;
+
 async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateResult> {
   const key = process.env.GOOGLE_SECRET_KEY;
   const requestId = crypto.randomUUID();
@@ -303,8 +305,22 @@ export async function POST(request: Request) {
     };
   }
 
+  const pricingRoofAreaSqft = Math.max(MINIMUM_PRICING_ROOF_AREA_SQFT, estimateResult.roofAreaSqft);
+  const areaAdjustedToMinimum = pricingRoofAreaSqft !== estimateResult.roofAreaSqft;
+
+  if (areaAdjustedToMinimum) {
+    console.info("[instaquote][minimum_area_floor_applied]", {
+      address: normalizedAddress || "Calgary, AB",
+      originalRoofAreaSqft: estimateResult.roofAreaSqft,
+      adjustedRoofAreaSqft: pricingRoofAreaSqft,
+      minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
+      dataSource: estimateResult.dataSource,
+      areaSource: estimateResult.areaSource
+    });
+  }
+
   const ranges = buildEstimateRanges({
-    roofAreaSqft: estimateResult.roofAreaSqft,
+    roofAreaSqft: pricingRoofAreaSqft,
     pitchDegrees: estimateResult.pitchDegrees,
     complexityBand: estimateResult.complexityBand
   });
@@ -328,7 +344,11 @@ export async function POST(request: Request) {
         reason: solarDebug,
         requestId: solarDiagnostics.requestId,
         keyPresent: solarDiagnostics.keyPresent,
-        attempts: solarDiagnostics.attempts
+        attempts: solarDiagnostics.attempts,
+        minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
+        areaAdjustedToMinimum,
+        originalRoofAreaSqft: estimateResult.roofAreaSqft,
+        pricingRoofAreaSqft
       }
     });
   } catch (error) {
@@ -365,6 +385,10 @@ export async function POST(request: Request) {
     solarRequestId: solarDiagnostics.requestId,
     geocodeSource,
     geocodeDebug,
-    solarAttempts: solarDiagnostics.attempts
+    solarAttempts: solarDiagnostics.attempts,
+    minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
+    areaAdjustedToMinimum,
+    originalRoofAreaSqft: estimateResult.roofAreaSqft,
+    pricingRoofAreaSqft
   });
 }
