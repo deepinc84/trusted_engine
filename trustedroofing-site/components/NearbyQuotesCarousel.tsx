@@ -13,6 +13,8 @@ type NearbyItem = {
   roof_area_sqft: number | null;
   pitch_degrees: number | null;
   complexity_band: string | null;
+  estimate_low: number | null;
+  estimate_high: number | null;
   queried_at: string;
 };
 
@@ -82,13 +84,22 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
         : 25;
       const complexity = normalizeComplexity(item.complexity_band);
       const ranges = buildEstimateRanges({ roofAreaSqft: area, pitchDegrees, complexityBand: complexity });
+      const estimateLow = typeof item.estimate_low === "number" && Number.isFinite(item.estimate_low)
+        ? item.estimate_low
+        : null;
+      const estimateHigh = typeof item.estimate_high === "number" && Number.isFinite(item.estimate_high)
+        ? item.estimate_high
+        : null;
+      const hasStoredRange = estimateLow !== null && estimateHigh !== null;
       return {
         id: `${item.queried_at}-${index}`,
         locationLabel: item.neighborhood ?? item.quadrant ?? item.city ?? "Calgary",
         address: item.address,
         complexity,
         roofArea: area,
-        range: `$${ranges.good.low.toLocaleString()} - $${ranges.good.high.toLocaleString()}`,
+        range: hasStoredRange
+          ? `$${Math.round(estimateLow).toLocaleString()} - $${Math.round(estimateHigh).toLocaleString()}`
+          : `$${ranges.good.low.toLocaleString()} - $${ranges.good.high.toLocaleString()}`,
         completed: timeAgo(item.queried_at)
       };
     });

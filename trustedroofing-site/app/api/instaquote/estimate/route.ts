@@ -337,6 +337,8 @@ export async function POST(request: Request) {
       complexity_band: ranges.complexityBand,
       area_source: estimateResult.areaSource,
       data_source: estimateResult.dataSource,
+      estimate_low: ranges.good.low,
+      estimate_high: ranges.good.high,
       solar_status: estimateResult.areaSource === "solar" ? "success" : "fallback",
       solar_debug: {
         geocodeSource,

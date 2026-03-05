@@ -11,6 +11,8 @@ create table if not exists instaquote_address_queries (
   complexity_band text,
   area_source text,
   data_source text,
+  estimate_low integer,
+  estimate_high integer,
   queried_at timestamptz default now()
 );
 

@@ -708,6 +708,8 @@ export type InstaquoteAddressQuery = {
   complexity_band: string | null;
   area_source: string | null;
   data_source: string | null;
+  estimate_low: number | null;
+  estimate_high: number | null;
   solar_status: string | null;
   solar_debug: Record<string, unknown> | null;
   queried_at: string;
@@ -798,10 +800,12 @@ export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddress
         postal,
         lat: payload.lat,
         lng: payload.lng,
-        estimate_low: null,
-        estimate_high: null,
+        estimate_low: payload.estimate_low,
+        estimate_high: payload.estimate_high,
         notes: JSON.stringify({
           source: payload.data_source,
+          estimate_low: payload.estimate_low,
+          estimate_high: payload.estimate_high,
           area_source: payload.area_source,
           solar_status: payload.solar_status,
           solar_debug: payload.solar_debug,
@@ -916,7 +920,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
 
     const { data: primaryData, error: primaryError } = await readClient
       .from("instaquote_address_queries")
-      .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,solar_status,solar_debug,queried_at")
+      .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,estimate_low,estimate_high,solar_status,solar_debug,queried_at")
       .order("queried_at", { ascending: false })
       .limit(limit);
 
@@ -950,6 +954,12 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
       const pitchDegrees = parsedNotes.pitch_degrees === null || parsedNotes.pitch_degrees === undefined
         ? null
         : Number(parsedNotes.pitch_degrees);
+      const estimateLow = row.estimate_low === null || row.estimate_low === undefined
+        ? (parsedNotes.estimate_low === null || parsedNotes.estimate_low === undefined ? null : Number(parsedNotes.estimate_low))
+        : Number(row.estimate_low);
+      const estimateHigh = row.estimate_high === null || row.estimate_high === undefined
+        ? (parsedNotes.estimate_high === null || parsedNotes.estimate_high === undefined ? null : Number(parsedNotes.estimate_high))
+        : Number(row.estimate_high);
 
       return {
         id: String(row.id),
@@ -962,6 +972,8 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
         complexity_band: typeof parsedNotes.complexity_band === "string" ? parsedNotes.complexity_band : null,
         area_source: typeof parsedNotes.area_source === "string" ? parsedNotes.area_source : null,
         data_source: typeof parsedNotes.source === "string" ? parsedNotes.source : "quote_events_fallback",
+        estimate_low: Number.isFinite(estimateLow) ? estimateLow : null,
+        estimate_high: Number.isFinite(estimateHigh) ? estimateHigh : null,
         solar_status: typeof parsedNotes.solar_status === "string" ? parsedNotes.solar_status : null,
         solar_debug: typeof parsedNotes.solar_debug === "object" && parsedNotes.solar_debug !== null
           ? parsedNotes.solar_debug as Record<string, unknown>

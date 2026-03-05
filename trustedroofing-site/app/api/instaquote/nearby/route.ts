@@ -10,6 +10,8 @@ type Row = {
   roof_area_sqft: number | null;
   pitch_degrees: number | null;
   complexity_band: string | null;
+  estimate_low: number | null;
+  estimate_high: number | null;
   queried_at: string;
 };
 
@@ -102,6 +104,8 @@ export async function GET(request: Request) {
       roof_area_sqft: row.roof_area_sqft,
       pitch_degrees: row.pitch_degrees,
       complexity_band: row.complexity_band,
+      estimate_low: row.estimate_low,
+      estimate_high: row.estimate_high,
       queried_at: row.queried_at
     }));
 
@@ -126,6 +130,8 @@ export async function GET(request: Request) {
     roof_area_sqft: row.roof_area_sqft,
     pitch_degrees: row.pitch_degrees,
     complexity_band: row.complexity_band,
+    estimate_low: row.estimate_low,
+    estimate_high: row.estimate_high,
     queried_at: row.queried_at
   }));
 
