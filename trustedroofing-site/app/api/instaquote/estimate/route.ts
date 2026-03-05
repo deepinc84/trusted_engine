@@ -114,6 +114,19 @@ function degreesToPitchRatio(pitchDegrees: number) {
 
 const MINIMUM_PRICING_ROOF_AREA_SQFT = 1200;
 
+const EAVES_RATE_LOW = 8;
+const EAVES_RATE_HIGH = 10;
+const SIDING_VINYL_RATE_LOW = 8;
+const SIDING_VINYL_RATE_HIGH = 9.5;
+const EAVES_RATIO_BASELINE = 0.109;
+const SIDING_RATIO_BASELINE = 1.55;
+
+function eavesComplexityMultiplier(complexityBand: "simple" | "moderate" | "complex") {
+  if (complexityBand === "simple") return 0.95;
+  if (complexityBand === "complex") return 1.08;
+  return 1;
+}
+
 async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateResult> {
   const key = process.env.GOOGLE_SECRET_KEY;
   const requestId = crypto.randomUUID();
@@ -325,6 +338,27 @@ export async function POST(request: Request) {
     complexityBand: estimateResult.complexityBand
   });
 
+  const complexityMultiplier = eavesComplexityMultiplier(ranges.complexityBand);
+  const eavesLf = Math.round(ranges.roofAreaSqft * EAVES_RATIO_BASELINE * complexityMultiplier);
+  const sidingSqft = Math.round(ranges.roofAreaSqft * SIDING_RATIO_BASELINE);
+  const extras = {
+    assumedStories: 2 as const,
+    eavesLf,
+    eaves: {
+      low: Math.round(eavesLf * EAVES_RATE_LOW),
+      high: Math.round(eavesLf * EAVES_RATE_HIGH)
+    },
+    sidingSqft,
+    sidingVinyl: {
+      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW),
+      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH)
+    },
+    sidingHardie: {
+      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW * 2),
+      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH * 2)
+    }
+  };
+
   let addressQueryId = crypto.randomUUID();
   try {
     addressQueryId = await createInstaquoteAddressQuery({
@@ -352,6 +386,8 @@ export async function POST(request: Request) {
         originalRoofAreaSqft: estimateResult.roofAreaSqft,
         pricingRoofAreaSqft
       }
+    }, {
+      notesExtras: extras
     });
   } catch (error) {
     console.error("instaquote estimate query insert failed", error);
@@ -391,6 +427,7 @@ export async function POST(request: Request) {
     minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
     areaAdjustedToMinimum,
     originalRoofAreaSqft: estimateResult.roofAreaSqft,
-    pricingRoofAreaSqft
+    pricingRoofAreaSqft,
+    extras
   });
 }

@@ -5,6 +5,7 @@ import NearbyQuotesCarousel from "@/components/NearbyQuotesCarousel";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
 
 type BudgetResponse = "yes" | "financing" | "too_expensive";
+type SidingMaterial = "vinyl" | "hardie";
 
 type EstimateResult = {
   ok: true;
@@ -23,6 +24,14 @@ type EstimateResult = {
   complexityScore: number;
   solarDebug?: string | null;
   solarRequestId?: string;
+  extras: {
+    assumedStories: 2;
+    eavesLf: number;
+    eaves: { low: number; high: number };
+    sidingSqft: number;
+    sidingVinyl: { low: number; high: number };
+    sidingHardie: { low: number; high: number };
+  };
   ranges: {
     good: { low: number; high: number };
     better: { low: number; high: number };
@@ -69,6 +78,7 @@ export default function QuoteFlow() {
   const [phone, setPhone] = useState("");
   const [budgetResponse, setBudgetResponse] = useState<BudgetResponse>("yes");
   const [timeline, setTimeline] = useState("");
+  const [sidingMaterial, setSidingMaterial] = useState<SidingMaterial>("vinyl");
 
   const selectedLabel = useMemo(
     () => quoteScopes.find((scope) => scope.value === selectedScope)?.label,
@@ -106,6 +116,10 @@ export default function QuoteFlow() {
 
   const estimateCoords = estimate && estimate.lat !== null && estimate.lng !== null
     ? { lat: estimate.lat, lng: estimate.lng }
+    : null;
+
+  const selectedSidingRange = estimate
+    ? (sidingMaterial === "hardie" ? estimate.extras.sidingHardie : estimate.extras.sidingVinyl)
     : null;
 
   const submitStep1 = async () => {
@@ -181,8 +195,8 @@ export default function QuoteFlow() {
           bestHigh: estimate.ranges.best.high,
           eavesLow: estimate.ranges.eaves.low,
           eavesHigh: estimate.ranges.eaves.high,
-          sidingLow: estimate.ranges.siding.low,
-          sidingHigh: estimate.ranges.siding.high,
+          sidingLow: selectedSidingRange?.low ?? estimate.extras.sidingVinyl.low,
+          sidingHigh: selectedSidingRange?.high ?? estimate.extras.sidingVinyl.high,
           leadScore: estimate.complexityScore,
           dataSource: estimate.dataSource,
           serviceScope: selectedScope
@@ -221,6 +235,7 @@ export default function QuoteFlow() {
     setPhone("");
     setBudgetResponse("yes");
     setTimeline("");
+    setSidingMaterial("vinyl");
     setStatus(null);
     setError(null);
   };
@@ -239,6 +254,7 @@ export default function QuoteFlow() {
     setPhone("");
     setBudgetResponse("yes");
     setTimeline("");
+    setSidingMaterial("vinyl");
     setStatus(null);
     setError(null);
   };
@@ -332,6 +348,31 @@ export default function QuoteFlow() {
                 ${estimate.ranges.good.low.toLocaleString()} - ${estimate.ranges.good.high.toLocaleString()}
               </h3>
               <p>Precise options available after we confirm complexity and access.</p>
+              <p>
+                Siding ({sidingMaterial === "hardie" ? "Hardie" : "Vinyl"}) range: ${selectedSidingRange?.low.toLocaleString()} - ${selectedSidingRange?.high.toLocaleString()}
+              </p>
+            </div>
+            <div className="instant-quote__scope-row">
+              <label className={`instant-quote__scope-pill ${sidingMaterial === "vinyl" ? "is-active" : ""}`}>
+                <input
+                  type="radio"
+                  name="siding_material"
+                  value="vinyl"
+                  checked={sidingMaterial === "vinyl"}
+                  onChange={() => setSidingMaterial("vinyl")}
+                />
+                <span>Vinyl siding</span>
+              </label>
+              <label className={`instant-quote__scope-pill ${sidingMaterial === "hardie" ? "is-active" : ""}`}>
+                <input
+                  type="radio"
+                  name="siding_material"
+                  value="hardie"
+                  checked={sidingMaterial === "hardie"}
+                  onChange={() => setSidingMaterial("hardie")}
+                />
+                <span>Hardie siding</span>
+              </label>
             </div>
             <div className="instant-quote__stats-grid">
               <div>

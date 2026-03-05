@@ -763,7 +763,10 @@ function parseAddressParts(address: string) {
   };
 }
 
-export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddressQuery, "id" | "queried_at">) {
+export async function createInstaquoteAddressQuery(
+  input: Omit<InstaquoteAddressQuery, "id" | "queried_at">,
+  options?: { notesExtras?: Record<string, unknown> }
+) {
   const payload = {
     id: crypto.randomUUID(),
     queried_at: new Date().toISOString(),
@@ -812,7 +815,8 @@ export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddress
           complexity_band: payload.complexity_band,
           roof_area_sqft: payload.roof_area_sqft,
           pitch_degrees: payload.pitch_degrees,
-          place_id: payload.place_id
+          place_id: payload.place_id,
+          ...(options?.notesExtras ? { extras: options.notesExtras } : {})
         })
       });
 
