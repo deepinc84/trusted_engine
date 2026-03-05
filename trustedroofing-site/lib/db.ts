@@ -769,45 +769,59 @@ export async function createInstaquoteAddressQuery(input: Omit<InstaquoteAddress
   };
 
   if (getDataMode() === "supabase") {
-    const client = getServiceClient() ?? getAnonClient();
-    if (!client) throw new Error("Supabase client unavailable");
+    const clients = [getServiceClient(), getAnonClient()].filter(Boolean);
+    if (clients.length === 0) throw new Error("Supabase client unavailable");
 
     let instaquoteInsertError: string | null = null;
-    const { error: primaryError } = await client.from("instaquote_address_queries").insert(payload);
-    if (primaryError) {
-      instaquoteInsertError = primaryError.message;
+    for (const client of clients) {
+      const { error } = await client!.from("instaquote_address_queries").insert(payload);
+      if (!error) {
+        instaquoteInsertError = null;
+        break;
+      }
+      instaquoteInsertError = error.message;
     }
 
     const { city, province, postal } = parseAddressParts(payload.address);
-    const { error: quoteEventsError } = await client.from("quote_events").upsert({
-      id: payload.id,
-      created_at: payload.queried_at,
-      updated_at: payload.queried_at,
-      status: "instaquote_estimated",
-      service_type: "InstantQuote",
-      requested_scopes: ["roof"],
-      address: payload.address,
-      city,
-      province,
-      postal,
-      lat: payload.lat,
-      lng: payload.lng,
-      estimate_low: null,
-      estimate_high: null,
-      notes: JSON.stringify({
-        source: payload.data_source,
-        area_source: payload.area_source,
-        solar_status: payload.solar_status,
-        solar_debug: payload.solar_debug,
-        complexity_band: payload.complexity_band,
-        roof_area_sqft: payload.roof_area_sqft,
-        pitch_degrees: payload.pitch_degrees,
-        place_id: payload.place_id
-      })
-    });
+    let quoteEventsErrorMessage: string | null = null;
+    for (const client of clients) {
+      const { error } = await client!.from("quote_events").upsert({
+        id: payload.id,
+        created_at: payload.queried_at,
+        updated_at: payload.queried_at,
+        status: "instaquote_estimated",
+        service_type: "InstantQuote",
+        requested_scopes: ["roof"],
+        address: payload.address,
+        city,
+        province,
+        postal,
+        lat: payload.lat,
+        lng: payload.lng,
+        estimate_low: null,
+        estimate_high: null,
+        notes: JSON.stringify({
+          source: payload.data_source,
+          area_source: payload.area_source,
+          solar_status: payload.solar_status,
+          solar_debug: payload.solar_debug,
+          complexity_band: payload.complexity_band,
+          roof_area_sqft: payload.roof_area_sqft,
+          pitch_degrees: payload.pitch_degrees,
+          place_id: payload.place_id
+        })
+      });
 
-    if (quoteEventsError && instaquoteInsertError) {
-      throw new Error(`instaquote_address_queries: ${instaquoteInsertError}; quote_events: ${quoteEventsError.message}`);
+      if (!error) {
+        quoteEventsErrorMessage = null;
+        break;
+      }
+
+      quoteEventsErrorMessage = error.message;
+    }
+
+    if (instaquoteInsertError && quoteEventsErrorMessage) {
+      throw new Error(`instaquote_address_queries: ${instaquoteInsertError}; quote_events: ${quoteEventsErrorMessage}`);
     }
 
     return payload.id;
@@ -897,10 +911,10 @@ export async function createInstaquoteRegionalFeedback(input: {
 
 export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<InstaquoteAddressQuery[]> {
   if (getDataMode() === "supabase") {
-    const client = getAnonClient();
-    if (!client) return [];
+    const readClient = getServiceClient() ?? getAnonClient();
+    if (!readClient) return [];
 
-    const { data: primaryData, error: primaryError } = await client
+    const { data: primaryData, error: primaryError } = await readClient
       .from("instaquote_address_queries")
       .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,solar_status,solar_debug,queried_at")
       .order("queried_at", { ascending: false })
@@ -910,7 +924,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
       return (primaryData ?? []) as InstaquoteAddressQuery[];
     }
 
-    const { data: legacyData } = await client
+    const { data: legacyData } = await readClient
       .from("quote_events")
       .select("id,address,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
       .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted")
@@ -918,21 +932,43 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    return (legacyData ?? []).map((row: Record<string, unknown>) => ({
-      id: String(row.id),
-      address: String(row.address ?? "Calgary, AB"),
-      place_id: null,
-      lat: typeof row.lat === "number" ? row.lat : null,
-      lng: typeof row.lng === "number" ? row.lng : null,
-      roof_area_sqft: null,
-      pitch_degrees: null,
-      complexity_band: null,
-      area_source: null,
-      data_source: "quote_events_fallback",
-      solar_status: null,
-      solar_debug: null,
-      queried_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString())
-    }));
+    return (legacyData ?? []).map((row: Record<string, unknown>) => {
+      let parsedNotes: Record<string, unknown> = {};
+      if (typeof row.notes === "string") {
+        try {
+          parsedNotes = JSON.parse(row.notes) as Record<string, unknown>;
+        } catch {
+          parsedNotes = {};
+        }
+      }
+
+      const lat = row.lat === null || row.lat === undefined ? null : Number(row.lat);
+      const lng = row.lng === null || row.lng === undefined ? null : Number(row.lng);
+      const roofAreaSqft = parsedNotes.roof_area_sqft === null || parsedNotes.roof_area_sqft === undefined
+        ? null
+        : Number(parsedNotes.roof_area_sqft);
+      const pitchDegrees = parsedNotes.pitch_degrees === null || parsedNotes.pitch_degrees === undefined
+        ? null
+        : Number(parsedNotes.pitch_degrees);
+
+      return {
+        id: String(row.id),
+        address: String(row.address ?? "Calgary, AB"),
+        place_id: typeof parsedNotes.place_id === "string" ? parsedNotes.place_id : null,
+        lat: Number.isFinite(lat) ? lat : null,
+        lng: Number.isFinite(lng) ? lng : null,
+        roof_area_sqft: Number.isFinite(roofAreaSqft) ? roofAreaSqft : null,
+        pitch_degrees: Number.isFinite(pitchDegrees) ? pitchDegrees : null,
+        complexity_band: typeof parsedNotes.complexity_band === "string" ? parsedNotes.complexity_band : null,
+        area_source: typeof parsedNotes.area_source === "string" ? parsedNotes.area_source : null,
+        data_source: typeof parsedNotes.source === "string" ? parsedNotes.source : "quote_events_fallback",
+        solar_status: typeof parsedNotes.solar_status === "string" ? parsedNotes.solar_status : null,
+        solar_debug: typeof parsedNotes.solar_debug === "object" && parsedNotes.solar_debug !== null
+          ? parsedNotes.solar_debug as Record<string, unknown>
+          : null,
+        queried_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString())
+      };
+    });
   }
 
   return [];
