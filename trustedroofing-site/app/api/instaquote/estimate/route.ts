@@ -318,7 +318,10 @@ export async function POST(request: Request) {
     };
   }
 
-  const pricingRoofAreaSqft = Math.max(MINIMUM_PRICING_ROOF_AREA_SQFT, estimateResult.roofAreaSqft);
+  const shouldApplyMinimumPricingFloor = estimateResult.areaSource !== "solar";
+  const pricingRoofAreaSqft = shouldApplyMinimumPricingFloor
+    ? Math.max(MINIMUM_PRICING_ROOF_AREA_SQFT, estimateResult.roofAreaSqft)
+    : estimateResult.roofAreaSqft;
   const areaAdjustedToMinimum = pricingRoofAreaSqft !== estimateResult.roofAreaSqft;
 
   if (areaAdjustedToMinimum) {
@@ -384,7 +387,8 @@ export async function POST(request: Request) {
         minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
         areaAdjustedToMinimum,
         originalRoofAreaSqft: estimateResult.roofAreaSqft,
-        pricingRoofAreaSqft
+        pricingRoofAreaSqft,
+        shouldApplyMinimumPricingFloor
       }
     }, {
       notesExtras: extras
@@ -428,6 +432,7 @@ export async function POST(request: Request) {
     areaAdjustedToMinimum,
     originalRoofAreaSqft: estimateResult.roofAreaSqft,
     pricingRoofAreaSqft,
+    shouldApplyMinimumPricingFloor,
     extras
   });
 }
