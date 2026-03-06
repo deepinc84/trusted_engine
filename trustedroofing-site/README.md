@@ -129,6 +129,20 @@ If false:
 - Homepage is crawl-safe by default (Calgary feed SSR) and client-refines to near-you after geolocation consent.
 
 
+## Homepage V3 data mapping
+
+Homepage sections are now rendered with server components and map to data sources as follows:
+
+- Hero recent activity: `instaquote_address_queries` + recent `projects` fallback.
+- Proof strip: `homepage_metrics` (with mock fallback defaults).
+- Services: `services` table (`base_sales_copy` for card copy).
+- Featured projects: published `projects` and `project_photos` (with placeholder image fallback).
+- Service areas: `service_areas` table (with fallback list in `lib/db.ts`).
+
+New schema migration for these homepage sections:
+
+- `supabase/migrations/0006_homepage_content.sql`
+
 ## InstantQuote (Next.js)
 
 Public routes:

@@ -160,3 +160,22 @@ create index if not exists instaquote_address_queries_place_id_idx on instaquote
 create index if not exists instaquote_address_queries_lat_lng_idx on instaquote_address_queries(lat, lng);
 create index if not exists instaquote_leads_created_at_idx on instaquote_leads(created_at desc);
 create index if not exists instaquote_regional_feedback_created_at_idx on instaquote_regional_feedback(created_at desc);
+
+create table if not exists homepage_metrics (
+  id uuid primary key default gen_random_uuid(),
+  key_name text unique not null,
+  label text not null,
+  value_text text not null,
+  sort_order int not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+create table if not exists service_areas (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text unique not null,
+  active boolean not null default true,
+  sort_order int not null default 0,
+  created_at timestamptz default now()
+);

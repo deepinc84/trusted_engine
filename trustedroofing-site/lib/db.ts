@@ -28,6 +28,25 @@ export type ProjectPhoto = {
   created_at: string;
 };
 
+
+export type HomepageMetric = {
+  id: string;
+  key_name: string;
+  label: string;
+  value_text: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type ServiceArea = {
+  id: string;
+  name: string;
+  slug: string;
+  active: boolean;
+  sort_order: number;
+  created_at: string;
+};
 export type Project = {
   id: string;
   slug: string;
@@ -119,6 +138,28 @@ const mockQuoteContacts: Array<{
   preferred_contact: string | null;
   created_at: string;
 }> = [];
+const defaultHomepageMetrics: HomepageMetric[] = [
+  { id: "metric-homes", key_name: "homes_served", label: "Calgary homes served", value_text: "500+", sort_order: 1, is_active: true, created_at: new Date().toISOString() },
+  { id: "metric-turnaround", key_name: "avg_quote_turnaround", label: "Average estimate turnaround", value_text: "48hr", sort_order: 2, is_active: true, created_at: new Date().toISOString() },
+  { id: "metric-warranty", key_name: "workmanship_warranty", label: "Workmanship warranty", value_text: "10yr", sort_order: 3, is_active: true, created_at: new Date().toISOString() },
+  { id: "metric-financing", key_name: "financing_label", label: "Financing available", value_text: "100%", sort_order: 4, is_active: true, created_at: new Date().toISOString() },
+  { id: "metric-insurance", key_name: "insurance_status", label: "Insured & licensed", value_text: "A+", sort_order: 5, is_active: true, created_at: new Date().toISOString() }
+];
+
+const defaultServiceAreas: ServiceArea[] = [
+  "Mahogany", "Auburn Bay", "Cranston", "Seton", "Altadore", "Marda Loop", "Evergreen", "Legacy"
+].map((name, index) => ({
+  id: `area-${index + 1}`,
+  name,
+  slug: sanitizeText(name),
+  active: true,
+  sort_order: index + 1,
+  created_at: new Date().toISOString()
+}));
+
+const mockHomepageMetrics = [...defaultHomepageMetrics];
+const mockServiceAreas = [...defaultServiceAreas];
+
 const mockGbpQueue: Array<{
   id: string;
   created_at: string;
@@ -749,6 +790,38 @@ export type InstaquoteLead = {
   raw_json: Record<string, unknown> | null;
   created_at: string;
 };
+
+export async function listHomepageMetrics(): Promise<HomepageMetric[]> {
+  if (getDataMode() === "supabase") {
+    const client = getAnonClient();
+    if (client) {
+      const { data } = await client
+        .from("homepage_metrics")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (data && data.length > 0) return data as HomepageMetric[];
+    }
+  }
+
+  return [...mockHomepageMetrics].filter((item) => item.is_active).sort((a, b) => a.sort_order - b.sort_order);
+}
+
+export async function listServiceAreas(): Promise<ServiceArea[]> {
+  if (getDataMode() === "supabase") {
+    const client = getAnonClient();
+    if (client) {
+      const { data } = await client
+        .from("service_areas")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      if (data && data.length > 0) return data as ServiceArea[];
+    }
+  }
+
+  return [...mockServiceAreas].sort((a, b) => a.sort_order - b.sort_order);
+}
 
 function parseAddressParts(address: string) {
   const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
