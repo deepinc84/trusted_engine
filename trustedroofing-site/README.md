@@ -129,6 +129,26 @@ If false:
 - Homepage is crawl-safe by default (Calgary feed SSR) and client-refines to near-you after geolocation consent.
 
 
+## Shared page templates and design system
+
+Shared components created for site-wide consistency:
+
+- `components/site/SiteHeader.tsx` and `components/site/SiteFooter.tsx`
+- `components/ui/PageContainer.tsx` and `components/ui/PageHero.tsx`
+- `components/ui/CtaBand.tsx`
+- `components/ui/ServiceCard.tsx`
+- `components/ui/NeighborhoodChips.tsx`
+
+Templates now using these shared components:
+
+- `/services` landing page
+- `/services/[slug]` detail template
+- `/projects` index template
+- `/projects/[slug]` detail template
+- `/quote` page (functionality unchanged, visuals aligned)
+
+To adjust inner-page styling globally, update the `ui-*` and `site-*` classes in `app/globals.css`.
+
 ## Homepage V3 data mapping
 
 Homepage sections are now rendered with server components and map to data sources as follows:
@@ -142,6 +162,7 @@ Homepage sections are now rendered with server components and map to data source
 New schema migration for these homepage sections:
 
 - `supabase/migrations/0006_homepage_content.sql`
+- `supabase/migrations/0007_instaquote_scope_tracking.sql`
 
 ## InstantQuote (Next.js)
 

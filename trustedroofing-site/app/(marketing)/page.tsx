@@ -3,7 +3,6 @@ import ActivitySection from "@/components/home/ActivitySection";
 import CTABand from "@/components/home/CTABand";
 import FeaturedProjects from "@/components/home/FeaturedProjects";
 import HeroSection from "@/components/home/HeroSection";
-import HomeFooter from "@/components/home/HomeFooter";
 import ProofStrip from "@/components/home/ProofStrip";
 import ServiceAreas from "@/components/home/ServiceAreas";
 import ServicesGrid from "@/components/home/ServicesGrid";
@@ -30,6 +29,15 @@ const projectFallbackImage = [
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&q=80&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1000&q=80&auto=format&fit=crop"
 ];
+
+
+function scopeLabel(serviceType: string | null, scopes: string[] | null) {
+  if (serviceType?.includes("SidingHardie") || scopes?.includes("siding_hardie")) return "Instant hardie siding estimate";
+  if (serviceType?.includes("SidingVinyl") || scopes?.includes("siding_vinyl")) return "Instant vinyl siding estimate";
+  if (serviceType?.includes("Eavestrough") || scopes?.includes("eavestrough")) return "Instant eavestrough estimate";
+  if (serviceType?.includes("All") || (scopes?.length ?? 0) > 1) return "Instant full exterior estimate";
+  return "Instant roof estimate";
+}
 
 function toTitle(slug: string) {
   return slug
@@ -62,7 +70,7 @@ export default async function HomePage() {
 
   const recentQuoteActivity: HomeActivity[] = quoteActivity.map((row) => ({
     id: `quote-${row.id}`,
-    service: "Instant roof estimate",
+    service: scopeLabel(row.service_type, row.requested_scopes),
     location: row.address.split(",").slice(0, 2).join(", "),
     occurredAt: row.queried_at
   }));
@@ -92,7 +100,6 @@ export default async function HomePage() {
       <WhyTrusted />
       <CTABand />
       <ServiceAreas areas={areas} />
-      <HomeFooter />
     </>
   );
 }

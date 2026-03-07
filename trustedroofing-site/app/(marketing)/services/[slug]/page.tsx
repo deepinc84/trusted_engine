@@ -1,10 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import LocalBusinessSchema from "@/components/LocalBusinessSchema";
-import ProjectCarousel from "@/components/ProjectCarousel";
+import CtaBand from "@/components/ui/CtaBand";
+import PageContainer from "@/components/ui/PageContainer";
+import PageHero from "@/components/ui/PageHero";
+import ServiceCard from "@/components/ui/ServiceCard";
 import ServiceSchema from "@/components/ServiceSchema";
-import { getServiceBySlug, listProjects } from "@/lib/db";
+import { getServiceBySlug, listProjects, listServices } from "@/lib/db";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
+
+const benefits = [
+  "Scope clarity before install starts",
+  "Built for Calgary freeze-thaw + hail cycles",
+  "Project documentation and image-backed updates"
+];
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const service = await getServiceBySlug(params.slug);
@@ -27,35 +35,79 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
   const service = await getServiceBySlug(params.slug);
   if (!service) return notFound();
 
-  const recentProjects = await listProjects({ service_slug: service.slug, limit: 5 });
+  const [recentProjects, allServices] = await Promise.all([
+    listProjects({ service_slug: service.slug, limit: 3 }),
+    listServices()
+  ]);
+
+  const related = allServices.filter((item) => item.slug !== service.slug).slice(0, 3);
+
   const items = recentProjects.map((project) => ({
     name: project.title,
     url: canonicalUrl(`/projects/${project.slug}`)
   }));
 
   return (
-    <section className="section">
-      <LocalBusinessSchema />
+    <>
       <ServiceSchema serviceName={service.title} serviceSlug={service.slug} items={items} />
-      <div className="hero" style={{ gridTemplateColumns: "1fr" }}>
-        <div>
-          <h1 className="hero-title">{service.title}</h1>
-          <p className="hero-subtitle">
-            {service.base_sales_copy ??
-              `Trusted Roofing & Exteriors delivers ${service.title.toLowerCase()} work across Calgary with documented real projects.`}
-          </p>
-          <div style={{ marginTop: 14, display: "flex", gap: 12 }}>
-            <Link href="/quote" className="button">Start instant quote</Link>
-            <Link href="/projects" className="button" style={{ background: "white", color: "var(--color-primary)", border: "1px solid rgba(30, 58, 138, 0.2)" }}>
-              Browse all projects
-            </Link>
-          </div>
-        </div>
-      </div>
 
-      <div style={{ marginTop: 28 }}>
-        <ProjectCarousel serviceSlug={service.slug} fallbackLabel={`Recent ${service.title.toLowerCase()} projects in Calgary`} limit={5} />
-      </div>
-    </section>
+      <PageHero
+        eyebrow="Service detail"
+        title={service.title}
+        description={service.base_sales_copy ?? `Trusted delivers ${service.title.toLowerCase()} services across Calgary.`}
+        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+      />
+
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="ui-detail-grid">
+            <article className="ui-card">
+              <h2>What to expect</h2>
+              <p>
+                We keep each project scope transparent, document decisions, and align install sequencing
+                around weather and access constraints.
+              </p>
+              <ul>
+                {benefits.map((benefit) => (
+                  <li key={benefit}>{benefit}</li>
+                ))}
+              </ul>
+            </article>
+
+            <article className="ui-card">
+              <h2>Recent {service.title.toLowerCase()} projects</h2>
+              <div className="ui-list-links">
+                {recentProjects.length ? recentProjects.map((project) => (
+                  <Link key={project.id} href={`/projects/${project.slug}`}>
+                    {project.title}
+                  </Link>
+                )) : <p>No published projects yet for this service.</p>}
+              </div>
+            </article>
+          </div>
+        </PageContainer>
+      </section>
+
+      <section className="ui-page-section ui-page-section--soft">
+        <PageContainer>
+          <h2 className="homev3-title">Related services</h2>
+          <div className="ui-grid ui-grid--services">
+            {related.map((item) => (
+              <ServiceCard
+                key={item.slug}
+                slug={item.slug}
+                title={item.title}
+                description={item.base_sales_copy ?? "Exterior service backed by project data."}
+              />
+            ))}
+          </div>
+        </PageContainer>
+      </section>
+
+      <CtaBand
+        title="Ready to price your project?"
+        body="Get an instant estimate and then refine the final scope with our team."
+      />
+    </>
   );
 }

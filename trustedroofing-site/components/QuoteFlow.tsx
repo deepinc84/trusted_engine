@@ -156,7 +156,7 @@ export default function QuoteFlow() {
       const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, placeId, lat, lng })
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope })
       });
 
       const text = await res.text();

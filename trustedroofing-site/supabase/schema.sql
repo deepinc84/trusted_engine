@@ -90,6 +90,8 @@ create index if not exists project_photos_project_sort_idx on project_photos(pro
 create table if not exists instaquote_address_queries (
   id uuid primary key default gen_random_uuid(),
   address text not null,
+  service_type text,
+  requested_scopes text[],
   place_id text,
   lat numeric(10,7),
   lng numeric(10,7),

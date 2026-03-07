@@ -1,6 +1,10 @@
 import Link from "next/link";
-import { buildMetadata } from "@/lib/seo";
+import CtaBand from "@/components/ui/CtaBand";
+import PageContainer from "@/components/ui/PageContainer";
+import PageHero from "@/components/ui/PageHero";
+import ServiceCard from "@/components/ui/ServiceCard";
 import { listServices } from "@/lib/db";
+import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
   title: "Services",
@@ -12,29 +16,38 @@ export default async function ServicesPage() {
   const services = await listServices();
 
   return (
-    <section className="section">
-      <div className="hero" style={{ gridTemplateColumns: "1fr" }}>
-        <div>
-          <h1 className="hero-title">Service hubs</h1>
-          <p className="hero-subtitle">
-            Explore each service line and the real project nodes behind it.
-          </p>
-        </div>
-      </div>
+    <>
+      <PageHero
+        eyebrow="Services"
+        title="Exterior services built for Alberta weather"
+        description="Explore each service line and see how Trusted delivers project-backed exterior work across Calgary."
+        actions={
+          <>
+            <Link href="/quote" className="button">Get an instant quote</Link>
+            <Link href="/projects" className="button button--ghost">Browse projects</Link>
+          </>
+        }
+      />
 
-      <div className="card-grid" style={{ marginTop: 28 }}>
-        {services.map((service) => (
-          <article className="card" key={service.slug}>
-            <h3>{service.title}</h3>
-            <p style={{ color: "var(--color-muted)", marginTop: 8 }}>
-              {service.base_sales_copy ?? "Real project-backed service delivery."}
-            </p>
-            <Link href={`/services/${service.slug}`} style={{ fontWeight: 600, marginTop: 12, display: "inline-block" }}>
-              Open hub →
-            </Link>
-          </article>
-        ))}
-      </div>
-    </section>
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="ui-grid ui-grid--services">
+            {services.map((service) => (
+              <ServiceCard
+                key={service.slug}
+                slug={service.slug}
+                title={service.title}
+                description={service.base_sales_copy ?? "Real project-backed service delivery for Calgary homes."}
+              />
+            ))}
+          </div>
+        </PageContainer>
+      </section>
+
+      <CtaBand
+        title="Need clarity on scope and price?"
+        body="Start with the instant quote, then we can refine with site specifics and project photos."
+      />
+    </>
   );
 }

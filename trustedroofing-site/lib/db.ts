@@ -741,6 +741,8 @@ export function getStorageAdminClient() {
 export type InstaquoteAddressQuery = {
   id: string;
   address: string;
+  service_type: string | null;
+  requested_scopes: string[] | null;
   place_id: string | null;
   lat: number | null;
   lng: number | null;
@@ -838,7 +840,11 @@ function parseAddressParts(address: string) {
 
 export async function createInstaquoteAddressQuery(
   input: Omit<InstaquoteAddressQuery, "id" | "queried_at">,
-  options?: { notesExtras?: Record<string, unknown> }
+  options?: {
+    notesExtras?: Record<string, unknown>;
+    requestedScopes?: string[];
+    serviceType?: string;
+  }
 ) {
   const payload = {
     id: crypto.randomUUID(),
@@ -868,8 +874,8 @@ export async function createInstaquoteAddressQuery(
         created_at: payload.queried_at,
         updated_at: payload.queried_at,
         status: "instaquote_estimated",
-        service_type: "InstantQuote",
-        requested_scopes: ["roof"],
+        service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+        requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
         address: payload.address,
         city,
         province,
@@ -880,6 +886,8 @@ export async function createInstaquoteAddressQuery(
         estimate_high: payload.estimate_high,
         notes: JSON.stringify({
           source: payload.data_source,
+          service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+          requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
           estimate_low: payload.estimate_low,
           estimate_high: payload.estimate_high,
           area_source: payload.area_source,
@@ -997,7 +1005,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
 
     const { data: primaryData, error: primaryError } = await readClient
       .from("instaquote_address_queries")
-      .select("id,address,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,estimate_low,estimate_high,solar_status,solar_debug,queried_at")
+      .select("id,address,service_type,requested_scopes,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,estimate_low,estimate_high,solar_status,solar_debug,queried_at")
       .order("queried_at", { ascending: false })
       .limit(limit);
 
@@ -1038,9 +1046,27 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
         ? (parsedNotes.estimate_high === null || parsedNotes.estimate_high === undefined ? null : Number(parsedNotes.estimate_high))
         : Number(row.estimate_high);
 
+      const noteScopes = Array.isArray(parsedNotes.requested_scopes)
+        ? parsedNotes.requested_scopes.filter((value): value is string => typeof value === "string")
+        : [];
+      const extras = typeof parsedNotes.extras === "object" && parsedNotes.extras !== null
+        ? parsedNotes.extras as Record<string, unknown>
+        : null;
+      const extraScopes = Array.isArray(extras?.requestedScopes)
+        ? extras.requestedScopes.filter((value): value is string => typeof value === "string")
+        : [];
+
       return {
         id: String(row.id),
         address: String(row.address ?? "Calgary, AB"),
+        service_type: typeof parsedNotes.service_type === "string"
+          ? parsedNotes.service_type
+          : "InstantQuote:Roof",
+        requested_scopes: noteScopes.length > 0
+          ? noteScopes
+          : extraScopes.length > 0
+            ? extraScopes
+            : ["roof"],
         place_id: typeof parsedNotes.place_id === "string" ? parsedNotes.place_id : null,
         lat: Number.isFinite(lat) ? lat : null,
         lng: Number.isFinite(lng) ? lng : null,

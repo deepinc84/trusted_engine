@@ -1,3 +1,7 @@
+import Link from "next/link";
+import CtaBand from "@/components/ui/CtaBand";
+import PageContainer from "@/components/ui/PageContainer";
+import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
 import { buildMetadata } from "@/lib/seo";
 
@@ -9,22 +13,27 @@ export const metadata = buildMetadata({
 
 export default function RoofRepairPage() {
   return (
-    <section className="section">
+    <>
       <ServiceSchema serviceName="Roof repair" serviceType="Roof repair" />
-      <div className="hero" style={{ gridTemplateColumns: "1fr" }}>
-        <div>
-          <h1 className="hero-title">Rapid roof repair response</h1>
-          <p className="hero-subtitle">
-            Our crews handle storm response, leak diagnostics, and proactive
-            maintenance with clean data capture.
-          </p>
-          <ul style={{ marginTop: 24, color: "var(--color-muted)" }}>
-            <li>Same-day emergency response available</li>
-            <li>Repair-only and preventative maintenance</li>
-            <li>Photo documentation for every visit</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+      <PageHero
+        eyebrow="Service detail"
+        title="Roof repair"
+        description="Fast diagnostics and repair scopes for leaks, storm issues, and maintenance fixes."
+        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+      />
+      <section className="ui-page-section">
+        <PageContainer>
+          <article className="ui-card">
+            <h2>Repair focus</h2>
+            <ul>
+              <li>Same-day response options where available</li>
+              <li>Leak tracing with photo documentation</li>
+              <li>Clear repair-vs-replacement guidance</li>
+            </ul>
+          </article>
+        </PageContainer>
+      </section>
+      <CtaBand title="Need urgent repair pricing?" body="Start with instant quote and we can triage next steps quickly." />
+    </>
   );
 }

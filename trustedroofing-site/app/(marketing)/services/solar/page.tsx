@@ -1,3 +1,7 @@
+import Link from "next/link";
+import CtaBand from "@/components/ui/CtaBand";
+import PageContainer from "@/components/ui/PageContainer";
+import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
 import { buildMetadata } from "@/lib/seo";
 
@@ -10,22 +14,27 @@ export const metadata = buildMetadata({
 
 export default function SolarPage() {
   return (
-    <section className="section">
+    <>
       <ServiceSchema serviceName="Solar integration" serviceType="Solar" />
-      <div className="hero" style={{ gridTemplateColumns: "1fr" }}>
-        <div>
-          <h1 className="hero-title">Solar-ready exterior systems</h1>
-          <p className="hero-subtitle">
-            Trusted handles roofing + envelope planning, with solar delivered by
-            our electrical partner network.
-          </p>
-          <ul style={{ marginTop: 24, color: "var(--color-muted)" }}>
-            <li>Roof condition + layout review for panels</li>
-            <li>Coordinate installs with electrical partner crews</li>
-            <li>TODO: connect Solar API and irradiance scoring</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+      <PageHero
+        eyebrow="Service detail"
+        title="Solar integration"
+        description="Roof and exterior planning aligned with partner-led solar install pathways."
+        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+      />
+      <section className="ui-page-section">
+        <PageContainer>
+          <article className="ui-card">
+            <h2>Solar-ready pathway</h2>
+            <ul>
+              <li>Roof condition review for panel readiness</li>
+              <li>Envelope-first upgrade sequencing</li>
+              <li>Partner coordination for electrical scope</li>
+            </ul>
+          </article>
+        </PageContainer>
+      </section>
+      <CtaBand title="Planning solar + roofing together?" body="Start with an exterior quote so sequencing is handled correctly." />
+    </>
   );
 }

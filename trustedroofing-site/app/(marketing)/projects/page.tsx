@@ -1,4 +1,7 @@
-import Link from "next/link";
+import CtaBand from "@/components/ui/CtaBand";
+import NeighborhoodChips from "@/components/ui/NeighborhoodChips";
+import PageContainer from "@/components/ui/PageContainer";
+import PageHero from "@/components/ui/PageHero";
 import ProjectCard from "@/components/ProjectCard";
 import { listProjects, listServices } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
@@ -24,53 +27,48 @@ export default async function ProjectsPage({
     })
   ]);
 
+  const serviceChips = [
+    { label: "All services", href: "/projects" },
+    ...services.map((service) => ({
+      label: service.title,
+      href: `/projects?service_slug=${encodeURIComponent(service.slug)}`
+    }))
+  ];
+
   const neighborhoods = Array.from(
     new Set(projects.map((project) => project.neighborhood).filter(Boolean))
-  );
+  ) as string[];
+
+  const neighborhoodChips = neighborhoods.map((name) => ({
+    label: name,
+    href: `/projects?neighborhood=${encodeURIComponent(name)}`
+  }));
 
   return (
-    <section className="section">
-      <div className="hero" style={{ gridTemplateColumns: "1fr" }}>
-        <div>
-          <h1 className="hero-title">Project directory</h1>
-          <p className="hero-subtitle">
-            Only published, real project nodes are listed here.
-          </p>
-        </div>
-      </div>
+    <>
+      <PageHero
+        eyebrow="Portfolio"
+        title="Project directory"
+        description="Published, real project nodes with service and neighborhood context."
+      />
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
-        <Link className="badge" href="/projects">All services</Link>
-        {services.map((service) => (
-          <Link
-            className="badge"
-            key={service.slug}
-            href={`/projects?service_slug=${encodeURIComponent(service.slug)}`}
-          >
-            {service.title}
-          </Link>
-        ))}
-      </div>
+      <section className="ui-page-section">
+        <PageContainer>
+          <NeighborhoodChips chips={serviceChips} />
+          <NeighborhoodChips chips={neighborhoodChips} />
 
-      {neighborhoods.length ? (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-          {neighborhoods.map((neighborhood) => (
-            <Link
-              className="badge"
-              key={neighborhood as string}
-              href={`/projects?neighborhood=${encodeURIComponent(neighborhood as string)}`}
-            >
-              {neighborhood as string}
-            </Link>
-          ))}
-        </div>
-      ) : null}
+          <div className="ui-grid ui-grid--projects" style={{ marginTop: 20 }}>
+            {projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </PageContainer>
+      </section>
 
-      <div className="card-grid" style={{ marginTop: 28 }}>
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
-    </section>
+      <CtaBand
+        title="Want a similar scope for your home?"
+        body="Use instant quote to compare your property against local project ranges."
+      />
+    </>
   );
 }

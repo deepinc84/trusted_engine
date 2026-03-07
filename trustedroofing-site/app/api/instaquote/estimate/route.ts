@@ -8,6 +8,7 @@ type EstimateBody = {
   placeId?: string;
   lat?: number | null;
   lng?: number | null;
+  serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
 };
 
 type SolarEstimateResult = {
@@ -120,6 +121,23 @@ const SIDING_VINYL_RATE_LOW = 8;
 const SIDING_VINYL_RATE_HIGH = 9.5;
 const EAVES_RATIO_BASELINE = 0.109;
 const SIDING_RATIO_BASELINE = 1.55;
+
+
+function mapScopeToRequestedScopes(scope: EstimateBody["serviceScope"]) {
+  if (scope === "all") return ["roof", "eavestrough", "siding_vinyl", "siding_hardie"];
+  if (scope === "vinyl_siding") return ["siding_vinyl"];
+  if (scope === "hardie_siding") return ["siding_hardie"];
+  if (scope === "eavestrough") return ["eavestrough"];
+  return ["roof"];
+}
+
+function mapScopeToServiceType(scope: EstimateBody["serviceScope"]) {
+  if (scope === "all") return "InstantQuote:All";
+  if (scope === "vinyl_siding") return "InstantQuote:SidingVinyl";
+  if (scope === "hardie_siding") return "InstantQuote:SidingHardie";
+  if (scope === "eavestrough") return "InstantQuote:Eavestrough";
+  return "InstantQuote:Roof";
+}
 
 function eavesComplexityMultiplier(complexityBand: "simple" | "moderate" | "complex") {
   if (complexityBand === "simple") return 0.95;
@@ -244,6 +262,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "address or lat/lng is required" }, { status: 400 });
   }
 
+  const serviceScope = body.serviceScope ?? "roofing";
+  const requestedScopes = mapScopeToRequestedScopes(serviceScope);
+  const serviceType = mapScopeToServiceType(serviceScope);
+
   let normalizedAddress = body.address?.trim() ?? "";
   let placeId = body.placeId ?? null;
   const inputLat = body.lat ?? null;
@@ -327,6 +349,8 @@ export async function POST(request: Request) {
   if (areaAdjustedToMinimum) {
     console.info("[instaquote][minimum_area_floor_applied]", {
       address: normalizedAddress || "Calgary, AB",
+      service_type: serviceType,
+      requested_scopes: requestedScopes,
       originalRoofAreaSqft: estimateResult.roofAreaSqft,
       adjustedRoofAreaSqft: pricingRoofAreaSqft,
       minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
@@ -366,6 +390,8 @@ export async function POST(request: Request) {
   try {
     addressQueryId = await createInstaquoteAddressQuery({
       address: normalizedAddress || "Calgary, AB",
+      service_type: serviceType,
+      requested_scopes: requestedScopes,
       place_id: placeId,
       lat,
       lng,
@@ -391,7 +417,13 @@ export async function POST(request: Request) {
         shouldApplyMinimumPricingFloor
       }
     }, {
-      notesExtras: extras
+      notesExtras: {
+        ...extras,
+        serviceScope,
+        requestedScopes
+      },
+      requestedScopes,
+      serviceType
     });
   } catch (error) {
     console.error("instaquote estimate query insert failed", error);

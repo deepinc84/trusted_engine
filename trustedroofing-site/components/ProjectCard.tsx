@@ -6,28 +6,21 @@ export default function ProjectCard({ project }: { project: Project }) {
   const heroImage = project.photos?.find((photo) => photo.is_primary)?.public_url ?? project.photos?.[0]?.public_url;
 
   return (
-    <article className="card">
+    <article className="ui-card ui-card--project">
       {heroImage ? (
         <Image
           src={heroImage}
           alt={project.title}
-          width={320}
-          height={180}
-          style={{ width: "100%", height: "auto", borderRadius: 12 }}
+          width={640}
+          height={400}
+          className="ui-card--project__image"
         />
       ) : null}
-      <div className="badge">{project.service_slug}</div>
-      <h3 style={{ marginTop: 12 }}>{project.title}</h3>
-      <p style={{ color: "var(--color-muted)", marginTop: 8 }}>
-        {project.neighborhood ?? "Calgary"}, {project.city}
-      </p>
-      <p style={{ marginTop: 12 }}>{project.summary}</p>
-      <Link
-        href={`/projects/${project.slug}`}
-        style={{ marginTop: 16, display: "inline-block", fontWeight: 600 }}
-      >
-        View project →
-      </Link>
+      <span className="ui-pill">{project.service_slug}</span>
+      <h3>{project.title}</h3>
+      <p>{project.neighborhood ?? "Calgary"}, {project.city}</p>
+      <p>{project.summary}</p>
+      <Link href={`/projects/${project.slug}`}>View project</Link>
     </article>
   );
 }
