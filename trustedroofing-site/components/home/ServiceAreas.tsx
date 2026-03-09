@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { HomeArea } from "./types";
 
 export default function ServiceAreas({ areas }: { areas: HomeArea[] }) {
@@ -10,7 +11,13 @@ export default function ServiceAreas({ areas }: { areas: HomeArea[] }) {
         </div>
         <div className="homev3-area-chips">
           {areas.filter((area) => area.active).map((area) => (
-            <span key={area.id}>{area.name}</span>
+            <Link
+              key={area.id}
+              href={`/projects?neighborhood=${encodeURIComponent(area.name)}`}
+              prefetch={false}
+            >
+              {area.name}
+            </Link>
           ))}
         </div>
       </div>

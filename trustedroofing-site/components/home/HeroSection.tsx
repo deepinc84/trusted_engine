@@ -52,7 +52,7 @@ export default function HeroSection({ metrics, activity }: Props) {
         <aside className="homev3-activity-card">
           <div className="homev3-activity-card__head">
             <h3>Recent activity</h3>
-            <span>Live</span>
+            <span>Recent</span>
           </div>
           <ul>
             {activity.slice(0, 5).map((item) => (

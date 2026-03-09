@@ -17,6 +17,8 @@ import {
 } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = buildMetadata({
   title: "Roofing & exterior services in Calgary",
   description:
@@ -25,11 +27,10 @@ export const metadata = buildMetadata({
 });
 
 const projectFallbackImage = [
-  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1000&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1000&q=80&auto=format&fit=crop"
+  "/projects/project-1.svg",
+  "/projects/project-2.svg",
+  "/projects/project-3.svg"
 ];
-
 
 function scopeLabel(serviceType: string | null, scopes: string[] | null) {
   if (serviceType?.includes("SidingHardie") || scopes?.includes("siding_hardie")) return "Instant hardie siding estimate";
@@ -69,13 +70,6 @@ export default async function HomePage() {
     copy: service.base_sales_copy ?? "Exterior service tailored for Calgary homes."
   }));
 
-  const projectActivity: HomeActivity[] = projects.slice(0, 3).map((project) => ({
-    id: `project-${project.id}`,
-    service: toTitle(project.service_slug),
-    location: `${project.neighborhood ?? project.city}, ${project.province}`,
-    occurredAt: project.created_at
-  }));
-
   const recentQuoteActivity: HomeActivity[] = quoteActivity.map((row) => ({
     id: `quote-${row.id}`,
     service: scopeLabel(row.service_type, row.requested_scopes),
@@ -83,9 +77,7 @@ export default async function HomePage() {
     occurredAt: row.queried_at
   }));
 
-  const activity = [...recentQuoteActivity, ...projectActivity]
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-    .slice(0, 8);
+  const activity = recentQuoteActivity.slice(0, 8);
 
   const featuredProjects: HomeProject[] = projects.slice(0, 3).map((project, index) => ({
     id: project.id,
@@ -107,7 +99,7 @@ export default async function HomePage() {
       <FeaturedProjects projects={featuredProjects} />
       <WhyTrusted />
       <CTABand />
-      <ServiceAreas areas={areas} />
+      <ServiceAreas areas={areas.filter((area) => area.active)} />
     </>
   );
 }

@@ -8,7 +8,7 @@
   --radius: 16px;
   --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
   --max-width: 1100px;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: "Manrope", system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -21,6 +21,27 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   line-height: 1.6;
+}
+
+
+h1,
+h2,
+h3,
+.homev3-title {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+p,
+li,
+a,
+button,
+input,
+textarea,
+select,
+span {
+  font-family: "Manrope", system-ui, -apple-system, sans-serif;
 }
 
 a {
@@ -735,8 +756,9 @@ main {
   font-size: 0.72rem;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(74, 222, 128, 0.5);
-  color: #4ade80;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  color: #dbeafe;
+  background: rgba(59, 130, 246, 0.18);
 }
 
 .homev3-activity-card ul {
@@ -1019,13 +1041,20 @@ main {
   gap: 10px;
 }
 
-.homev3-area-chips span {
+.homev3-area-chips a {
   background: white;
   border: 1px solid #c6d4ea;
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 0.85rem;
   font-weight: 600;
+  transition: all 0.2s var(--ease-out);
+}
+
+.homev3-area-chips a:hover {
+  background: #2f4e8c;
+  color: #fff;
+  border-color: #2f4e8c;
 }
 
 .homev3-home-footer {
@@ -1115,14 +1144,25 @@ main {
 }
 
 .site-header--v3 {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   background: rgba(15, 30, 56, 0.94);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
 }
 
-.site-header--v3 .site-shell {
+.site-header__inner {
+  min-height: 78px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
+}
+
+.nav--v3 {
+  display: flex;
+  align-items: center;
   gap: 18px;
 }
 
@@ -1308,5 +1348,18 @@ main {
   .ui-detail-grid,
   .site-footer__grid {
     grid-template-columns: 1fr;
+  }
+
+  .site-header__inner {
+    min-height: auto;
+    padding: 10px 0;
+    flex-wrap: wrap;
+  }
+
+  .nav--v3 {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 }

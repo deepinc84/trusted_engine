@@ -153,11 +153,11 @@ To adjust inner-page styling globally, update the `ui-*` and `site-*` classes in
 
 Homepage sections are now rendered with server components and map to data sources as follows:
 
-- Hero recent activity: `instaquote_address_queries` + recent `projects` fallback.
+- Hero recent activity: `instaquote_address_queries` ordered by `queried_at desc` (no static caching on homepage).
 - Proof strip: `homepage_metrics` (with mock fallback defaults).
 - Services: `services` table (`base_sales_copy` for card copy).
-- Featured projects: published `projects` and `project_photos` (with placeholder image fallback).
-- Service areas: `service_areas` table (with fallback list in `lib/db.ts`).
+- Featured projects: published `projects` and `project_photos` (with placeholder image fallback if no photo rows exist).
+- Service areas chips: `service_areas` table (`active = true`).
 
 New schema migration for these homepage sections:
 
@@ -202,3 +202,16 @@ Behavior:
 
 If your Supabase is missing scope fields, run:
 - `supabase/migrations/0007_instaquote_scope_tracking.sql`
+
+
+## Developer notes: table ownership by section
+
+Use this map when updating content:
+
+- `homepage_metrics` → homepage proof strip metrics.
+- `instaquote_address_queries` → homepage recent activity feed entries and quote analytics.
+- `services` → `/services` landing cards and `/services/[slug]` content.
+- `service_areas` → homepage neighborhood/service area chips.
+- `projects` + `project_photos` → homepage featured projects and `/projects` cards/detail galleries.
+
+If a section looks empty, verify rows exist in those tables (and that `projects.is_published = true` where applicable).
