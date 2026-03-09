@@ -93,7 +93,12 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
       const hasStoredRange = estimateLow !== null && estimateHigh !== null;
       return {
         id: `${item.queried_at}-${index}`,
-        locationLabel: item.neighborhood ?? item.quadrant ?? item.city ?? "Calgary",
+        locationLabel:
+          item.neighborhood ??
+          (item.quadrant && item.city ? `${item.quadrant} ${item.city}` : null) ??
+          item.city ??
+          (item.quadrant ? `${item.quadrant} Calgary` : null) ??
+          "Calgary",
         address: item.address,
         complexity,
         roofArea: area,

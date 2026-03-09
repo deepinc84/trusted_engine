@@ -178,3 +178,27 @@ Behavior:
 - Every estimate request logs an address query row (`instaquote_address_queries`).
 - Lead submissions link back via `address_query_id`.
 - Nearby endpoint returns only non-personal query data.
+
+### Supabase fields the app expects for quote persistence/display
+
+`instaquote_address_queries`:
+- `id`
+- `address` (stored private input)
+- `service_type`
+- `requested_scopes` (`text[]`)
+- `place_id`
+- `lat`, `lng`
+- `roof_area_sqft`, `pitch_degrees`, `complexity_band`
+- `area_source`, `data_source`
+- `estimate_low`, `estimate_high` (**selected quoted range persisted here**)
+- `solar_status`, `solar_debug`
+- `queried_at`
+
+`quote_events` (compat + analytics):
+- `id`, `status`, `service_type`, `requested_scopes`
+- `address`, `city`, `province`, `postal`, `lat`, `lng`
+- `estimate_low`, `estimate_high`
+- `notes` JSON (includes `service_type`, `requested_scopes`, extras, and roof/reference ranges)
+
+If your Supabase is missing scope fields, run:
+- `supabase/migrations/0007_instaquote_scope_tracking.sql`

@@ -386,6 +386,19 @@ export async function POST(request: Request) {
     }
   };
 
+  const selectedQuotedRange = serviceScope === "vinyl_siding"
+    ? extras.sidingVinyl
+    : serviceScope === "hardie_siding"
+      ? extras.sidingHardie
+      : serviceScope === "eavestrough"
+        ? extras.eaves
+        : serviceScope === "all"
+          ? {
+            low: ranges.good.low + extras.eaves.low + extras.sidingVinyl.low,
+            high: ranges.good.high + extras.eaves.high + extras.sidingVinyl.high
+          }
+          : ranges.good;
+
   let addressQueryId = crypto.randomUUID();
   try {
     addressQueryId = await createInstaquoteAddressQuery({
@@ -400,8 +413,8 @@ export async function POST(request: Request) {
       complexity_band: ranges.complexityBand,
       area_source: estimateResult.areaSource,
       data_source: estimateResult.dataSource,
-      estimate_low: ranges.good.low,
-      estimate_high: ranges.good.high,
+      estimate_low: selectedQuotedRange.low,
+      estimate_high: selectedQuotedRange.high,
       solar_status: estimateResult.areaSource === "solar" ? "success" : "fallback",
       solar_debug: {
         geocodeSource,
@@ -420,7 +433,9 @@ export async function POST(request: Request) {
       notesExtras: {
         ...extras,
         serviceScope,
-        requestedScopes
+        requestedScopes,
+        selectedQuotedRange,
+        roofRange: ranges.good
       },
       requestedScopes,
       serviceType

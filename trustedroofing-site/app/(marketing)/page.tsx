@@ -46,6 +46,14 @@ function toTitle(slug: string) {
     .join(" ");
 }
 
+function publicLocationFromAddress(address: string) {
+  const upper = address.toUpperCase();
+  const quadrant = upper.match(/\b(NE|NW|SE|SW)\b/)?.[1] ?? null;
+  if (quadrant) return `${quadrant} Calgary`;
+  if (address.toLowerCase().includes("calgary")) return "Calgary";
+  return "Calgary area";
+}
+
 export default async function HomePage() {
   const [projects, services, metrics, areas, quoteActivity] = await Promise.all([
     listProjects({ limit: 6, include_unpublished: false }),
@@ -71,7 +79,7 @@ export default async function HomePage() {
   const recentQuoteActivity: HomeActivity[] = quoteActivity.map((row) => ({
     id: `quote-${row.id}`,
     service: scopeLabel(row.service_type, row.requested_scopes),
-    location: row.address.split(",").slice(0, 2).join(", "),
+    location: publicLocationFromAddress(row.address),
     occurredAt: row.queried_at
   }));
 

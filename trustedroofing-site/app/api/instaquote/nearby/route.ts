@@ -31,16 +31,17 @@ function extractCity(address: string) {
 }
 
 function extractNeighborhood(address: string) {
-  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
-  const first = parts[0] ?? "";
-  const stripped = first
-    .replace(/^\d+[A-Za-z-]*\s+/, "")
-    .replace(/\b(AVENUE|AVE|STREET|ST|ROAD|RD|DRIVE|DR|BOULEVARD|BLVD|COURT|CT|WAY|TRAIL|TR)\b/gi, "")
-    .replace(/\b(NE|NW|SE|SW)\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Never infer/display street-level address data from quote inputs.
+  return null;
+}
 
-  return stripped.length >= 3 ? stripped : null;
+function toPublicAreaLabel(address: string) {
+  const quadrant = extractQuadrant(address);
+  const city = extractCity(address);
+  if (quadrant && city) return `${quadrant} ${city}`;
+  if (city) return city;
+  if (quadrant) return `${quadrant} Calgary`;
+  return "Calgary";
 }
 
 function rankRows(rows: Row[], targetAddress: string | null) {
@@ -123,7 +124,7 @@ export async function GET(request: Request) {
   const items = source.slice(0, 50).map((row) => ({
     lat: row.lat,
     lng: row.lng,
-    address: row.address,
+    address: toPublicAreaLabel(row.address),
     neighborhood: extractNeighborhood(row.address),
     quadrant: extractQuadrant(row.address),
     city: extractCity(row.address),
