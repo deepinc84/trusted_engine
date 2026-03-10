@@ -4,7 +4,8 @@ import {
   getStorageAdminClient,
   getDataMode,
   setPrimaryProjectPhoto,
-  getProjectById
+  getProjectById,
+  syncGeoPostForProject
 } from "@/lib/db";
 import { embedGpsExifIfPossible } from "@/lib/exif";
 
@@ -33,6 +34,7 @@ function buildGeoAltText(input: {
 }
 
 export async function POST(request: Request) {
+  try {
   const form = await request.formData();
   const file = form.get("file");
   const projectId = String(form.get("project_id") ?? "");
@@ -74,7 +76,9 @@ export async function POST(request: Request) {
     if (isPrimary) {
       await setPrimaryProjectPhoto(projectId, photo.id);
     }
-    return NextResponse.json({ photo, mode: "mock" });
+
+    const geoPost = await syncGeoPostForProject(projectId);
+    return NextResponse.json({ photo, geo_post: geoPost, mode: "mock" });
   }
 
   const client = getStorageAdminClient();
@@ -121,5 +125,13 @@ export async function POST(request: Request) {
     await setPrimaryProjectPhoto(projectId, photo.id);
   }
 
-  return NextResponse.json({ photo });
+  const geoPost = await syncGeoPostForProject(projectId);
+
+  return NextResponse.json({ photo, geo_post: geoPost });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Upload failed." },
+      { status: 400 }
+    );
+  }
 }

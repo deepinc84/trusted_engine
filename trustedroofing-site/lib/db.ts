@@ -71,6 +71,22 @@ export type Project = {
   photos?: ProjectPhoto[];
 };
 
+export type GeoPost = {
+  id: string;
+  project_id: string;
+  slug: string | null;
+  title: string | null;
+  summary: string | null;
+  service_slug: string | null;
+  city: string | null;
+  province: string | null;
+  neighborhood: string | null;
+  lat_public: number | null;
+  lng_public: number | null;
+  primary_image_url: string | null;
+  created_at: string;
+};
+
 type QuoteEventStep1 = {
   service_slug: string | null;
   place_id: string | null;
@@ -129,6 +145,7 @@ const defaultServices: Service[] = [
 const mockServices = [...defaultServices];
 const mockProjects: Project[] = [];
 const mockProjectPhotos: ProjectPhoto[] = [];
+const mockGeoPosts: GeoPost[] = [];
 const mockQuoteEvents: Array<{ id: string; created_at: string } & QuoteEventStep1> = [];
 const mockQuoteContacts: Array<{
   quote_id: string;
@@ -611,6 +628,58 @@ export async function setPrimaryProjectPhoto(projectId: string, photoId: string)
   }
 
   return true;
+}
+
+export async function syncGeoPostForProject(projectId: string) {
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("Project not found for geo_post sync.");
+
+  const primaryImage = project.photos?.find((photo) => photo.is_primary)?.public_url
+    ?? project.photos?.[0]?.public_url
+    ?? null;
+
+  const payload = {
+    project_id: project.id,
+    slug: project.slug,
+    title: project.title,
+    summary: project.summary,
+    service_slug: project.service_slug,
+    city: project.city,
+    province: project.province,
+    neighborhood: project.neighborhood,
+    lat_public: project.lat_public,
+    lng_public: project.lng_public,
+    primary_image_url: primaryImage
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for geo_post writes.");
+
+    const { data, error } = await client
+      .from("geo_posts")
+      .upsert(payload, { onConflict: "project_id" })
+      .select("*")
+      .single();
+
+    if (error) throw new Error(`geo_posts upsert failed: ${error.message}`);
+    return data as GeoPost;
+  }
+
+  const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);
+  const base: GeoPost = {
+    id: existingIndex >= 0 ? mockGeoPosts[existingIndex].id : crypto.randomUUID(),
+    created_at: existingIndex >= 0 ? mockGeoPosts[existingIndex].created_at : new Date().toISOString(),
+    ...payload
+  };
+
+  if (existingIndex >= 0) {
+    mockGeoPosts[existingIndex] = base;
+  } else {
+    mockGeoPosts.push(base);
+  }
+
+  return base;
 }
 
 export async function enqueueGbpPost(project_id: string, payload: Record<string, unknown>) {

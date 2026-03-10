@@ -221,6 +221,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
       setUploadedPhotos(data.project.photos as ProjectPhoto[]);
     }
       setFeedback("Project saved. You can upload photos now.", "success");
+
+      if (selectedFiles.length > 0) {
+        await uploadPhotos(id);
+      }
+
       setIsSaving(false);
     } catch {
       setFeedback("Unable to save project right now. Please refresh and try again.", "error");
@@ -252,8 +257,9 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setFeedback(`${asArray.length} image(s) selected.`, "info");
   };
 
-  const uploadPhotos = async () => {
-    if (!projectId || !selectedFiles.length) return;
+  const uploadPhotos = async (targetProjectId?: string) => {
+    const effectiveProjectId = targetProjectId ?? projectId;
+    if (!effectiveProjectId || !selectedFiles.length) return;
     setUploading(true);
     setUploadProgress({ current: 0, total: selectedFiles.length });
 
@@ -263,7 +269,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
       setUploadProgress({ current: index + 1, total: selectedFiles.length });
       const file = selectedFiles[index];
       const form = new FormData();
-      form.set("project_id", projectId);
+      form.set("project_id", effectiveProjectId);
       form.set("file", file);
       form.set("caption", file.name);
       form.set("sort_order", String(index));

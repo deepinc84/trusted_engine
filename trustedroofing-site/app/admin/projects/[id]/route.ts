@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProjectById, updateProject, enqueueGbpPost } from "@/lib/db";
+import { getProjectById, updateProject, syncGeoPostForProject } from "@/lib/db";
 
 async function triggerIndexing(url: string) {
   if (!process.env.INDEXING_TOKEN) return;
@@ -35,40 +35,39 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const body = await request.json();
+  try {
+    const body = await request.json();
 
-  const project = await updateProject(params.id, {
-    slug: body.slug,
-    title: body.title,
-    summary: body.summary,
-    description: body.description,
-    service_slug: body.service_slug,
-    neighborhood: body.neighborhood,
-    quadrant: body.quadrant,
-    address_private: body.address_private,
-    place_id: body.place_id,
-    geocode_source: body.geocode_source,
-    city: body.city,
-    province: body.province,
-    lat_private: body.lat_private,
-    lng_private: body.lng_private,
-    completed_at: body.completed_at,
-    is_published: body.is_published
-  });
+    const project = await updateProject(params.id, {
+      slug: body.slug,
+      title: body.title,
+      summary: body.summary,
+      description: body.description,
+      service_slug: body.service_slug,
+      neighborhood: body.neighborhood,
+      quadrant: body.quadrant,
+      address_private: body.address_private,
+      place_id: body.place_id,
+      geocode_source: body.geocode_source,
+      city: body.city,
+      province: body.province,
+      lat_private: body.lat_private,
+      lng_private: body.lng_private,
+      completed_at: body.completed_at,
+      is_published: body.is_published
+    });
 
-  const hydrated = await getProjectById(project.id);
-  const primaryImage = hydrated?.photos?.find((photo) => photo.is_primary)?.public_url ?? hydrated?.photos?.[0]?.public_url ?? null;
+    const hydrated = await getProjectById(project.id);
+    const geoPost = await syncGeoPostForProject(project.id);
 
-  const targetUrl = `https://trustedroofingcalgary.com/projects/${project.slug}`;
+    const targetUrl = `https://trustedroofingcalgary.com/projects/${project.slug}`;
+    await triggerIndexing(targetUrl);
 
-  await enqueueGbpPost(project.id, {
-    text: project.summary,
-    projectSlug: project.slug,
-    targetUrl,
-    firstImage: primaryImage
-  });
-
-  await triggerIndexing(targetUrl);
-
-  return NextResponse.json({ project: hydrated ?? project });
+    return NextResponse.json({ project: hydrated ?? project, geo_post: geoPost });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to update project and geo post." },
+      { status: 400 }
+    );
+  }
 }

@@ -215,3 +215,18 @@ Use this map when updating content:
 - `projects` + `project_photos` → homepage featured projects and `/projects` cards/detail galleries.
 
 If a section looks empty, verify rows exist in those tables (and that `projects.is_published = true` where applicable).
+
+
+## Admin create flow (GBP paused)
+
+Current create pipeline (no GBP dependency):
+
+1. Project creation happens in `app/admin/projects/route.ts` (`POST`) via `createProject(...)`.
+2. Linked geo post creation/upsert happens in `lib/db.ts` via `syncGeoPostForProject(projectId)` and is called immediately after project create/update.
+3. Photo upload rows are created in `app/admin/upload/route.ts` + `addProjectPhoto(...)`, then `syncGeoPostForProject(projectId)` runs again so `geo_posts.primary_image_url` stays aligned to the current primary/first project photo.
+
+GBP queue/posting was bypassed for admin create/update by removing `enqueueGbpPost(...)` from:
+- `app/admin/projects/route.ts`
+- `app/admin/projects/[id]/route.ts`
+
+This means project + geo_post creation succeeds even when GBP is fully disabled.
