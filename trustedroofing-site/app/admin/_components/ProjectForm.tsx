@@ -54,7 +54,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [geocodeSource, setGeocodeSource] = useState(project?.geocode_source ?? "manual");
   const [locationMode, setLocationMode] = useState<"current" | "manual">("current");
   const [status, setStatus] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"info" | "success" | "error">("info");
   const [uploading, setUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [locating, setLocating] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
@@ -70,9 +74,14 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
   const selectedFiles = useMemo(() => Array.from(files ?? []), [files]);
 
+  const setFeedback = (message: string, tone: "info" | "success" | "error" = "info") => {
+    setStatus(message);
+    setStatusTone(tone);
+  };
+
   const geocodeAddress = async () => {
     if (!addressPrivate.trim()) {
-      setStatus("Enter an address to geocode.");
+      setFeedback("Enter an address to geocode.", "error");
       return;
     }
 
@@ -86,7 +95,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setGeocoding(false);
 
     if (!response.ok || !payload.ok || !payload.result) {
-      setStatus(payload.error ?? "Unable to geocode this address. You can still enter lat/lng manually.");
+      setFeedback(payload.error ?? "Unable to geocode this address. You can still enter lat/lng manually.", "error");
       return;
     }
 
@@ -94,17 +103,17 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setLatPrivate(String(payload.result.lat));
     setLngPrivate(String(payload.result.lng));
     setGeocodeSource(payload.result.source || "api");
-    setStatus(`Address matched via ${payload.result.source}. You can edit any field before saving.`);
+    setFeedback(`Address matched via ${payload.result.source}. You can edit any field before saving.`, "success");
   };
 
   const useCurrentLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setStatus("Geolocation is not available in this browser. You can enter address manually.");
+      setFeedback("Geolocation is not available in this browser. You can enter address manually.", "error");
       return;
     }
 
     setLocating(true);
-    setStatus("Detecting your current location...");
+    setFeedback("Detecting your current location...");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -122,15 +131,15 @@ export default function ProjectForm({ services, mode, project }: Props) {
         if (response.ok && payload.ok && payload.result) {
           setAddressPrivate(payload.result.fullAddress);
           if (!neighborhood) setNeighborhood(payload.result.city || "");
-          setStatus(`Location captured: ${payload.result.fullAddress}`);
+          setFeedback(`Location captured: ${payload.result.fullAddress}`, "success");
         } else {
-          setStatus("Coordinates captured from current location. Add address manually if needed.");
+          setFeedback("Coordinates captured from current location. Add address manually if needed.", "success");
         }
 
         setLocating(false);
       },
       () => {
-        setStatus("Location permission denied or unavailable. You can enter address manually.");
+        setFeedback("Location permission denied or unavailable. You can enter address manually.", "error");
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 8000 }
@@ -167,6 +176,8 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
   const submit = async () => {
     setStatus(null);
+    setIsSaving(true);
+    setFeedback(mode === "create" ? "Creating project..." : "Updating project...");
 
     try {
       const payload = {
@@ -199,7 +210,8 @@ export default function ProjectForm({ services, mode, project }: Props) {
     const text = await res.text();
     const data = text ? parseJsonSafe<{ error?: string; project?: Project }>(text) : {};
     if (!res.ok) {
-      setStatus(data.error ?? "Unable to save project.");
+      setFeedback(data.error ?? `Unable to save project (HTTP ${res.status}).`, "error");
+      setIsSaving(false);
       return;
     }
 
@@ -208,9 +220,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
     if (data.project?.photos) {
       setUploadedPhotos(data.project.photos as ProjectPhoto[]);
     }
-      setStatus("Project saved. You can upload photos now.");
+      setFeedback("Project saved. You can upload photos now.", "success");
+      setIsSaving(false);
     } catch {
-      setStatus("Unable to save project right now. Please refresh and try again.");
+      setFeedback("Unable to save project right now. Please refresh and try again.", "error");
+      setIsSaving(false);
     }
   };
 
@@ -222,29 +236,31 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
     const asArray = Array.from(list);
     if (asArray.length > MAX_UPLOAD_FILES) {
-      setStatus(`Please select up to ${MAX_UPLOAD_FILES} images per upload.`);
+      setFeedback(`Please select up to ${MAX_UPLOAD_FILES} images per upload.`, "error");
       setFiles(null);
       return;
     }
 
     const tooLarge = asArray.find((file) => file.size > MAX_UPLOAD_MB * 1024 * 1024);
     if (tooLarge) {
-      setStatus(`${tooLarge.name} is larger than ${MAX_UPLOAD_MB}MB. Please resize and try again.`);
+      setFeedback(`${tooLarge.name} is larger than ${MAX_UPLOAD_MB}MB. Please resize and try again.`, "error");
       setFiles(null);
       return;
     }
 
     setFiles(list);
-    setStatus(`${asArray.length} image(s) selected.`);
+    setFeedback(`${asArray.length} image(s) selected.`, "info");
   };
 
   const uploadPhotos = async () => {
     if (!projectId || !selectedFiles.length) return;
     setUploading(true);
+    setUploadProgress({ current: 0, total: selectedFiles.length });
 
     try {
       const created: ProjectPhoto[] = [];
     for (let index = 0; index < selectedFiles.length; index += 1) {
+      setUploadProgress({ current: index + 1, total: selectedFiles.length });
       const file = selectedFiles[index];
       const form = new FormData();
       form.set("project_id", projectId);
@@ -261,8 +277,9 @@ export default function ProjectForm({ services, mode, project }: Props) {
       const text = await res.text();
       const data = text ? parseJsonSafe<{ error?: string; photo?: ProjectPhoto }>(text) : {};
       if (!res.ok) {
-        setStatus(data.error ?? "Upload failed.");
+        setFeedback(data.error ?? `Upload failed (HTTP ${res.status}).`, "error");
         setUploading(false);
+        setUploadProgress(null);
         return;
       }
 
@@ -275,17 +292,20 @@ export default function ProjectForm({ services, mode, project }: Props) {
     });
 
       setUploading(false);
+      setUploadProgress(null);
       setFiles(null);
-      setStatus("Project photos uploaded and geo-tagged from project location.");
+      setFeedback("Project photos uploaded and geo-tagged from project location.", "success");
     } catch {
       setUploading(false);
-      setStatus("Upload failed due to a network or auth issue. Reload admin with ?token=... and try again.");
+      setUploadProgress(null);
+      setFeedback("Upload failed due to a network or auth issue. Reload admin with ?token=... and try again.", "error");
     }
   };
 
   const setPrimary = async (photoId: string) => {
     if (!projectId) return;
 
+    setSettingPrimaryId(photoId);
     try {
       const res = await adminFetch(`/admin/photos/${photoId}/primary`, {
       method: "PATCH",
@@ -296,7 +316,8 @@ export default function ProjectForm({ services, mode, project }: Props) {
     if (!res.ok) {
       const text = await res.text();
       const data = text ? parseJsonSafe<{ error?: string }>(text) : {};
-      setStatus(data.error ?? "Unable to set primary image.");
+      setFeedback(data.error ?? `Unable to set primary image (HTTP ${res.status}).`, "error");
+      setSettingPrimaryId(null);
       return;
     }
 
@@ -305,9 +326,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
           .map((photo) => ({ ...photo, is_primary: photo.id === photoId }))
           .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
       );
-      setStatus("Primary image updated.");
+      setFeedback("Primary image updated.", "success");
+      setSettingPrimaryId(null);
     } catch {
-      setStatus("Unable to update primary image right now.");
+      setFeedback("Unable to update primary image right now.", "error");
+      setSettingPrimaryId(null);
     }
   };
 
@@ -317,6 +340,12 @@ export default function ProjectForm({ services, mode, project }: Props) {
       <p style={{ margin: 0, color: "var(--color-muted)" }}>
         Use your current location by default, or switch to manual address mode.
       </p>
+
+      {status ? (
+        <div className={`admin-status admin-status--${statusTone}`} role="status" aria-live="polite">
+          {status}
+        </div>
+      ) : null}
 
       <label>
         Title
@@ -398,18 +427,18 @@ export default function ProjectForm({ services, mode, project }: Props) {
       </label>
       <label>
         Summary (2-6 sentences)
-        <textarea className="input" value={summary} onChange={(event) => setSummary(event.target.value)} rows={5} />
+        <textarea className="input input--multiline" value={summary} onChange={(event) => setSummary(event.target.value)} rows={5} />
       </label>
       <label>
         Description
-        <textarea className="input" value={description} onChange={(event) => setDescription(event.target.value)} rows={6} />
+        <textarea className="input input--multiline" value={description} onChange={(event) => setDescription(event.target.value)} rows={6} />
       </label>
       <label>
         Completed at
         <input className="input" type="date" value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} />
       </label>
-      <button className="button" type="button" onClick={() => void submit()}>
-        {mode === "create" ? "Create project" : "Update project"}
+      <button className="button" type="button" onClick={() => void submit()} disabled={isSaving}>
+        {isSaving ? (mode === "create" ? "Creating project..." : "Updating project...") : (mode === "create" ? "Create project" : "Update project")}
       </button>
 
       <hr />
@@ -444,7 +473,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
       ) : null}
 
       <button className="button" type="button" onClick={() => void uploadPhotos()} disabled={!projectId || uploading || !selectedFiles.length}>
-        {uploading ? "Uploading..." : "Upload photos"}
+        {uploading ? `Uploading ${uploadProgress?.current ?? 0}/${uploadProgress?.total ?? selectedFiles.length}...` : "Upload photos"}
       </button>
 
       {uploadedPhotos.length ? (
@@ -455,8 +484,8 @@ export default function ProjectForm({ services, mode, project }: Props) {
               <div key={photo.id} style={{ border: "1px solid #d5d9e2", borderRadius: 8, padding: 8 }}>
                 <img src={photo.public_url} alt={photo.caption ?? "Project photo"} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 6 }} />
                 <p style={{ margin: "8px 0 6px", fontSize: 12 }}>{photo.caption ?? "Untitled"}</p>
-                <button className="button" type="button" onClick={() => void setPrimary(photo.id)} style={{ width: "100%" }}>
-                  {photo.is_primary ? "Primary image" : "Set as primary"}
+                <button className="button" type="button" onClick={() => void setPrimary(photo.id)} style={{ width: "100%" }} disabled={settingPrimaryId === photo.id}>
+                  {settingPrimaryId === photo.id ? "Saving..." : (photo.is_primary ? "Primary image" : "Set as primary")}
                 </button>
               </div>
             ))}
@@ -464,7 +493,6 @@ export default function ProjectForm({ services, mode, project }: Props) {
         </div>
       ) : null}
 
-      {status ? <p style={{ margin: 0 }}>{status}</p> : null}
     </div>
   );
 }
