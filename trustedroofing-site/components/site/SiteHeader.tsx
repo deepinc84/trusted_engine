@@ -2,10 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 const links = [
-  { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/projects", label: "Projects" },
-  ];
+  { href: "/", label: "Home" }
+];
 
 export default function SiteHeader() {
   return (
@@ -28,10 +28,16 @@ export default function SiteHeader() {
               {link.label}
             </Link>
           ))}
+        </nav>
+
+        <div className="nav-right">
+          <a href="tel:4035550124" className="nav-tel">
+            (403) 555-0124
+          </a>
           <Link href="/quote" className="cta">
             Get instant quote
           </Link>
-        </nav>
+        </div>
       </div>
     </header>
   );
