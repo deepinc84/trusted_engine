@@ -1740,7 +1740,6 @@ main {
     grid-template-columns: 1fr 1fr;
   }
 }
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
 
 /* ─── Bugfix pass: mobile header compactness + touch safety ─────────── */
 @media (max-width: 768px) {
@@ -1823,5 +1822,4 @@ main {
     gap: 20px;
   }
 }
-=======
->>>>>>> main
+

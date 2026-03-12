@@ -49,7 +49,6 @@ create table if not exists project_photos (
   created_at timestamptz default now()
 );
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
 
 create table if not exists geo_posts (
   id uuid primary key default gen_random_uuid(),
@@ -67,8 +66,7 @@ create table if not exists geo_posts (
   created_at timestamptz default now()
 );
 
-=======
->>>>>>> main
+
 create table if not exists quote_events (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz default now(),
@@ -106,11 +104,11 @@ create table if not exists gbp_post_queue (
 create unique index if not exists projects_slug_idx on projects(slug);
 create index if not exists quote_events_created_at_idx on quote_events(created_at desc);
 create index if not exists project_photos_project_sort_idx on project_photos(project_id, is_primary desc, sort_order asc);
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
 create unique index if not exists geo_posts_project_id_uidx on geo_posts(project_id);
 create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc);
-=======
->>>>>>> main
+create unique index if not exists geo_posts_project_id_uidx on geo_posts(project_id);
+create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc);
+
 
 create table if not exists instaquote_address_queries (
   id uuid primary key default gen_random_uuid(),

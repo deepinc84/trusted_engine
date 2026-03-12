@@ -652,6 +652,8 @@ export async function syncGeoPostForProject(projectId: string) {
     primary_image_url: primaryImage
   };
 
+  const uniqueConstraintHint = "Run migration 0008_geo_posts_project_unique.sql.";
+
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for geo_post writes.");
@@ -662,7 +664,6 @@ export async function syncGeoPostForProject(projectId: string) {
       .select("*")
       .single();
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
     if (!error) return data as GeoPost;
 
     if (error.message.includes("no unique or exclusion constraint matching the ON CONFLICT specification")) {
@@ -673,7 +674,7 @@ export async function syncGeoPostForProject(projectId: string) {
         .order("created_at", { ascending: true });
 
       if (readError) {
-        throw new Error(`geo_posts read failed: ${readError.message}. Run migration 0008_geo_posts_project_unique.sql.`);
+        throw new Error(`geo_posts read failed: ${readError.message}. ${uniqueConstraintHint}`);
       }
 
       const existing = (existingRows ?? []) as GeoPost[];
@@ -687,7 +688,7 @@ export async function syncGeoPostForProject(projectId: string) {
           .single();
 
         if (updateError) {
-          throw new Error(`geo_posts update failed: ${updateError.message}. Run migration 0008_geo_posts_project_unique.sql.`);
+          throw new Error(`geo_posts update failed: ${updateError.message}. ${uniqueConstraintHint}`);
         }
 
         if (existing.length > 1) {
@@ -705,17 +706,14 @@ export async function syncGeoPostForProject(projectId: string) {
         .single();
 
       if (insertError) {
-        throw new Error(`geo_posts insert failed: ${insertError.message}. Run migration 0008_geo_posts_project_unique.sql.`);
+        throw new Error(`geo_posts insert failed: ${insertError.message}. ${uniqueConstraintHint}`);
       }
 
       return inserted as GeoPost;
     }
 
     throw new Error(`geo_posts upsert failed: ${error.message}`);
-=======
-    if (error) throw new Error(`geo_posts upsert failed: ${error.message}`);
-    return data as GeoPost;
->>>>>>> main
+
   }
 
   const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);
