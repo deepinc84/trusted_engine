@@ -662,6 +662,7 @@ export async function syncGeoPostForProject(projectId: string) {
       .select("*")
       .single();
 
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
     if (!error) return data as GeoPost;
 
     if (error.message.includes("no unique or exclusion constraint matching the ON CONFLICT specification")) {
@@ -711,6 +712,10 @@ export async function syncGeoPostForProject(projectId: string) {
     }
 
     throw new Error(`geo_posts upsert failed: ${error.message}`);
+=======
+    if (error) throw new Error(`geo_posts upsert failed: ${error.message}`);
+    return data as GeoPost;
+>>>>>>> main
   }
 
   const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);
