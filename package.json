@@ -1,0 +1,12 @@
+{
+  "name": "trusted-engine-monorepo",
+  "private": true,
+  "workspaces": [
+    "trustedroofing-site"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace trustedroofing-site",
+    "dev": "npm run dev --workspace trustedroofing-site",
+    "start": "npm run start --workspace trustedroofing-site"
+  }
+}
