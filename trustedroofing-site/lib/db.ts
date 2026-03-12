@@ -662,8 +662,60 @@ export async function syncGeoPostForProject(projectId: string) {
       .select("*")
       .single();
 
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
+    if (!error) return data as GeoPost;
+
+    if (error.message.includes("no unique or exclusion constraint matching the ON CONFLICT specification")) {
+      const { data: existingRows, error: readError } = await client
+        .from("geo_posts")
+        .select("*")
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: true });
+
+      if (readError) {
+        throw new Error(`geo_posts read failed: ${readError.message}. Run migration 0008_geo_posts_project_unique.sql.`);
+      }
+
+      const existing = (existingRows ?? []) as GeoPost[];
+
+      if (existing.length > 0) {
+        const { data: updated, error: updateError } = await client
+          .from("geo_posts")
+          .update(payload)
+          .eq("id", existing[0].id)
+          .select("*")
+          .single();
+
+        if (updateError) {
+          throw new Error(`geo_posts update failed: ${updateError.message}. Run migration 0008_geo_posts_project_unique.sql.`);
+        }
+
+        if (existing.length > 1) {
+          const duplicateIds = existing.slice(1).map((row) => row.id);
+          await client.from("geo_posts").delete().in("id", duplicateIds);
+        }
+
+        return updated as GeoPost;
+      }
+
+      const { data: inserted, error: insertError } = await client
+        .from("geo_posts")
+        .insert(payload)
+        .select("*")
+        .single();
+
+      if (insertError) {
+        throw new Error(`geo_posts insert failed: ${insertError.message}. Run migration 0008_geo_posts_project_unique.sql.`);
+      }
+
+      return inserted as GeoPost;
+    }
+
+    throw new Error(`geo_posts upsert failed: ${error.message}`);
+=======
     if (error) throw new Error(`geo_posts upsert failed: ${error.message}`);
     return data as GeoPost;
+>>>>>>> main
   }
 
   const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);

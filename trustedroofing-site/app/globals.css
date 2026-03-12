@@ -1740,3 +1740,88 @@ main {
     grid-template-columns: 1fr 1fr;
   }
 }
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
+
+/* ─── Bugfix pass: mobile header compactness + touch safety ─────────── */
+@media (max-width: 768px) {
+  .site-header--v3 {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(15, 30, 56, 0.98);
+  }
+
+  .site-header__inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "logo cta"
+      "nav nav";
+    align-items: center;
+    gap: 8px 10px;
+    min-height: 0;
+    height: auto;
+    padding: 8px 0 9px;
+  }
+
+  .brand {
+    grid-area: logo;
+  }
+
+  .brand-logo {
+    max-width: 132px;
+    height: auto;
+  }
+
+  .nav--v3 {
+    grid-area: nav;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 1px;
+  }
+
+  .nav--v3 a {
+    font-size: 13px;
+    line-height: 1.1;
+    padding: 3px 0;
+    white-space: nowrap;
+  }
+
+  .nav-right {
+    grid-area: cta;
+    display: flex;
+    justify-self: end;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-tel {
+    display: none;
+  }
+
+  .nav-right .cta {
+    padding: 8px 12px;
+    font-size: 12.5px;
+    border-radius: 9px;
+    white-space: nowrap;
+  }
+
+  main {
+    padding-top: 100px;
+  }
+
+  .section {
+    padding-top: 42px;
+  }
+
+  .site-footer__grid--expanded {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+=======
+>>>>>>> main
