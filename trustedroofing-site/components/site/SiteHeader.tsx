@@ -2,15 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 const links = [
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-1va24k
-  { href: "/services", label: "Services" },
-  { href: "/projects", label: "Projects" },
-  { href: "/", label: "Home" }
-=======
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/projects", label: "Projects" }
->>>>>>> main
 ];
 
 export default function SiteHeader() {
