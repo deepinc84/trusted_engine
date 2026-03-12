@@ -713,6 +713,7 @@ export async function syncGeoPostForProject(projectId: string) {
     }
 
     throw new Error(`geo_posts upsert failed: ${error.message}`);
+
   }
 
   const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);

@@ -66,6 +66,7 @@ create table if not exists geo_posts (
   created_at timestamptz default now()
 );
 
+
 create table if not exists quote_events (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz default now(),
@@ -105,6 +106,9 @@ create index if not exists quote_events_created_at_idx on quote_events(created_a
 create index if not exists project_photos_project_sort_idx on project_photos(project_id, is_primary desc, sort_order asc);
 create unique index if not exists geo_posts_project_id_uidx on geo_posts(project_id);
 create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc);
+create unique index if not exists geo_posts_project_id_uidx on geo_posts(project_id);
+create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc);
+
 
 create table if not exists instaquote_address_queries (
   id uuid primary key default gen_random_uuid(),
