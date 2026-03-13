@@ -24,6 +24,11 @@ export function getProjectImageStorageProvider(): StorageProvider {
   throw new Error(`Unsupported PROJECT_IMAGE_STORAGE_PROVIDER: ${configured}`);
 }
 
+export function buildProjectPhotoPath(projectId: string, fileName: string) {
+  const safeName = fileName.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
+  return `${projectId}/${Date.now()}-${safeName}`;
+}
+
 function readPngDimensions(buffer: Buffer) {
   if (buffer.length < 24) return null;
   if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4e || buffer[3] !== 0x47) return null;
@@ -134,9 +139,7 @@ export async function uploadProjectImageToSupabase(input: {
   const originalBuffer = Buffer.from(arrayBuffer);
   const uploadBuffer = embedGpsExifIfPossible(originalBuffer, input.latPrivate, input.lngPrivate);
   const dimensions = extractImageDimensions(uploadBuffer, mimeType);
-
-  const safeName = input.file.name.replace(/\s+/g, "-");
-  const path = `${input.projectId}/${Date.now()}-${safeName}`;
+  const path = buildProjectPhotoPath(input.projectId, input.file.name);
 
   const { error } = await input.client.storage.from(bucket).upload(path, uploadBuffer, {
     contentType: mimeType,

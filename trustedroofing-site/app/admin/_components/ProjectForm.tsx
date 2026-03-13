@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Project, ProjectPhoto, Service } from "@/lib/db";
 
 type Props = {
@@ -21,7 +22,91 @@ type GeocodeResult = {
 
 const MAX_UPLOAD_FILES = 30;
 const MAX_UPLOAD_MB = 15;
+const MAX_UPLOAD_MB_AFTER_COMPRESSION = 8;
+const MAX_IMAGE_DIMENSION = 2000;
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+let browserSupabaseClient: SupabaseClient | null = null;
+
+function getBrowserSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  if (!browserSupabaseClient) browserSupabaseClient = createClient(url, key);
+  return browserSupabaseClient;
+}
+
+async function getImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  if (typeof window === "undefined") return null;
+  return await new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const width = img.naturalWidth || 0;
+      const height = img.naturalHeight || 0;
+      URL.revokeObjectURL(objectUrl);
+      resolve(width > 0 && height > 0 ? { width, height } : null);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null);
+    };
+    img.src = objectUrl;
+  });
+}
+
+async function resizeForUpload(file: File): Promise<File> {
+  if (typeof window === "undefined") return file;
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) return file;
+  if (file.size <= 3 * 1024 * 1024 && file.type !== "image/heic" && file.type !== "image/heif") return file;
+
+  if (file.type === "image/gif") return file;
+
+  return await new Promise((resolve) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+      const targetWidth = Math.max(1, Math.round(image.naturalWidth * scale));
+      const targetHeight = Math.max(1, Math.round(image.naturalHeight * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+      canvas.toBlob(
+        (blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+
+          const baseName = file.name.replace(/\.[^.]+$/, "");
+          const converted = new File([blob], `${baseName}.webp`, { type: "image/webp" });
+          resolve(converted.size < file.size ? converted : file);
+        },
+        "image/webp",
+        0.82
+      );
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    image.src = objectUrl;
+  });
+}
 
 function parseJsonSafe<T>(text: string): T {
   try {
@@ -247,65 +332,171 @@ export default function ProjectForm({ services, mode, project }: Props) {
       return;
     }
 
+    const unsupported = asArray.find((file) => !ALLOWED_MIME_TYPES.includes(file.type));
+    if (unsupported) {
+      setFeedback(`Unsupported format for ${unsupported.name}. Use JPG, PNG, WEBP, or GIF.`, "error");
+      setFiles(null);
+      return;
+    }
+
     const tooLarge = asArray.find((file) => file.size > MAX_UPLOAD_MB * 1024 * 1024);
     if (tooLarge) {
-      setFeedback(`${tooLarge.name} is larger than ${MAX_UPLOAD_MB}MB. Please resize and try again.`, "error");
+      setFeedback(`${tooLarge.name} is larger than ${MAX_UPLOAD_MB}MB. We'll compress large photos, but this file is too large to process reliably.`, "error");
       setFiles(null);
       return;
     }
 
     setFiles(list);
-    setFeedback(`${asArray.length} image(s) selected.`, "info");
+    setFeedback(`${asArray.length} image(s) selected. Large photos will be resized before upload.`, "info");
   };
 
   const uploadPhotos = async (targetProjectId?: string) => {
     const effectiveProjectId = targetProjectId ?? projectId;
     if (!effectiveProjectId || !selectedFiles.length) return;
+
+    const supabaseClient = getBrowserSupabaseClient();
+
     setUploading(true);
     setUploadProgress({ current: 0, total: selectedFiles.length });
 
     try {
       const created: ProjectPhoto[] = [];
-    for (let index = 0; index < selectedFiles.length; index += 1) {
-      setUploadProgress({ current: index + 1, total: selectedFiles.length });
-      const file = selectedFiles[index];
-      const form = new FormData();
-      form.set("project_id", effectiveProjectId);
-      form.set("file", file);
-      form.set("caption", file.name);
-      form.set("sort_order", String(index));
-      form.set("is_primary", String(index === primaryUploadIndex));
-      form.set("address_private", addressPrivate || "");
-      form.set("geocode_source", geocodeSource || "manual");
-      form.set("lat_private", latPrivate || "");
-      form.set("lng_private", lngPrivate || "");
+      for (let index = 0; index < selectedFiles.length; index += 1) {
+        setUploadProgress({ current: index + 1, total: selectedFiles.length });
 
-      const res = await adminFetch("/admin/upload", { method: "POST", body: form });
-      const text = await res.text();
-      const data = text ? parseJsonSafe<{ error?: string; photo?: ProjectPhoto }>(text) : {};
-      if (!res.ok) {
-        setFeedback(data.error ?? `Upload failed (HTTP ${res.status}).`, "error");
-        setUploading(false);
-        setUploadProgress(null);
-        return;
+        const originalFile = selectedFiles[index];
+        const uploadFile = await resizeForUpload(originalFile);
+
+        if (uploadFile.size > MAX_UPLOAD_MB_AFTER_COMPRESSION * 1024 * 1024) {
+          setFeedback(`${originalFile.name} is still over ${MAX_UPLOAD_MB_AFTER_COMPRESSION}MB after compression. Please use a smaller image.`, "error");
+          setUploading(false);
+          setUploadProgress(null);
+          return;
+        }
+
+        if (!supabaseClient) {
+          const dimensions = await getImageDimensions(uploadFile);
+          const fallbackRes = await adminFetch("/admin/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              project_id: effectiveProjectId,
+              file_name: originalFile.name,
+              storage_provider: "mock",
+              storage_bucket: null,
+              storage_path: `/uploads/${Date.now()}-${uploadFile.name}`,
+              public_url: `/uploads/${Date.now()}-${uploadFile.name}`,
+              file_size: uploadFile.size,
+              mime_type: uploadFile.type || "application/octet-stream",
+              width: dimensions?.width ?? null,
+              height: dimensions?.height ?? null,
+              caption: originalFile.name,
+              sort_order: index,
+              is_primary: index === primaryUploadIndex,
+              address_private: addressPrivate || "",
+              geocode_source: geocodeSource || "manual",
+              lat_private: latPrivate || null,
+              lng_private: lngPrivate || null
+            })
+          });
+
+          const fallbackText = await fallbackRes.text();
+          const fallbackData = fallbackText ? parseJsonSafe<{ error?: string; photo?: ProjectPhoto }>(fallbackText) : {};
+          if (!fallbackRes.ok) {
+            setFeedback(fallbackData.error ?? `Upload failed (HTTP ${fallbackRes.status}).`, "error");
+            setUploading(false);
+            setUploadProgress(null);
+            return;
+          }
+
+          if (fallbackData.photo) created.push(fallbackData.photo as ProjectPhoto);
+          continue;
+        }
+
+        const signRes = await adminFetch("/admin/upload/signed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: effectiveProjectId,
+            file_name: uploadFile.name,
+            content_type: uploadFile.type
+          })
+        });
+
+        const signText = await signRes.text();
+        const signData = signText ? parseJsonSafe<{ error?: string; bucket?: string; path?: string; token?: string; public_url?: string }>(signText) : {};
+        if (!signRes.ok || !signData.bucket || !signData.path || !signData.token || !signData.public_url) {
+          setFeedback(signData.error ?? `Unable to initialize direct upload (HTTP ${signRes.status}).`, "error");
+          setUploading(false);
+          setUploadProgress(null);
+          return;
+        }
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from(signData.bucket)
+          .uploadToSignedUrl(signData.path, signData.token, uploadFile, { upsert: false, contentType: uploadFile.type || "application/octet-stream" });
+
+        if (uploadError) {
+          const hint = uploadError.message.toLowerCase().includes("payload too large")
+            ? "Image is still too large after optimization. Try a lower-resolution photo."
+            : uploadError.message;
+          setFeedback(`Direct upload failed for ${originalFile.name}: ${hint}`, "error");
+          setUploading(false);
+          setUploadProgress(null);
+          return;
+        }
+
+        const dimensions = await getImageDimensions(uploadFile);
+
+        const finalizeRes = await adminFetch("/admin/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: effectiveProjectId,
+            file_name: originalFile.name,
+            storage_provider: "supabase",
+            storage_bucket: signData.bucket,
+            storage_path: signData.path,
+            public_url: signData.public_url,
+            file_size: uploadFile.size,
+            mime_type: uploadFile.type || "application/octet-stream",
+            width: dimensions?.width ?? null,
+            height: dimensions?.height ?? null,
+            caption: originalFile.name,
+            sort_order: index,
+            is_primary: index === primaryUploadIndex,
+            address_private: addressPrivate || "",
+            geocode_source: geocodeSource || "manual",
+            lat_private: latPrivate || null,
+            lng_private: lngPrivate || null
+          })
+        });
+
+        const finalizeText = await finalizeRes.text();
+        const finalizeData = finalizeText ? parseJsonSafe<{ error?: string; photo?: ProjectPhoto }>(finalizeText) : {};
+        if (!finalizeRes.ok) {
+          setFeedback(finalizeData.error ?? `Upload record creation failed (HTTP ${finalizeRes.status}).`, "error");
+          setUploading(false);
+          setUploadProgress(null);
+          return;
+        }
+
+        if (finalizeData.photo) created.push(finalizeData.photo as ProjectPhoto);
       }
 
-      if (data.photo) created.push(data.photo as ProjectPhoto);
-    }
-
-    setUploadedPhotos((current) => {
-      const merged = [...created, ...current.filter((photo) => !created.some((newPhoto) => newPhoto.id === photo.id))];
-      return merged.sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order);
-    });
+      setUploadedPhotos((current) => {
+        const merged = [...created, ...current.filter((photo) => !created.some((newPhoto) => newPhoto.id === photo.id))];
+        return merged.sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order);
+      });
 
       setUploading(false);
       setUploadProgress(null);
       setFiles(null);
-      setFeedback("Project photos uploaded successfully. Set a primary image, then publish the geo-post.", "success");
+      setFeedback("Project photos uploaded successfully (direct to storage). Set a primary image, then publish the geo-post.", "success");
     } catch {
       setUploading(false);
       setUploadProgress(null);
-      setFeedback("Upload failed due to a network or auth issue. Reload admin with ?token=... and try again.", "error");
+      setFeedback("Upload failed due to a network/auth issue. Reload admin with ?token=... and try again.", "error");
     }
   };
 

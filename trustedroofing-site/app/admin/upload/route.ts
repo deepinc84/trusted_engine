@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   addProjectPhoto,
-  getStorageAdminClient,
   getDataMode,
   setPrimaryProjectPhoto,
   getProjectById
 } from "@/lib/db";
-import {
-  extractImageDimensions,
-  getProjectImageStorageProvider,
-  uploadProjectImageToSupabase
-} from "@/lib/storage";
 
 function humanizeFilename(name: string) {
   return name
@@ -38,98 +32,52 @@ function buildGeoAltText(input: {
 
 export async function POST(request: Request) {
   try {
-    const form = await request.formData();
-    const file = form.get("file");
-    const projectId = String(form.get("project_id") ?? "");
-    const caption = String(form.get("caption") ?? "");
-    const sortOrder = Number(form.get("sort_order") ?? 0);
-    const isPrimary = String(form.get("is_primary") ?? "false") === "true";
-    const project = projectId ? await getProjectById(projectId) : null;
-    const addressPrivate = String(form.get("address_private") ?? "");
-    const geocodeSource = String(form.get("geocode_source") ?? "");
+    const body = await request.json();
+    const projectId = String(body.project_id ?? "");
+    const fileName = String(body.file_name ?? "project-photo");
+    const caption = String(body.caption ?? "");
+    const sortOrder = Number(body.sort_order ?? 0);
+    const isPrimary = Boolean(body.is_primary);
+    const addressPrivate = String(body.address_private ?? "");
+    const geocodeSource = String(body.geocode_source ?? "");
+    const storagePath = String(body.storage_path ?? "");
+    const publicUrl = String(body.public_url ?? "");
+    const latPrivate = body.lat_private == null ? null : Number(body.lat_private);
+    const lngPrivate = body.lng_private == null ? null : Number(body.lng_private);
+
+    if (!projectId) {
+      return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+    }
+
+    if (!storagePath || !publicUrl) {
+      return NextResponse.json({ error: "storage_path and public_url are required" }, { status: 400 });
+    }
+
+    const project = await getProjectById(projectId);
+    if (!project) {
+      return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    }
+
     const generatedCaption = buildGeoAltText({
       explicitCaption: caption,
-      filename: file instanceof File ? file.name : "project-photo",
-      serviceSlug: project?.service_slug ?? "roofing",
-      neighborhood: project?.neighborhood ?? null,
-      city: project?.city ?? "Calgary"
-    });
-    const latPrivateRaw = form.get("lat_private");
-    const lngPrivateRaw = form.get("lng_private");
-    const latPrivate = latPrivateRaw ? Number(latPrivateRaw) : null;
-    const lngPrivate = lngPrivateRaw ? Number(lngPrivateRaw) : null;
-
-    if (!(file instanceof File) || !projectId) {
-      return NextResponse.json({ error: "file and project_id are required" }, { status: 400 });
-    }
-
-    const storageProvider = getDataMode() === "mock" ? "mock" : getProjectImageStorageProvider();
-
-    if (storageProvider === "mock" || getDataMode() === "mock") {
-      const path = `/uploads/${Date.now()}-${file.name}`;
-      const arrayBuffer = await file.arrayBuffer();
-      const source = Buffer.from(arrayBuffer);
-      const dimensions = extractImageDimensions(source, file.type || "application/octet-stream");
-
-      const photo = await addProjectPhoto(projectId, {
-        storage_provider: "mock",
-        storage_bucket: null,
-        storage_path: path,
-        public_url: path,
-        file_size: source.byteLength,
-        mime_type: file.type || "application/octet-stream",
-        width: dimensions?.width ?? null,
-        height: dimensions?.height ?? null,
-        caption: generatedCaption,
-        sort_order: sortOrder,
-        is_primary: isPrimary,
-        address_private: addressPrivate || null,
-        lat_private: Number.isFinite(latPrivate as number) ? latPrivate : null,
-        lng_private: Number.isFinite(lngPrivate as number) ? lngPrivate : null,
-        geocode_source: geocodeSource || null
-      });
-
-      if (isPrimary) {
-        await setPrimaryProjectPhoto(projectId, photo.id);
-      }
-
-      return NextResponse.json({ photo, mode: "mock" });
-    }
-
-    if (storageProvider !== "supabase") {
-      return NextResponse.json(
-        { error: `Unsupported storage provider: ${storageProvider}` },
-        { status: 400 }
-      );
-    }
-
-    const client = getStorageAdminClient();
-    if (!client) {
-      return NextResponse.json(
-        { error: "SUPABASE_SERVICE_ROLE_KEY is required for uploads." },
-        { status: 500 }
-      );
-    }
-
-    const uploaded = await uploadProjectImageToSupabase({
-      client,
-      projectId,
-      file,
-      latPrivate: Number.isFinite(latPrivate as number) ? latPrivate : null,
-      lngPrivate: Number.isFinite(lngPrivate as number) ? lngPrivate : null
+      filename: fileName,
+      serviceSlug: project.service_slug ?? "roofing",
+      neighborhood: project.neighborhood ?? null,
+      city: project.city ?? "Calgary"
     });
 
+    const mode = getDataMode();
     const photo = await addProjectPhoto(projectId, {
-      storage_provider: uploaded.provider,
-      storage_bucket: uploaded.bucket,
-      storage_path: uploaded.path,
-      public_url: uploaded.public_url,
-      file_size: uploaded.file_size,
-      mime_type: uploaded.mime_type,
-      width: uploaded.width,
-      height: uploaded.height,
+      storage_provider: String(body.storage_provider ?? (mode === "mock" ? "mock" : "supabase")),
+      storage_bucket: body.storage_bucket ? String(body.storage_bucket) : null,
+      storage_path: storagePath,
+      public_url: publicUrl,
+      file_size: body.file_size == null ? null : Number(body.file_size),
+      mime_type: body.mime_type ? String(body.mime_type) : null,
+      width: body.width == null ? null : Number(body.width),
+      height: body.height == null ? null : Number(body.height),
       caption: generatedCaption,
-      sort_order: sortOrder,
+      sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
       is_primary: isPrimary,
       address_private: addressPrivate || null,
       lat_private: Number.isFinite(latPrivate as number) ? latPrivate : null,
@@ -141,10 +89,10 @@ export async function POST(request: Request) {
       await setPrimaryProjectPhoto(projectId, photo.id);
     }
 
-    return NextResponse.json({ photo });
+    return NextResponse.json({ photo, mode });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upload failed." },
+      { error: error instanceof Error ? error.message : "Upload finalization failed." },
       { status: 400 }
     );
   }

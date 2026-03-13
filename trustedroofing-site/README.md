@@ -93,7 +93,7 @@ Open:
 2. **Location capture mode**: admin defaults to **Use my current location** (browser geolocation + reverse geocode) with optional manual address mode still available.
 3. **Privacy split**: private coords remain in `lat_private/lng_private`; rounded public coords are derived for public use.
 4. **Slug collision safety**: if a slug already exists, server appends numeric suffix (`-2`, `-3`, ...).
-5. **Photo ingest**: uploads are handled by `lib/storage.ts` and currently target the `project-photos` bucket by default (`PROJECT_PHOTOS_BUCKET`). Upload rows are written to `project_photos` with provider + bucket + path + public URL + metadata (`file_size`, `mime_type`, `width`, `height`).
+5. **Photo ingest**: admin now uses a signed direct upload flow (`POST /admin/upload/signed`), so files upload browser → Supabase Storage (`project-photos`) directly, then the app finalizes DB rows via `POST /admin/upload` with provider + bucket + path + public URL + metadata (`file_size`, `mime_type`, `width`, `height`).
 6. **Image geo-tagging**: each photo row stores inherited geo context (`address_private`, private/public coords, geocode source), and JPEG uploads are written with GPS EXIF coordinates at upload time.
 7. **Primary image**: admin can choose a main image at upload time and re-assign later.
 8. **Alt-text intelligence**: upload route auto-generates geo-context captions when explicit caption is generic/filename-based.
@@ -240,3 +240,11 @@ This means project + geo_post creation succeeds even when GBP is fully disabled.
 - Admin “Create project” navigation continues to use `Link href="/admin/projects/new"`; the mobile mis-navigation was caused by oversized fixed-header overlap. The compact mobile header/touch layout resolves this by reducing header footprint and overlap.
 - `geo_posts` 1:1 project alignment is enforced at DB level via `supabase/migrations/0008_geo_posts_project_unique.sql` (`unique index on geo_posts(project_id)`) and reflected in `supabase/schema.sql`.
 - Geo-post sync logic lives in `lib/db.ts` (`syncGeoPostForProject`). It still uses upsert on `project_id`, and now includes a compatibility fallback path (read/update/insert) with clearer migration guidance if a DB is missing the unique constraint.
+
+
+### Upload flow notes (413 fix)
+
+- Uploads no longer proxy full image binaries through the app route in Supabase mode.
+- The browser requests a signed upload token from `/admin/upload/signed`, uploads directly to Storage, then sends a small JSON finalize request to `/admin/upload`.
+- Client-side checks now validate file type and size up front, and large phone photos are resized/compressed before upload to reduce payload size and avoid HTTP 413 failures.
+- Bucket used: `project-photos` (override with `PROJECT_PHOTOS_BUCKET`).
