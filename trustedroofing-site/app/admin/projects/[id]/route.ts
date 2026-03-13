@@ -28,6 +28,13 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // Temporary debug logging for project photo display issues.
+  console.info("[admin/projects/:id GET] project photo query", {
+    projectId: params.id,
+    returnedPhotoCount: project.photos?.length ?? 0,
+    firstPhotoUrl: project.photos?.[0]?.public_url ?? null
+  });
+
   return NextResponse.json({ project });
 }
 

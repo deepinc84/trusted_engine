@@ -10,6 +10,13 @@ export default async function EditProjectPage({ params }: { params: { id: string
 
   if (!project) return notFound();
 
+  // Temporary debug logging for project photo display issues.
+  console.info("[admin/edit] project photo query", {
+    projectId: params.id,
+    returnedPhotoCount: project.photos?.length ?? 0,
+    firstPhotoUrl: project.photos?.[0]?.public_url ?? null
+  });
+
   return (
     <section className="section">
       <h1 className="hero-title">Edit project</h1>

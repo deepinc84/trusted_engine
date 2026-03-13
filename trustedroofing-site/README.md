@@ -251,3 +251,5 @@ This means project + geo_post creation succeeds even when GBP is fully disabled.
 - The browser requests a signed upload token from `/admin/upload/signed`, uploads directly to Storage, then sends a small JSON finalize request to `/admin/upload`.
 - Client-side checks now validate file type and size up front, and large phone photos are resized/compressed before upload to reduce payload size and avoid HTTP 413 failures.
 - Bucket used: `project-photos` (override with `PROJECT_PHOTOS_BUCKET`).
+
+- If you still have a legacy `projects.images` (`text[]`) column, run migration `0010_backfill_projects_images_into_project_photos.sql` to backfill existing image URLs into `project_photos` (ordered with first image as primary).

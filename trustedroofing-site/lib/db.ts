@@ -222,8 +222,8 @@ function getServiceClient() {
   return serviceClient;
 }
 
-async function fetchPhotosByProjectIds(projectIds: string[]) {
-  const client = getAnonClient();
+async function fetchPhotosByProjectIds(projectIds: string[], clientOverride?: SupabaseClient | null) {
+  const client = clientOverride ?? getServiceClient() ?? getAnonClient();
   if (!client || projectIds.length === 0) return [] as ProjectPhoto[];
 
   const { data } = await client
@@ -420,7 +420,14 @@ export async function getProjectById(id: string): Promise<Project | null> {
     if (client) {
       const { data } = await client.from("projects").select("*").eq("id", id).maybeSingle();
       if (!data) return null;
-      const photos = await fetchPhotosByProjectIds([id]);
+      const { data: photosData } = await client
+        .from("project_photos")
+        .select("*")
+        .eq("project_id", id)
+        .order("is_primary", { ascending: false })
+        .order("sort_order", { ascending: true });
+
+      const photos = (photosData ?? []) as ProjectPhoto[];
       return { ...(data as Project), photos };
     }
   }
