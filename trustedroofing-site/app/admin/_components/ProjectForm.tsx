@@ -59,6 +59,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null);
+  const [publishingGeoPost, setPublishingGeoPost] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [locating, setLocating] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
@@ -300,11 +301,32 @@ export default function ProjectForm({ services, mode, project }: Props) {
       setUploading(false);
       setUploadProgress(null);
       setFiles(null);
-      setFeedback("Project photos uploaded and geo-tagged from project location.", "success");
+      setFeedback("Project photos uploaded successfully. Set a primary image, then publish the geo-post.", "success");
     } catch {
       setUploading(false);
       setUploadProgress(null);
       setFeedback("Upload failed due to a network or auth issue. Reload admin with ?token=... and try again.", "error");
+    }
+  };
+
+
+  const publishGeoPost = async () => {
+    if (!projectId) return;
+    setPublishingGeoPost(true);
+    try {
+      const res = await adminFetch(`/admin/projects/${projectId}/geo-post`, { method: "POST" });
+      const text = await res.text();
+      const data = text ? parseJsonSafe<{ error?: string }>(text) : {};
+      if (!res.ok) {
+        setFeedback(data.error ?? `Unable to publish geo-post (HTTP ${res.status}).`, "error");
+        setPublishingGeoPost(false);
+        return;
+      }
+      setFeedback("Geo-post published from current project + primary image.", "success");
+      setPublishingGeoPost(false);
+    } catch {
+      setFeedback("Unable to publish geo-post right now.", "error");
+      setPublishingGeoPost(false);
     }
   };
 
@@ -342,9 +364,9 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
   return (
     <div className="card" style={{ display: "grid", gap: 14 }}>
-      <h2 style={{ margin: 0, fontSize: 28 }}>Create Geo-Tagged Post</h2>
+      <h2 style={{ margin: 0, fontSize: 28 }}>Create Project</h2>
       <p style={{ margin: 0, color: "var(--color-muted)" }}>
-        Use your current location by default, or switch to manual address mode.
+        Create the project first, then upload photos, choose a primary image, and publish the linked geo-post when ready.
       </p>
 
       {status ? (
@@ -480,6 +502,15 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
       <button className="button" type="button" onClick={() => void uploadPhotos()} disabled={!projectId || uploading || !selectedFiles.length}>
         {uploading ? `Uploading ${uploadProgress?.current ?? 0}/${uploadProgress?.total ?? selectedFiles.length}...` : "Upload photos"}
+      </button>
+
+      <button
+        className="button"
+        type="button"
+        onClick={() => void publishGeoPost()}
+        disabled={!projectId || publishingGeoPost || uploadedPhotos.length === 0}
+      >
+        {publishingGeoPost ? "Publishing geo-post..." : "Publish linked geo-post"}
       </button>
 
       {uploadedPhotos.length ? (

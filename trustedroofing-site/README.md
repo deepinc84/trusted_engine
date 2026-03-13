@@ -15,6 +15,8 @@ Copy `.env.example` to `.env.local` and set values:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only, required for admin writes/uploads/GBP queue worker)
+- `PROJECT_IMAGE_STORAGE_PROVIDER` (`supabase` by default)
+- `PROJECT_PHOTOS_BUCKET` (`project-photos` by default)
 - `NEXT_PUBLIC_GOOGLE_PLACES_KEY` (client key for address autocomplete widgets, if enabled)
 - `GOOGLE_SECRET_KEY` (server-only key for `/api/geocode` Google Geocoding calls)
 - `ADMIN_TOKEN` (middleware token gate for `/admin`)
@@ -91,7 +93,7 @@ Open:
 2. **Location capture mode**: admin defaults to **Use my current location** (browser geolocation + reverse geocode) with optional manual address mode still available.
 3. **Privacy split**: private coords remain in `lat_private/lng_private`; rounded public coords are derived for public use.
 4. **Slug collision safety**: if a slug already exists, server appends numeric suffix (`-2`, `-3`, ...).
-5. **Photo ingest**: uploads go to Supabase Storage bucket `project-photos` and each row is written to `project_photos` (includes `is_primary` and `blurhash` placeholder column), with higher multi-image limits in Admin UI.
+5. **Photo ingest**: uploads are handled by `lib/storage.ts` and currently target the `project-photos` bucket by default (`PROJECT_PHOTOS_BUCKET`). Upload rows are written to `project_photos` with provider + bucket + path + public URL + metadata (`file_size`, `mime_type`, `width`, `height`).
 6. **Image geo-tagging**: each photo row stores inherited geo context (`address_private`, private/public coords, geocode source), and JPEG uploads are written with GPS EXIF coordinates at upload time.
 7. **Primary image**: admin can choose a main image at upload time and re-assign later.
 8. **Alt-text intelligence**: upload route auto-generates geo-context captions when explicit caption is generic/filename-based.
@@ -222,8 +224,8 @@ If a section looks empty, verify rows exist in those tables (and that `projects.
 Current create pipeline (no GBP dependency):
 
 1. Project creation happens in `app/admin/projects/route.ts` (`POST`) via `createProject(...)`.
-2. Linked geo post creation/upsert happens in `lib/db.ts` via `syncGeoPostForProject(projectId)` and is called immediately after project create/update.
-3. Photo upload rows are created in `app/admin/upload/route.ts` + `addProjectPhoto(...)`, then `syncGeoPostForProject(projectId)` runs again so `geo_posts.primary_image_url` stays aligned to the current primary/first project photo.
+2. Photo upload rows are created in `app/admin/upload/route.ts` + `addProjectPhoto(...)` after project creation.
+3. Linked geo-post publishing is intentionally decoupled and now happens via `POST /admin/projects/:id/geo-post` (after at least one photo exists and primary selection is complete).
 
 GBP queue/posting was bypassed for admin create/update by removing `enqueueGbpPost(...)` from:
 - `app/admin/projects/route.ts`
@@ -238,4 +240,3 @@ This means project + geo_post creation succeeds even when GBP is fully disabled.
 - Admin “Create project” navigation continues to use `Link href="/admin/projects/new"`; the mobile mis-navigation was caused by oversized fixed-header overlap. The compact mobile header/touch layout resolves this by reducing header footprint and overlap.
 - `geo_posts` 1:1 project alignment is enforced at DB level via `supabase/migrations/0008_geo_posts_project_unique.sql` (`unique index on geo_posts(project_id)`) and reflected in `supabase/schema.sql`.
 - Geo-post sync logic lives in `lib/db.ts` (`syncGeoPostForProject`). It still uses upsert on `project_id`, and now includes a compatibility fallback path (read/update/insert) with clearer migration guidance if a DB is missing the unique constraint.
-

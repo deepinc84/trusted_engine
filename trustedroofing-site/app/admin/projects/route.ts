@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createProject, listProjects, syncGeoPostForProject } from "@/lib/db";
+import { createProject, listProjects } from "@/lib/db";
 
 async function triggerIndexing(url: string) {
   if (!process.env.INDEXING_TOKEN) return;
@@ -47,15 +47,13 @@ export async function POST(request: Request) {
       is_published: body.is_published ?? true
     });
 
-    const geoPost = await syncGeoPostForProject(project.id);
-
     const targetUrl = `https://trustedroofingcalgary.com/projects/${project.slug}`;
     await triggerIndexing(targetUrl);
 
-    return NextResponse.json({ project, geo_post: geoPost }, { status: 201 });
+    return NextResponse.json({ project }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to create project and linked geo post." },
+      { error: error instanceof Error ? error.message : "Unable to create project." },
       { status: 400 }
     );
   }

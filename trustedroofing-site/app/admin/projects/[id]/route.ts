@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProjectById, updateProject, syncGeoPostForProject } from "@/lib/db";
+import { getProjectById, updateProject } from "@/lib/db";
 
 async function triggerIndexing(url: string) {
   if (!process.env.INDEXING_TOKEN) return;
@@ -58,15 +58,14 @@ export async function PATCH(
     });
 
     const hydrated = await getProjectById(project.id);
-    const geoPost = await syncGeoPostForProject(project.id);
 
     const targetUrl = `https://trustedroofingcalgary.com/projects/${project.slug}`;
     await triggerIndexing(targetUrl);
 
-    return NextResponse.json({ project: hydrated ?? project, geo_post: geoPost });
+    return NextResponse.json({ project: hydrated ?? project });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to update project and geo post." },
+      { error: error instanceof Error ? error.message : "Unable to update project." },
       { status: 400 }
     );
   }

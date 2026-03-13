@@ -34,8 +34,14 @@ create table if not exists projects (
 create table if not exists project_photos (
   id uuid primary key default gen_random_uuid(),
   project_id uuid references projects(id) on delete cascade,
+  storage_provider text default 'supabase',
+  storage_bucket text,
   storage_path text not null,
   public_url text not null,
+  file_size bigint,
+  mime_type text,
+  width int,
+  height int,
   caption text,
   sort_order int default 0,
   is_primary boolean default false,
@@ -65,7 +71,6 @@ create table if not exists geo_posts (
   primary_image_url text,
   created_at timestamptz default now()
 );
-
 
 create table if not exists quote_events (
   id uuid primary key default gen_random_uuid(),
@@ -106,9 +111,6 @@ create index if not exists quote_events_created_at_idx on quote_events(created_a
 create index if not exists project_photos_project_sort_idx on project_photos(project_id, is_primary desc, sort_order asc);
 create unique index if not exists geo_posts_project_id_uidx on geo_posts(project_id);
 create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc);
-create unique index if not exists geo_posts_project_id_uidx on geo_posts(project_id);
-create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc);
-
 
 create table if not exists instaquote_address_queries (
   id uuid primary key default gen_random_uuid(),

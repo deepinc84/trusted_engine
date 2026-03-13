@@ -13,8 +13,14 @@ export type Service = {
 export type ProjectPhoto = {
   id: string;
   project_id: string;
+  storage_provider: string | null;
+  storage_bucket: string | null;
   storage_path: string;
   public_url: string;
+  file_size: number | null;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
   caption: string | null;
   sort_order: number;
   is_primary: boolean;
@@ -550,8 +556,14 @@ export async function updateProject(id: string, data: Partial<ProjectInput>) {
 export async function addProjectPhoto(
   project_id: string,
   photo: {
+    storage_provider?: string | null;
+    storage_bucket?: string | null;
     storage_path: string;
     public_url: string;
+    file_size?: number | null;
+    mime_type?: string | null;
+    width?: number | null;
+    height?: number | null;
     caption?: string | null;
     sort_order?: number;
     is_primary?: boolean;
@@ -566,8 +578,14 @@ export async function addProjectPhoto(
 
   const payload = {
     project_id,
+    storage_provider: photo.storage_provider ?? null,
+    storage_bucket: photo.storage_bucket ?? null,
     storage_path: photo.storage_path,
     public_url: photo.public_url,
+    file_size: photo.file_size ?? null,
+    mime_type: photo.mime_type ?? null,
+    width: photo.width ?? null,
+    height: photo.height ?? null,
     caption: photo.caption ?? null,
     sort_order: photo.sort_order ?? 0,
     is_primary: photo.is_primary ?? false,
@@ -713,7 +731,6 @@ export async function syncGeoPostForProject(projectId: string) {
     }
 
     throw new Error(`geo_posts upsert failed: ${error.message}`);
-
   }
 
   const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);
