@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Project, ProjectPhoto, Service } from "@/lib/db";
@@ -15,6 +16,8 @@ type GeocodeResult = {
   city: string;
   province: string;
   postal: string;
+  neighborhood: string;
+  quadrant: "NE" | "NW" | "SE" | "SW" | "";
   lat: number;
   lng: number;
   source: string;
@@ -116,6 +119,16 @@ function parseJsonSafe<T>(text: string): T {
   }
 }
 
+
+function inferQuadrantFromAddress(value: string) {
+  const source = value.toUpperCase();
+  if (/\bSOUTH\s*EAST\b|\bSOUTHEAST\b|\bSE\b/.test(source)) return "SE";
+  if (/\bSOUTH\s*WEST\b|\bSOUTHWEST\b|\bSW\b/.test(source)) return "SW";
+  if (/\bNORTH\s*EAST\b|\bNORTHEAST\b|\bNE\b/.test(source)) return "NE";
+  if (/\bNORTH\s*WEST\b|\bNORTHWEST\b|\bNW\b/.test(source)) return "NW";
+  return "";
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -134,7 +147,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [lngPrivate, setLngPrivate] = useState(project?.lng_private?.toString() ?? "");
   const [summary, setSummary] = useState(project?.summary ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
-  const [completedAt, setCompletedAt] = useState(project?.completed_at ?? "");
+  const [completedAt, setCompletedAt] = useState(project?.completed_at ?? (mode === "create" ? new Date().toISOString().slice(0, 10) : ""));
   const [projectId, setProjectId] = useState(project?.id ?? "");
   const [geocodeSource, setGeocodeSource] = useState(project?.geocode_source ?? "manual");
   const [locationMode, setLocationMode] = useState<"current" | "manual">("current");
@@ -188,6 +201,9 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setAddressPrivate(payload.result.fullAddress);
     setLatPrivate(String(payload.result.lat));
     setLngPrivate(String(payload.result.lng));
+    if (payload.result.neighborhood) setNeighborhood(payload.result.neighborhood);
+    const detectedQuadrant = payload.result.quadrant || inferQuadrantFromAddress(payload.result.fullAddress);
+    if (detectedQuadrant) setQuadrant(detectedQuadrant);
     setGeocodeSource(payload.result.source || "api");
     setFeedback(`Address matched via ${payload.result.source}. You can edit any field before saving.`, "success");
   };
@@ -216,7 +232,13 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
         if (response.ok && payload.ok && payload.result) {
           setAddressPrivate(payload.result.fullAddress);
-          if (!neighborhood) setNeighborhood(payload.result.city || "");
+          if (payload.result.neighborhood) {
+            setNeighborhood(payload.result.neighborhood);
+          } else if (!neighborhood) {
+            setNeighborhood("");
+          }
+          const detectedQuadrant = payload.result.quadrant || inferQuadrantFromAddress(payload.result.fullAddress);
+          if (detectedQuadrant) setQuadrant(detectedQuadrant);
           setFeedback(`Location captured: ${payload.result.fullAddress}`, "success");
         } else {
           setFeedback("Coordinates captured from current location. Add address manually if needed.", "success");
@@ -239,6 +261,12 @@ export default function ProjectForm({ services, mode, project }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  useEffect(() => {
+    if (quadrant) return;
+    const detected = inferQuadrantFromAddress(addressPrivate);
+    if (detected) setQuadrant(detected);
+  }, [addressPrivate, quadrant]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -361,6 +389,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
     try {
       const created: ProjectPhoto[] = [];
+      const nextSortStart = uploadedPhotos.length;
       for (let index = 0; index < selectedFiles.length; index += 1) {
         setUploadProgress({ current: index + 1, total: selectedFiles.length });
 
@@ -375,42 +404,10 @@ export default function ProjectForm({ services, mode, project }: Props) {
         }
 
         if (!supabaseClient) {
-          const dimensions = await getImageDimensions(uploadFile);
-          const fallbackRes = await adminFetch("/admin/upload", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              project_id: effectiveProjectId,
-              file_name: originalFile.name,
-              storage_provider: "mock",
-              storage_bucket: null,
-              storage_path: `/uploads/${Date.now()}-${uploadFile.name}`,
-              public_url: `/uploads/${Date.now()}-${uploadFile.name}`,
-              file_size: uploadFile.size,
-              mime_type: uploadFile.type || "application/octet-stream",
-              width: dimensions?.width ?? null,
-              height: dimensions?.height ?? null,
-              caption: originalFile.name,
-              sort_order: index,
-              is_primary: index === primaryUploadIndex,
-              address_private: addressPrivate || "",
-              geocode_source: geocodeSource || "manual",
-              lat_private: latPrivate || null,
-              lng_private: lngPrivate || null
-            })
-          });
-
-          const fallbackText = await fallbackRes.text();
-          const fallbackData = fallbackText ? parseJsonSafe<{ error?: string; photo?: ProjectPhoto }>(fallbackText) : {};
-          if (!fallbackRes.ok) {
-            setFeedback(fallbackData.error ?? `Upload failed (HTTP ${fallbackRes.status}).`, "error");
-            setUploading(false);
-            setUploadProgress(null);
-            return;
-          }
-
-          if (fallbackData.photo) created.push(fallbackData.photo as ProjectPhoto);
-          continue;
+          setFeedback("Direct upload requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY. Configure them and try again.", "error");
+          setUploading(false);
+          setUploadProgress(null);
+          return;
         }
 
         const signRes = await adminFetch("/admin/upload/signed", {
@@ -462,8 +459,12 @@ export default function ProjectForm({ services, mode, project }: Props) {
             mime_type: uploadFile.type || "application/octet-stream",
             width: dimensions?.width ?? null,
             height: dimensions?.height ?? null,
-            caption: originalFile.name,
-            sort_order: index,
+            caption: "",
+            service_slug: serviceSlug,
+            neighborhood: neighborhood || null,
+            city: "Calgary",
+            sequence: nextSortStart + index + 1,
+            sort_order: nextSortStart + index,
             is_primary: index === primaryUploadIndex,
             address_private: addressPrivate || "",
             geocode_source: geocodeSource || "manual",
@@ -555,7 +556,12 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
   return (
     <div className="card" style={{ display: "grid", gap: 14 }}>
-      <h2 style={{ margin: 0, fontSize: 28 }}>Create Project</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <h2 style={{ margin: 0, fontSize: 28 }}>{mode === "create" ? "Create Project" : "Edit Project"}</h2>
+        <Link href="/admin" className="button" style={{ textDecoration: "none" }}>
+          ← Back to projects
+        </Link>
+      </div>
       <p style={{ margin: 0, color: "var(--color-muted)" }}>
         Create the project first, then upload photos, choose a primary image, and publish the linked geo-post when ready.
       </p>

@@ -241,6 +241,9 @@ This means project + geo_post creation succeeds even when GBP is fully disabled.
 - `geo_posts` 1:1 project alignment is enforced at DB level via `supabase/migrations/0008_geo_posts_project_unique.sql` (`unique index on geo_posts(project_id)`) and reflected in `supabase/schema.sql`.
 - Geo-post sync logic lives in `lib/db.ts` (`syncGeoPostForProject`). It still uses upsert on `project_id`, and now includes a compatibility fallback path (read/update/insert) with clearer migration guidance if a DB is missing the unique constraint.
 
+- Geocode responses now include `neighborhood` and inferred `quadrant` (NE/NW/SE/SW) so admin forms can auto-fill more accurate location fields instead of defaulting neighborhood to city.
+- Project photo captions are now generated as numbered, scrubbed labels using service + street/neighborhood/city context rather than raw phone file names.
+
 
 ### Upload flow notes (413 fix)
 

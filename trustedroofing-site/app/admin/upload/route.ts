@@ -6,35 +6,31 @@ import {
   getProjectById
 } from "@/lib/db";
 
-function humanizeFilename(name: string) {
-  return name
-    .replace(/\.[^.]+$/, "")
-    .replace(/[-_]+/g, " ")
-    .trim();
+function streetFromAddress(address: string) {
+  const firstPart = address.split(",")[0]?.trim() ?? "";
+  return firstPart.replace(/\b(CALGARY|AB|ALBERTA)\b/gi, "").trim();
 }
 
 function buildGeoAltText(input: {
-  explicitCaption: string;
-  filename: string;
   serviceSlug: string;
+  sequence: number;
+  street: string | null;
   neighborhood: string | null;
   city: string;
 }) {
-  if (input.explicitCaption && input.explicitCaption.toLowerCase() !== input.filename.toLowerCase()) {
-    return input.explicitCaption;
-  }
+  const service = input.serviceSlug.replace(/-/g, " ").trim();
+  const locationParts = [input.street, input.neighborhood, input.city]
+    .map((part) => (part ?? "").trim())
+    .filter((part, idx, arr) => part.length > 0 && arr.indexOf(part) === idx);
 
-  const service = input.serviceSlug.replace(/-/g, " ");
-  const area = input.neighborhood ? `${input.neighborhood}, ${input.city}` : input.city;
-  const filenameHint = humanizeFilename(input.filename);
-  return `Completed ${service} project in ${area}. ${filenameHint}`.trim();
+  const location = locationParts.length ? locationParts.join(", ") : input.city;
+  return `${service} project ${String(input.sequence).padStart(2, "0")} - ${location}`;
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const projectId = String(body.project_id ?? "");
-    const fileName = String(body.file_name ?? "project-photo");
     const caption = String(body.caption ?? "");
     const sortOrder = Number(body.sort_order ?? 0);
     const isPrimary = Boolean(body.is_primary);
@@ -58,12 +54,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Project not found." }, { status: 404 });
     }
 
-    const generatedCaption = buildGeoAltText({
-      explicitCaption: caption,
-      filename: fileName,
-      serviceSlug: project.service_slug ?? "roofing",
-      neighborhood: project.neighborhood ?? null,
-      city: project.city ?? "Calgary"
+    const serviceSlug = String(body.service_slug ?? project.service_slug ?? "roofing");
+    const neighborhood = String(body.neighborhood ?? project.neighborhood ?? "");
+    const city = String(body.city ?? project.city ?? "Calgary");
+    const sequence = Number(body.sequence ?? 1);
+    const street = streetFromAddress(addressPrivate || project.address_private || "");
+
+    const generatedCaption = caption.trim() || buildGeoAltText({
+      serviceSlug,
+      sequence: Number.isFinite(sequence) ? sequence : 1,
+      street: street || null,
+      neighborhood: neighborhood || null,
+      city
     });
 
     const mode = getDataMode();
