@@ -13,7 +13,7 @@ export default function SiteHeader() {
       <div className="site-shell site-header__inner">
         <Link href="/" className="brand" aria-label="Trusted Roofing home">
           <Image
-            src="/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png"
+            src="/trusted-logo-bg-rgba-248-250-252-092.png"
             alt="Trusted Roofing & Exteriors"
             width={208}
             height={72}
