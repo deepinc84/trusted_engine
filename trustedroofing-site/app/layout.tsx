@@ -1,6 +1,7 @@
 import "./globals.css";
 import SiteFooter from "@/components/site/SiteFooter";
 import SiteHeader from "@/components/site/SiteHeader";
+import Script from "next/script";
 
 export const metadata = {
   title: "Trusted Roofing & Exteriors",
@@ -28,6 +29,21 @@ export default function RootLayout({
           <main>{children}</main>
           <SiteFooter />
         </div>
+
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-D895RE5E8H"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-D895RE5E8H');
+          `}
+        </Script>
+
       </body>
     </html>
   );
