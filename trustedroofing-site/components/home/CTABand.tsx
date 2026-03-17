@@ -11,7 +11,7 @@ export default function CTABand() {
         </p>
         <div className="homev3-hero__actions">
           <Link href="/quote" className="button">Start instant quote</Link>
-          <a href="tel:4035550124" className="button button--ghost">Call (403) 555-0124</a>
+          {/* <a href="tel:4035550124" className="button button--ghost">Call (403) 555-0124</a>*/}
         </div>
       </div>
     </section>
