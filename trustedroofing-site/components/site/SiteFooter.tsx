@@ -43,7 +43,7 @@ export default function SiteFooter() {
 
         <div>
           <h4>Contact</h4>
-          <a href="tel:4035550124">(403) 555-0124</a>
+          {/*<a href="tel:4035550124">(403) 555-0124</a>*/}
           <a href="mailto:hello@trusted.ca">hello@trusted.ca</a>
           <Link href="/quote">Get a quote</Link>
         </div>
