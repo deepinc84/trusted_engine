@@ -90,9 +90,26 @@ export type GeoPost = {
   lat_public: number | null;
   lng_public: number | null;
   primary_image_url: string | null;
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+  images?: string[] | null;
   created_at: string;
 };
 
+export type ProjectImageSet = {
+  primaryImage: ProjectPhoto | null;
+  gallery: ProjectPhoto[];
+};
+
+export type ResolvedGeoPost = GeoPost & {
+  heroImage: string | null;
+  gallery: string[];
+};
+
+=======
+  created_at: string;
+};
+
+>>>>>>> main
 type QuoteEventStep1 = {
   service_slug: string | null;
   place_id: string | null;
@@ -222,6 +239,39 @@ function getServiceClient() {
   return serviceClient;
 }
 
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+function sortProjectPhotos(photos: ProjectPhoto[]) {
+  return [...photos].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order);
+}
+
+function buildProjectImageSet(photos: ProjectPhoto[]): ProjectImageSet {
+  const gallery = sortProjectPhotos(photos);
+  return {
+    primaryImage: gallery[0] ?? null,
+    gallery
+  };
+}
+
+function buildProjectImageSetMap(projectIds: string[], photos: ProjectPhoto[]) {
+  const grouped = new Map<string, ProjectPhoto[]>();
+
+  for (const projectId of projectIds) {
+    grouped.set(projectId, []);
+  }
+
+  for (const photo of photos) {
+    const existing = grouped.get(photo.project_id) ?? [];
+    existing.push(photo);
+    grouped.set(photo.project_id, existing);
+  }
+
+  return new Map(
+    projectIds.map((projectId) => [projectId, buildProjectImageSet(grouped.get(projectId) ?? [])])
+  );
+}
+
+=======
+>>>>>>> main
 async function fetchPhotosByProjectIds(projectIds: string[], clientOverride?: SupabaseClient | null) {
   const client = clientOverride ?? getServiceClient() ?? getAnonClient();
   if (!client || projectIds.length === 0) return [] as ProjectPhoto[];
@@ -358,11 +408,19 @@ export async function listProjects(filters?: {
 
       const { data } = await query;
       const projects = (data ?? []) as Project[];
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+      const imageSets = await getProjectImageSets(projects.map((project) => project.id));
+
+      let output = projects.map((project) => ({
+        ...project,
+        photos: imageSets.get(project.id)?.gallery ?? []
+=======
       const photos = await fetchPhotosByProjectIds(projects.map((project) => project.id));
 
       let output = projects.map((project) => ({
         ...project,
         photos: photos.filter((photo) => photo.project_id === project.id)
+>>>>>>> main
       }));
 
       if (filters?.near_lat !== null && filters?.near_lat !== undefined && filters?.near_lng !== null && filters?.near_lng !== undefined) {
@@ -400,15 +458,43 @@ export async function listProjects(filters?: {
       .map((entry) => entry.project);
   }
 
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+  const imageSets = await getProjectImageSets(output.map((project) => project.id));
+
+  output = output.map((project) => ({
+    ...project,
+    photos: imageSets.get(project.id)?.gallery ?? []
+=======
   output = output.map((project) => ({
     ...project,
     photos: mockProjectPhotos.filter((photo) => photo.project_id === project.id).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
+>>>>>>> main
   }));
 
   if (filters?.limit) output = output.slice(0, filters.limit);
   return output;
 }
 
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+export async function getProjectImageSets(projectIds: string[]): Promise<Map<string, ProjectImageSet>> {
+  if (projectIds.length === 0) return new Map();
+
+  if (getDataMode() === "supabase") {
+    const photos = await fetchPhotosByProjectIds(projectIds);
+    return buildProjectImageSetMap(projectIds, photos);
+  }
+
+  const photos = mockProjectPhotos.filter((photo) => projectIds.includes(photo.project_id));
+  return buildProjectImageSetMap(projectIds, photos);
+}
+
+export async function getProjectImageSet(projectId: string): Promise<ProjectImageSet> {
+  const imageSets = await getProjectImageSets([projectId]);
+  return imageSets.get(projectId) ?? { primaryImage: null, gallery: [] };
+}
+
+=======
+>>>>>>> main
 export async function getProjectBySlug(slug: string, includeUnpublished = false): Promise<Project | null> {
   const list = await listProjects({ include_unpublished: includeUnpublished });
   return list.find((project) => project.slug === slug) ?? null;
@@ -420,6 +506,10 @@ export async function getProjectById(id: string): Promise<Project | null> {
     if (client) {
       const { data } = await client.from("projects").select("*").eq("id", id).maybeSingle();
       if (!data) return null;
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+      const imageSet = await getProjectImageSet(id);
+      return { ...(data as Project), photos: imageSet.gallery };
+=======
       const { data: photosData } = await client
         .from("project_photos")
         .select("*")
@@ -429,15 +519,74 @@ export async function getProjectById(id: string): Promise<Project | null> {
 
       const photos = (photosData ?? []) as ProjectPhoto[];
       return { ...(data as Project), photos };
+>>>>>>> main
     }
   }
 
   const project = mockProjects.find((item) => item.id === id);
   if (!project) return null;
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+  const imageSet = await getProjectImageSet(id);
+
+  return {
+    ...project,
+    photos: imageSet.gallery
+  };
+}
+
+export async function listGeoPosts(): Promise<ResolvedGeoPost[]> {
+  const resolveGeoPosts = async (geoPosts: GeoPost[]) => {
+    const imageSets = await getProjectImageSets(geoPosts.map((geoPost) => geoPost.project_id));
+
+    return geoPosts.map((geoPost) => {
+      const ownGallery = Array.isArray(geoPost.images)
+        ? geoPost.images.filter((image): image is string => typeof image === "string" && image.length > 0)
+        : [];
+
+      if (ownGallery.length > 0) {
+        return {
+          ...geoPost,
+          heroImage: ownGallery[0],
+          gallery: ownGallery
+        } satisfies ResolvedGeoPost;
+      }
+
+      const imageSet = imageSets.get(geoPost.project_id) ?? { primaryImage: null, gallery: [] };
+      const projectGallery = imageSet.gallery.map((photo) => photo.public_url);
+
+      return {
+        ...geoPost,
+        heroImage: geoPost.primary_image_url ?? imageSet.primaryImage?.public_url ?? null,
+        gallery: projectGallery
+      } satisfies ResolvedGeoPost;
+    });
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getAnonClient();
+    if (client) {
+      const { data } = await client
+        .from("geo_posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const geoPosts = ((data ?? []) as GeoPost[]).filter((geoPost) => !!geoPost.slug);
+      return resolveGeoPosts(geoPosts);
+    }
+  }
+
+  return resolveGeoPosts(mockGeoPosts.filter((geoPost) => !!geoPost.slug));
+}
+
+export async function getGeoPostBySlug(slug: string): Promise<ResolvedGeoPost | null> {
+  const geoPosts = await listGeoPosts();
+  return geoPosts.find((geoPost) => geoPost.slug === slug) ?? null;
+=======
   return {
     ...project,
     photos: mockProjectPhotos.filter((photo) => photo.project_id === id).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
   };
+>>>>>>> main
 }
 
 type ProjectInput = {
@@ -659,9 +808,14 @@ export async function syncGeoPostForProject(projectId: string) {
   const project = await getProjectById(projectId);
   if (!project) throw new Error("Project not found for geo_post sync.");
 
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+  const imageSet = await getProjectImageSet(projectId);
+  const primaryImage = imageSet.primaryImage?.public_url ?? null;
+=======
   const primaryImage = project.photos?.find((photo) => photo.is_primary)?.public_url
     ?? project.photos?.[0]?.public_url
     ?? null;
+>>>>>>> main
 
   const payload = {
     project_id: project.id,

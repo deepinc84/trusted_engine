@@ -1,7 +1,10 @@
 import "./globals.css";
 import SiteFooter from "@/components/site/SiteFooter";
 import SiteHeader from "@/components/site/SiteHeader";
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+=======
 import Script from "next/script";
+>>>>>>> main
 
 export const metadata = {
   title: "Trusted Roofing & Exteriors",
@@ -29,6 +32,8 @@ export default function RootLayout({
           <main>{children}</main>
           <SiteFooter />
         </div>
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+=======
 
         {/* Google Analytics */}
         <Script
@@ -44,6 +49,7 @@ export default function RootLayout({
           `}
         </Script>
 
+>>>>>>> main
       </body>
     </html>
   );

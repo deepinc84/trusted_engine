@@ -31,9 +31,9 @@ export default function SiteHeader() {
         </nav>
 
         <div className="nav-right">
-          {/* <a href="tel:4035550124" className="nav-tel">
-            (403) 555-0124
-          </a> */}
+          <a href="tel:5872883351" className="nav-tel">
+            587-288-3351
+          </a>
           <Link href="/quote" className="cta">
             Get instant quote
           </Link>
