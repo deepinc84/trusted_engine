@@ -15,8 +15,8 @@ export default function SiteHeader() {
           <Image
             src="/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png"
             alt="Trusted Roofing & Exteriors"
-            width={160}
-            height={56}
+            width={1536}
+            height={1024}
             className="brand-logo"
             priority
           />
