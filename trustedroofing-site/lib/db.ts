@@ -1249,19 +1249,10 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
     const readClient = getServiceClient() ?? getAnonClient();
     if (!readClient) return [];
 
-    const { data: primaryData, error: primaryError } = await readClient
-      .from("instaquote_address_queries")
-      .select("id,address,service_type,requested_scopes,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,estimate_low,estimate_high,solar_status,solar_debug,queried_at")
-      .order("queried_at", { ascending: false })
-      .limit(limit);
-
-    if (!primaryError && (primaryData?.length ?? 0) > 0) {
-      return (primaryData ?? []) as InstaquoteAddressQuery[];
-    }
-
     const { data: legacyData } = await readClient
       .from("quote_events")
       .select("id,address,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
+      .eq("city", "Calgary")
       .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted")
       .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false })

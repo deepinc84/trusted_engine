@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ProjectSchema from "@/components/ProjectSchema";
+import DynamicSchema from "@/components/DynamicSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import { getProjectBySlug } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
+import { getNearestNeighborhoodLinksForProject } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
@@ -31,10 +32,11 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
   if (!project) return notFound();
 
   const gallery = project.photos ?? [];
+  const relatedNeighborhoods = await getNearestNeighborhoodLinksForProject(project, 3);
 
   return (
     <>
-      <ProjectSchema project={project} />
+      <DynamicSchema projectData={project} relatedNeighborhoods={relatedNeighborhoods} />
       <PageHero
         eyebrow={project.service_slug}
         title={project.title}

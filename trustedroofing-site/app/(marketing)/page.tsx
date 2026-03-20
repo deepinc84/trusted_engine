@@ -12,10 +12,10 @@ import {
   listHomepageMetrics,
   listProjects,
   listRecentInstaquoteAddressQueries,
-  listServiceAreas,
   listServices
 } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
+import { getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +56,7 @@ export default async function HomePage() {
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
     listHomepageMetrics(),
-    listServiceAreas(),
+    getTopQuoteNeighborhoods(8),
     listRecentInstaquoteAddressQueries(8)
   ]);
 
@@ -100,7 +100,12 @@ export default async function HomePage() {
       <FeaturedProjects projects={featuredProjects} />
       <WhyTrusted />
       <CTABand />
-      <ServiceAreas areas={areas.filter((area) => area.active)} />
+      <ServiceAreas areas={areas.map((area) => ({
+        id: area.slug,
+        name: area.neighborhood,
+        slug: area.slug,
+        active: true
+      }))} />
     </>
   );
 }

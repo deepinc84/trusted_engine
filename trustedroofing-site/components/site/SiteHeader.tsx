@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import HeatMap from "@/components/HeatMap";
+import HeaderLocationProbe from "@/components/site/HeaderLocationProbe";
+import { getQuoteQuadrantHeat, getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 
 const links = [
   { href: "/", label: "Home" },
@@ -7,7 +10,12 @@ const links = [
   { href: "/projects", label: "Projects" }
 ];
 
-export default function SiteHeader() {
+export default async function SiteHeader() {
+  const [serviceAreas, heatmap] = await Promise.all([
+    getTopQuoteNeighborhoods(10),
+    getQuoteQuadrantHeat()
+  ]);
+
   return (
     <header className="site-header site-header--v3">
       <div className="site-shell site-header__inner">
@@ -28,6 +36,26 @@ export default function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          <div className="nav-service-areas">
+            <Link href="/service-areas">Service Areas</Link>
+            <div className="nav-service-areas__dropdown">
+              <div>
+                <p className="nav-service-areas__eyebrow">Top Calgary quote activity</p>
+                <div className="nav-service-areas__list">
+                  {serviceAreas.map((area) => (
+                    <Link key={area.slug} href={`/service-areas/${area.slug}`}>
+                      <span>{area.neighborhood}</span>
+                      <strong>{area.quoteCount}</strong>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="nav-service-areas__eyebrow">Quadrant heat</p>
+                <HeatMap counts={heatmap} />
+              </div>
+            </div>
+          </div>
         </nav>
 
         <div className="nav-right">
@@ -38,6 +66,9 @@ export default function SiteHeader() {
             Get instant quote
           </Link>
         </div>
+      </div>
+      <div className="site-shell">
+        <HeaderLocationProbe />
       </div>
     </header>
   );

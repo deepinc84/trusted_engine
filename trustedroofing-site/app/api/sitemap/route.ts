@@ -1,4 +1,5 @@
 import { listGeoPosts, listProjects, listServices } from "@/lib/db";
+import { getAllQuoteNeighborhoods } from "@/lib/seo-engine";
 import { canonicalUrl } from "@/lib/seo";
 
 function buildUrlset(urls: string[]) {
@@ -7,10 +8,11 @@ function buildUrlset(urls: string[]) {
 }
 
 export async function GET() {
-  const [services, projects, geoPosts] = await Promise.all([
+  const [services, projects, geoPosts, serviceAreas] = await Promise.all([
     listServices(),
     listProjects({ include_unpublished: false, limit: 2000 }),
-    listGeoPosts()
+    listGeoPosts(),
+    getAllQuoteNeighborhoods()
   ]);
 
   const urls = [
@@ -19,6 +21,8 @@ export async function GET() {
     ...services.map((service) => canonicalUrl(`/services/${service.slug}`)),
     canonicalUrl("/projects"),
     ...projects.map((project) => canonicalUrl(`/projects/${project.slug}`)),
+    canonicalUrl("/service-areas"),
+    ...serviceAreas.map((area) => canonicalUrl(`/service-areas/${area.slug}`)),
     canonicalUrl("/geo-posts"),
     ...geoPosts.flatMap((geoPost) => (geoPost.slug ? [canonicalUrl(`/geo-posts/${geoPost.slug}`)] : []))
   ];
