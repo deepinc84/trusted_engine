@@ -7,7 +7,11 @@ export default function SiteFooter() {
       <div className="site-shell site-footer__grid site-footer__grid--expanded">
         <div className="site-footer__brand-block">
           <div className="site-footer__brand">
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
             <Image src="/logo-mark.svg" alt="Trusted" width={36} height={36} />
+=======
+            <Image src="/IMG_0326.jpeg" alt="Trusted" width={36} height={36} />
+>>>>>>> main
             <div>
               <strong>Trusted Roofing & Exteriors</strong>
               <p>Calgary, Alberta</p>
@@ -43,8 +47,13 @@ export default function SiteFooter() {
 
         <div>
           <h4>Contact</h4>
+<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
           <a href="tel:5872883351">587-288-3351</a>
           <a href="mailto:info@trustedexteriors.ca">info@trustedexteriors.ca</a>
+=======
+          {/*<a href="tel:4035550124">(403) 555-0124</a>*/}
+          <a href="mailto:hello@trusted.ca">hello@trusted.ca</a>
+>>>>>>> main
           <Link href="/quote">Get a quote</Link>
         </div>
       </div>
