@@ -71,13 +71,36 @@ a {
 .brand {
   display: flex;
   align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
 .brand-logo {
-  width: 100%;
-  max-width: 220px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   height: auto;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  color: var(--white);
+}
+
+.brand-copy strong {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.brand-copy span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .nav {
@@ -1769,8 +1792,18 @@ main {
   }
 
   .brand-logo {
-    max-width: 132px;
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
     height: auto;
+  }
+
+  .brand-copy strong {
+    font-size: 0.9rem;
+  }
+
+  .brand-copy span {
+    font-size: 0.68rem;
   }
 
   .nav--v3 {
