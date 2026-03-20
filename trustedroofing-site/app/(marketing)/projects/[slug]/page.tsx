@@ -6,10 +6,7 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import { getProjectBySlug } from "@/lib/db";
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
 import { getPlaceholderProjectImage } from "@/lib/images";
-=======
->>>>>>> main
 import { buildMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
@@ -33,11 +30,8 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
   const project = await getProjectBySlug(params.slug);
   if (!project) return notFound();
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
   const gallery = project.photos ?? [];
 
-=======
->>>>>>> main
   return (
     <>
       <ProjectSchema project={project} />
@@ -61,7 +55,6 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
             {project.description ? <p>{project.description}</p> : null}
           </article>
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
           {gallery.length ? (
             <div className="ui-grid ui-grid--gallery" style={{ marginTop: 18 }}>
               {gallery.slice(0, 12).map((photo) => (
@@ -93,22 +86,6 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
               />
             </article>
           )}
-=======
-          <div className="ui-grid ui-grid--gallery" style={{ marginTop: 18 }}>
-            {(project.photos ?? []).slice(0, 12).map((photo) => (
-              <article className="ui-card" key={photo.id}>
-                <Image
-                  src={photo.public_url}
-                  alt={photo.caption ?? project.title}
-                  width={960}
-                  height={720}
-                  style={{ width: "100%", height: "auto", borderRadius: 12 }}
-                />
-                {photo.caption ? <p>{photo.caption}</p> : null}
-              </article>
-            ))}
-          </div>
->>>>>>> main
         </PageContainer>
       </section>
 
