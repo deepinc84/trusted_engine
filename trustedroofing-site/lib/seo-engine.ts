@@ -100,7 +100,7 @@ async function buildNeighborhoodSummaries() {
     const city = extractCity(row.address) ?? "Calgary";
     if (city !== "Calgary") continue;
 
-    const neighborhood = extractNeighborhood(row.address);
+    const neighborhood = row.neighborhood ?? extractNeighborhood(row.address);
     if (!neighborhood) continue;
 
     const slug = neighborhoodSlug(neighborhood);

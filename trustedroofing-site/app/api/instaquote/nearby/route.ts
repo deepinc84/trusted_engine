@@ -8,6 +8,7 @@ type Row = {
   lat: number;
   lng: number;
   address: string;
+  neighborhood: string | null;
   service_type: string | null;
   requested_scopes: string[] | null;
   roof_area_sqft: number | null;
@@ -37,7 +38,7 @@ function rankRows(rows: Row[], targetAddress: string | null) {
   const targetCity = normalize(extractCity(targetAddress ?? ""));
 
   const enriched = rows.map((row, index) => {
-    const neighborhood = normalize(extractNeighborhood(row.address));
+    const neighborhood = normalize(row.neighborhood ?? extractNeighborhood(row.address));
     const quadrant = normalize(extractQuadrant(row.address));
     const city = normalize(extractCity(row.address));
 
@@ -89,6 +90,7 @@ export async function GET(request: Request) {
       lat: Number(row.lat),
       lng: Number(row.lng),
       address: row.address,
+      neighborhood: row.neighborhood,
       service_type: row.service_type,
       requested_scopes: row.requested_scopes,
       roof_area_sqft: row.roof_area_sqft,
@@ -114,7 +116,7 @@ export async function GET(request: Request) {
     lat: row.lat,
     lng: row.lng,
     address: toPublicAreaLabel(row.address),
-    neighborhood: extractNeighborhood(row.address),
+    neighborhood: row.neighborhood ?? extractNeighborhood(row.address),
     quadrant: extractQuadrant(row.address),
     city: extractCity(row.address),
     service_type: row.service_type,

@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import HeatMap from "@/components/HeatMap";
-import HeaderLocationProbe from "@/components/site/HeaderLocationProbe";
 import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborhoods } from "@/lib/seo-engine";
 
 const links = [

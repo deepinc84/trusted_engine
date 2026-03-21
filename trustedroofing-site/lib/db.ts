@@ -987,6 +987,7 @@ export function getStorageAdminClient() {
 export type InstaquoteAddressQuery = {
   id: string;
   address: string;
+  neighborhood: string | null;
   service_type: string | null;
   requested_scopes: string[] | null;
   place_id: string | null;
@@ -1132,6 +1133,7 @@ export async function createInstaquoteAddressQuery(
         estimate_high: payload.estimate_high,
         notes: JSON.stringify({
           source: payload.data_source,
+          neighborhood: payload.neighborhood,
           service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
           requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
           estimate_low: payload.estimate_low,
@@ -1161,6 +1163,21 @@ export async function createInstaquoteAddressQuery(
 
     return payload.id;
   }
+
+  mockQuoteEvents.unshift({
+    id: payload.id,
+    created_at: payload.queried_at,
+    service_slug: null,
+    place_id: payload.place_id ?? null,
+    address_private: payload.address,
+    lat_private: payload.lat,
+    lng_private: payload.lng,
+    lat_public: payload.lat,
+    lng_public: payload.lng,
+    estimate_low: payload.estimate_low,
+    estimate_high: payload.estimate_high,
+    status: "instaquote_estimated"
+  });
 
   return payload.id;
 }
@@ -1296,6 +1313,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
       return {
         id: String(row.id),
         address: String(row.address ?? "Calgary, AB"),
+        neighborhood: typeof parsedNotes.neighborhood === "string" ? parsedNotes.neighborhood : null,
         service_type: typeof parsedNotes.service_type === "string"
           ? parsedNotes.service_type
           : "InstantQuote:Roof",
