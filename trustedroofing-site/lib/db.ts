@@ -90,7 +90,6 @@ export type GeoPost = {
   lat_public: number | null;
   lng_public: number | null;
   primary_image_url: string | null;
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
   images?: string[] | null;
   created_at: string;
 };
@@ -105,11 +104,6 @@ export type ResolvedGeoPost = GeoPost & {
   gallery: string[];
 };
 
-=======
-  created_at: string;
-};
-
->>>>>>> main
 type QuoteEventStep1 = {
   service_slug: string | null;
   place_id: string | null;
@@ -239,7 +233,6 @@ function getServiceClient() {
   return serviceClient;
 }
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
 function sortProjectPhotos(photos: ProjectPhoto[]) {
   return [...photos].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order);
 }
@@ -270,8 +263,6 @@ function buildProjectImageSetMap(projectIds: string[], photos: ProjectPhoto[]) {
   );
 }
 
-=======
->>>>>>> main
 async function fetchPhotosByProjectIds(projectIds: string[], clientOverride?: SupabaseClient | null) {
   const client = clientOverride ?? getServiceClient() ?? getAnonClient();
   if (!client || projectIds.length === 0) return [] as ProjectPhoto[];
@@ -408,19 +399,11 @@ export async function listProjects(filters?: {
 
       const { data } = await query;
       const projects = (data ?? []) as Project[];
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
       const imageSets = await getProjectImageSets(projects.map((project) => project.id));
 
       let output = projects.map((project) => ({
         ...project,
         photos: imageSets.get(project.id)?.gallery ?? []
-=======
-      const photos = await fetchPhotosByProjectIds(projects.map((project) => project.id));
-
-      let output = projects.map((project) => ({
-        ...project,
-        photos: photos.filter((photo) => photo.project_id === project.id)
->>>>>>> main
       }));
 
       if (filters?.near_lat !== null && filters?.near_lat !== undefined && filters?.near_lng !== null && filters?.near_lng !== undefined) {
@@ -458,24 +441,17 @@ export async function listProjects(filters?: {
       .map((entry) => entry.project);
   }
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
   const imageSets = await getProjectImageSets(output.map((project) => project.id));
 
   output = output.map((project) => ({
     ...project,
     photos: imageSets.get(project.id)?.gallery ?? []
-=======
-  output = output.map((project) => ({
-    ...project,
-    photos: mockProjectPhotos.filter((photo) => photo.project_id === project.id).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
->>>>>>> main
   }));
 
   if (filters?.limit) output = output.slice(0, filters.limit);
   return output;
 }
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
 export async function getProjectImageSets(projectIds: string[]): Promise<Map<string, ProjectImageSet>> {
   if (projectIds.length === 0) return new Map();
 
@@ -493,8 +469,6 @@ export async function getProjectImageSet(projectId: string): Promise<ProjectImag
   return imageSets.get(projectId) ?? { primaryImage: null, gallery: [] };
 }
 
-=======
->>>>>>> main
 export async function getProjectBySlug(slug: string, includeUnpublished = false): Promise<Project | null> {
   const list = await listProjects({ include_unpublished: includeUnpublished });
   return list.find((project) => project.slug === slug) ?? null;
@@ -506,26 +480,13 @@ export async function getProjectById(id: string): Promise<Project | null> {
     if (client) {
       const { data } = await client.from("projects").select("*").eq("id", id).maybeSingle();
       if (!data) return null;
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
       const imageSet = await getProjectImageSet(id);
       return { ...(data as Project), photos: imageSet.gallery };
-=======
-      const { data: photosData } = await client
-        .from("project_photos")
-        .select("*")
-        .eq("project_id", id)
-        .order("is_primary", { ascending: false })
-        .order("sort_order", { ascending: true });
-
-      const photos = (photosData ?? []) as ProjectPhoto[];
-      return { ...(data as Project), photos };
->>>>>>> main
     }
   }
 
   const project = mockProjects.find((item) => item.id === id);
   if (!project) return null;
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
   const imageSet = await getProjectImageSet(id);
 
   return {
@@ -581,12 +542,6 @@ export async function listGeoPosts(): Promise<ResolvedGeoPost[]> {
 export async function getGeoPostBySlug(slug: string): Promise<ResolvedGeoPost | null> {
   const geoPosts = await listGeoPosts();
   return geoPosts.find((geoPost) => geoPost.slug === slug) ?? null;
-=======
-  return {
-    ...project,
-    photos: mockProjectPhotos.filter((photo) => photo.project_id === id).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
-  };
->>>>>>> main
 }
 
 type ProjectInput = {
@@ -808,14 +763,8 @@ export async function syncGeoPostForProject(projectId: string) {
   const project = await getProjectById(projectId);
   if (!project) throw new Error("Project not found for geo_post sync.");
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
   const imageSet = await getProjectImageSet(projectId);
   const primaryImage = imageSet.primaryImage?.public_url ?? null;
-=======
-  const primaryImage = project.photos?.find((photo) => photo.is_primary)?.public_url
-    ?? project.photos?.[0]?.public_url
-    ?? null;
->>>>>>> main
 
   const payload = {
     project_id: project.id,
@@ -1038,6 +987,7 @@ export function getStorageAdminClient() {
 export type InstaquoteAddressQuery = {
   id: string;
   address: string;
+  neighborhood: string | null;
   service_type: string | null;
   requested_scopes: string[] | null;
   place_id: string | null;
@@ -1183,6 +1133,7 @@ export async function createInstaquoteAddressQuery(
         estimate_high: payload.estimate_high,
         notes: JSON.stringify({
           source: payload.data_source,
+          neighborhood: payload.neighborhood,
           service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
           requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
           estimate_low: payload.estimate_low,
@@ -1212,6 +1163,21 @@ export async function createInstaquoteAddressQuery(
 
     return payload.id;
   }
+
+  mockQuoteEvents.unshift({
+    id: payload.id,
+    created_at: payload.queried_at,
+    service_slug: null,
+    place_id: payload.place_id ?? null,
+    address_private: payload.address,
+    lat_private: payload.lat,
+    lng_private: payload.lng,
+    lat_public: payload.lat,
+    lng_public: payload.lng,
+    estimate_low: payload.estimate_low,
+    estimate_high: payload.estimate_high,
+    status: "instaquote_estimated"
+  });
 
   return payload.id;
 }
@@ -1300,19 +1266,10 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
     const readClient = getServiceClient() ?? getAnonClient();
     if (!readClient) return [];
 
-    const { data: primaryData, error: primaryError } = await readClient
-      .from("instaquote_address_queries")
-      .select("id,address,service_type,requested_scopes,place_id,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,estimate_low,estimate_high,solar_status,solar_debug,queried_at")
-      .order("queried_at", { ascending: false })
-      .limit(limit);
-
-    if (!primaryError && (primaryData?.length ?? 0) > 0) {
-      return (primaryData ?? []) as InstaquoteAddressQuery[];
-    }
-
     const { data: legacyData } = await readClient
       .from("quote_events")
       .select("id,address,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
+      .eq("city", "Calgary")
       .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted")
       .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false })
@@ -1356,6 +1313,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
       return {
         id: String(row.id),
         address: String(row.address ?? "Calgary, AB"),
+        neighborhood: typeof parsedNotes.neighborhood === "string" ? parsedNotes.neighborhood : null,
         service_type: typeof parsedNotes.service_type === "string"
           ? parsedNotes.service_type
           : "InstantQuote:Roof",
