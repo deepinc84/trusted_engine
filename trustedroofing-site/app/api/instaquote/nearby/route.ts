@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { listRecentInstaquoteAddressQueries } from "@/lib/db";
 import { haversineKm } from "@/lib/geo";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
+import { extractCity, extractNeighborhood, extractQuadrant } from "@/lib/serviceAreas";
 
 type Row = {
   lat: number;
   lng: number;
   address: string;
+  neighborhood: string | null;
+  service_type: string | null;
+  requested_scopes: string[] | null;
   roof_area_sqft: number | null;
   pitch_degrees: number | null;
   complexity_band: string | null;
@@ -17,22 +21,6 @@ type Row = {
 
 function normalize(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
-}
-
-function extractQuadrant(address: string) {
-  const match = address.toUpperCase().match(/\b(NE|NW|SE|SW)\b/);
-  return match?.[1] ?? null;
-}
-
-function extractCity(address: string) {
-  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
-  const cityPart = parts.find((part) => /calgary|airdrie|okotoks|cochrane|chestermere/i.test(part));
-  return cityPart ?? (parts[1] ?? null);
-}
-
-function extractNeighborhood(address: string) {
-  // Never infer/display street-level address data from quote inputs.
-  return null;
 }
 
 function toPublicAreaLabel(address: string) {
@@ -50,7 +38,7 @@ function rankRows(rows: Row[], targetAddress: string | null) {
   const targetCity = normalize(extractCity(targetAddress ?? ""));
 
   const enriched = rows.map((row, index) => {
-    const neighborhood = normalize(extractNeighborhood(row.address));
+    const neighborhood = normalize(row.neighborhood ?? extractNeighborhood(row.address));
     const quadrant = normalize(extractQuadrant(row.address));
     const city = normalize(extractCity(row.address));
 
@@ -102,6 +90,9 @@ export async function GET(request: Request) {
       lat: Number(row.lat),
       lng: Number(row.lng),
       address: row.address,
+      neighborhood: row.neighborhood,
+      service_type: row.service_type,
+      requested_scopes: row.requested_scopes,
       roof_area_sqft: row.roof_area_sqft,
       pitch_degrees: row.pitch_degrees,
       complexity_band: row.complexity_band,
@@ -125,9 +116,11 @@ export async function GET(request: Request) {
     lat: row.lat,
     lng: row.lng,
     address: toPublicAreaLabel(row.address),
-    neighborhood: extractNeighborhood(row.address),
+    neighborhood: row.neighborhood ?? extractNeighborhood(row.address),
     quadrant: extractQuadrant(row.address),
     city: extractCity(row.address),
+    service_type: row.service_type,
+    requested_scopes: row.requested_scopes,
     roof_area_sqft: row.roof_area_sqft,
     pitch_degrees: row.pitch_degrees,
     complexity_band: row.complexity_band,
