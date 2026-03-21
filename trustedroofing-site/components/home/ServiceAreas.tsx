@@ -13,7 +13,7 @@ export default function ServiceAreas({ areas }: { areas: HomeArea[] }) {
           {areas.filter((area) => area.active).map((area) => (
             <Link
               key={area.id}
-              href={`/projects?neighborhood=${encodeURIComponent(area.name)}`}
+              href={`/service-areas/${area.slug}`}
               prefetch={false}
             >
               {area.name}
