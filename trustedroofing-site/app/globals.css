@@ -1789,6 +1789,20 @@ body {
   white-space: nowrap;
 }
 
+.site-header__location-test {
+  margin: 0 0 12px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.site-header__location-test span {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 main {
   padding-top: 92px;
 }
