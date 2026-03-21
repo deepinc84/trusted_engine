@@ -9,6 +9,8 @@ import { listProjects } from "@/lib/db";
 import { getAllQuoteNeighborhoods, getQuoteNeighborhoodBySlug } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const area = await getQuoteNeighborhoodBySlug(params.slug);
   if (!area) {
@@ -24,11 +26,6 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     description: `Live quote ranges, project proof, and neighborhood-specific roofing demand for ${area.neighborhood}, Calgary.`,
     path: `/service-areas/${params.slug}`
   });
-}
-
-export async function generateStaticParams() {
-  const areas = await getAllQuoteNeighborhoods();
-  return areas.map((area) => ({ slug: area.slug }));
 }
 
 export default async function ServiceAreaDetailPage({ params }: { params: { slug: string } }) {

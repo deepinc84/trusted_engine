@@ -12,6 +12,8 @@ export const metadata = buildMetadata({
   path: "/quotes"
 });
 
+export const dynamic = "force-dynamic";
+
 function buildArchiveSchema(cards: Awaited<ReturnType<typeof getAllQuoteCards>>) {
   return {
     "@context": "https://schema.org",
@@ -97,11 +99,7 @@ export default async function QuotesArchivePage() {
             <div className="quote-card-grid" style={{ marginTop: 18 }}>
               {cards.map((card) => (
                 <div key={card.id} id={`quote-${card.id}`}>
-                  <QuoteCard
-                    quote={card}
-                    href={`/service-areas/${card.slug}`}
-                    ctaLabel={`Explore ${card.neighborhood}`}
-                  />
+                  <QuoteCard quote={card} href={null} />
                 </div>
               ))}
             </div>

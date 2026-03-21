@@ -1079,10 +1079,13 @@ main {
 }
 
 .homev3-area-chips {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(170px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
-  align-content: start;
+  align-content: flex-start;
+  justify-self: start;
+  width: fit-content;
+  max-width: min(100%, 720px);
   padding: 24px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid #d7e3f3;
@@ -1311,6 +1314,12 @@ main {
   position: relative;
   overflow: hidden;
   min-height: 100%;
+}
+
+.seo-card--link {
+  display: block;
+  color: inherit;
+  cursor: pointer;
 }
 
 .seo-card__content {
@@ -1789,20 +1798,6 @@ body {
   white-space: nowrap;
 }
 
-.site-header__location-test {
-  margin: 0 0 12px;
-  padding: 9px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.site-header__location-test span {
-  color: rgba(255, 255, 255, 0.7);
-}
-
 main {
   padding-top: 92px;
 }
@@ -1956,7 +1951,8 @@ main {
   }
 
   .homev3-area-chips {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    max-width: none;
   }
 
   .nav--v3,
@@ -2053,7 +2049,6 @@ main {
   }
 
   .homev3-area-chips {
-    grid-template-columns: 1fr;
     padding: 18px;
   }
 

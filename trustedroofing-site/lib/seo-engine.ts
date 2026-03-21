@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import type { Project, InstaquoteAddressQuery } from "./db";
 import { listProjects, listRecentInstaquoteAddressQueries } from "./db";
 import { haversineKm } from "./geo";
@@ -141,33 +140,29 @@ async function buildNeighborhoodSummaries() {
     .sort((a, b) => b.quoteCount - a.quoteCount || a.neighborhood.localeCompare(b.neighborhood));
 }
 
-const getCachedNeighborhoodSummaries = unstable_cache(buildNeighborhoodSummaries, ["seo-neighborhood-summaries"], {
-  revalidate: 3600
-});
-
 export async function getTopQuoteNeighborhoods(limit = 10) {
-  const rows = await getCachedNeighborhoodSummaries();
+  const rows = await buildNeighborhoodSummaries();
   return rows.slice(0, limit);
 }
 
 export async function getAllQuoteNeighborhoods() {
-  return getCachedNeighborhoodSummaries();
+  return buildNeighborhoodSummaries();
 }
 
 export async function getAllQuoteCards() {
-  const rows = await getCachedNeighborhoodSummaries();
+  const rows = await buildNeighborhoodSummaries();
   return rows
     .flatMap((row) => row.cards)
     .sort((a, b) => new Date(b.queriedAt).getTime() - new Date(a.queriedAt).getTime());
 }
 
 export async function getQuoteNeighborhoodBySlug(slug: string) {
-  const rows = await getCachedNeighborhoodSummaries();
+  const rows = await buildNeighborhoodSummaries();
   return rows.find((row) => row.slug === slug) ?? null;
 }
 
 export async function getQuoteQuadrantHeat(): Promise<QuadrantHeat> {
-  const rows = await getCachedNeighborhoodSummaries();
+  const rows = await buildNeighborhoodSummaries();
   return rows.reduce<QuadrantHeat>((acc, row) => {
     if (row.quadrant === "NW" || row.quadrant === "NE" || row.quadrant === "SW" || row.quadrant === "SE") {
       acc[row.quadrant] += row.quoteCount;
@@ -177,7 +172,7 @@ export async function getQuoteQuadrantHeat(): Promise<QuadrantHeat> {
 }
 
 export async function getNearestNeighborhoodLinksForProject(project: Project, limit = 3) {
-  const rows = await getCachedNeighborhoodSummaries();
+  const rows = await buildNeighborhoodSummaries();
   const sameNeighborhood = project.neighborhood
     ? rows.find((row) => row.neighborhood.toLowerCase() === project.neighborhood?.toLowerCase())
     : null;
@@ -231,17 +226,13 @@ async function buildProjectNeighborhoodSummaries() {
     .sort((a, b) => b.projectCount - a.projectCount || a.neighborhood.localeCompare(b.neighborhood));
 }
 
-const getCachedProjectNeighborhoodSummaries = unstable_cache(buildProjectNeighborhoodSummaries, ["seo-project-neighborhood-summaries"], {
-  revalidate: 3600
-});
-
 export async function getTopProjectNeighborhoods(limit = 10) {
-  const rows = await getCachedProjectNeighborhoodSummaries();
+  const rows = await buildProjectNeighborhoodSummaries();
   return rows.slice(0, limit);
 }
 
 export async function getProjectQuadrantHeat(): Promise<QuadrantHeat> {
-  const rows = await getCachedProjectNeighborhoodSummaries();
+  const rows = await buildProjectNeighborhoodSummaries();
   return rows.reduce<QuadrantHeat>((acc, row) => {
     if (row.quadrant === "NW" || row.quadrant === "NE" || row.quadrant === "SW" || row.quadrant === "SE") {
       acc[row.quadrant] += row.projectCount;
@@ -251,7 +242,7 @@ export async function getProjectQuadrantHeat(): Promise<QuadrantHeat> {
 }
 
 export async function getProjectQuadrantLinks() {
-  const rows = await getCachedProjectNeighborhoodSummaries();
+  const rows = await buildProjectNeighborhoodSummaries();
   return {
     NW: rows.find((row) => row.quadrant === "NW")?.slug ?? null,
     NE: rows.find((row) => row.quadrant === "NE")?.slug ?? null,

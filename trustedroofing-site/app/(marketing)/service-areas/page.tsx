@@ -11,6 +11,8 @@ export const metadata = buildMetadata({
   path: "/service-areas"
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ServiceAreasPage() {
   const [areas, heat] = await Promise.all([
     getTopQuoteNeighborhoods(10),
