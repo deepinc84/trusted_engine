@@ -7,18 +7,11 @@ import ProofStrip from "@/components/home/ProofStrip";
 import ServiceAreas from "@/components/home/ServiceAreas";
 import ServicesGrid from "@/components/home/ServicesGrid";
 import WhyTrusted from "@/components/home/WhyTrusted";
-import type { HomeActivity, HomeProject, HomeService } from "@/components/home/types";
-import {
-  listHomepageMetrics,
-  listProjects,
-  listRecentInstaquoteAddressQueries,
-  listServiceAreas,
-  listServices
-} from "@/lib/db";
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
+import type { HomeMetric, HomeProject, HomeService } from "@/components/home/types";
+import { countLiveGeoPosts, countLiveQuoteSignals, countPublishedProjects, listProjects, listServices } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
-=======
->>>>>>> main
+import { getLiveActivityFeed } from "@/lib/activity-feed";
+import { getAllQuoteNeighborhoods, getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -30,23 +23,6 @@ export const metadata = buildMetadata({
   path: "/"
 });
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
-=======
-const projectFallbackImage = [
-  "/projects/project-1.svg",
-  "/projects/project-2.svg",
-  "/projects/project-3.svg"
-];
->>>>>>> main
-
-function scopeLabel(serviceType: string | null, scopes: string[] | null) {
-  if (serviceType?.includes("SidingHardie") || scopes?.includes("siding_hardie")) return "Instant hardie siding estimate";
-  if (serviceType?.includes("SidingVinyl") || scopes?.includes("siding_vinyl")) return "Instant vinyl siding estimate";
-  if (serviceType?.includes("Eavestrough") || scopes?.includes("eavestrough")) return "Instant eavestrough estimate";
-  if (serviceType?.includes("All") || (scopes?.length ?? 0) > 1) return "Instant full exterior estimate";
-  return "Instant roof estimate";
-}
-
 function toTitle(slug: string) {
   return slug
     .split("-")
@@ -54,22 +30,52 @@ function toTitle(slug: string) {
     .join(" ");
 }
 
-function publicLocationFromAddress(address: string) {
-  const upper = address.toUpperCase();
-  const quadrant = upper.match(/\b(NE|NW|SE|SW)\b/)?.[1] ?? null;
-  if (quadrant) return `${quadrant} Calgary`;
-  if (address.toLowerCase().includes("calgary")) return "Calgary";
-  return "Calgary area";
-}
-
 export default async function HomePage() {
-  const [projects, services, metrics, areas, quoteActivity] = await Promise.all([
+  const [projects, services, quoteCount, projectCount, geoPostCount, allAreas, topAreas, activity] = await Promise.all([
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
-    listHomepageMetrics(),
-    listServiceAreas(),
-    listRecentInstaquoteAddressQueries(8)
+    countLiveQuoteSignals(),
+    countPublishedProjects(),
+    countLiveGeoPosts(),
+    getAllQuoteNeighborhoods(),
+    getTopQuoteNeighborhoods(20),
+    getLiveActivityFeed(12)
   ]);
+
+  const metrics: HomeMetric[] = [
+    {
+      id: "live-quotes",
+      key_name: "live_quote_signals",
+      label: "Instant quote signals",
+      value_text: quoteCount.toLocaleString(),
+      sort_order: 1,
+      is_active: true
+    },
+    {
+      id: "live-areas",
+      key_name: "live_quote_localities",
+      label: "Neighborhoods with live quote data",
+      value_text: allAreas.length.toLocaleString(),
+      sort_order: 2,
+      is_active: true
+    },
+    {
+      id: "live-projects",
+      key_name: "published_projects",
+      label: "Published projects",
+      value_text: projectCount.toLocaleString(),
+      sort_order: 3,
+      is_active: true
+    },
+    {
+      id: "live-geo-posts",
+      key_name: "live_geo_posts",
+      label: "Geo posts live",
+      value_text: geoPostCount.toLocaleString(),
+      sort_order: 4,
+      is_active: true
+    }
+  ];
 
   const homeServices: HomeService[] = services.slice(0, 4).map((service) => ({
     slug: service.slug,
@@ -77,37 +83,22 @@ export default async function HomePage() {
     copy: service.base_sales_copy ?? "Exterior service tailored for Calgary homes."
   }));
 
-  const recentQuoteActivity: HomeActivity[] = quoteActivity.map((row) => ({
-    id: `quote-${row.id}`,
-    service: scopeLabel(row.service_type, row.requested_scopes),
-    location: publicLocationFromAddress(row.address),
-    occurredAt: row.queried_at
-  }));
-
-  const activity = recentQuoteActivity.slice(0, 8);
-
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
   const featuredProjects: HomeProject[] = projects.slice(0, 3).map((project) => ({
-=======
-  const featuredProjects: HomeProject[] = projects.slice(0, 3).map((project, index) => ({
->>>>>>> main
     id: project.id,
     slug: project.slug,
     title: project.title,
     service: toTitle(project.service_slug),
     neighborhood: `${project.neighborhood ?? project.city}, ${project.province}`,
     summary: project.summary,
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
     image: project.photos?.[0]?.public_url ?? getPlaceholderProjectImage({
       seed: project.slug,
       neighborhood: project.neighborhood,
       quadrant: project.quadrant,
       city: project.city
     })
-=======
-    image: project.photos?.[0]?.public_url ?? projectFallbackImage[index % projectFallbackImage.length]
->>>>>>> main
   }));
+
+  const calgaryAreas = topAreas.filter((area) => area.city === "Calgary").slice(0, 8);
 
   return (
     <>
@@ -119,7 +110,12 @@ export default async function HomePage() {
       <FeaturedProjects projects={featuredProjects} />
       <WhyTrusted />
       <CTABand />
-      <ServiceAreas areas={areas.filter((area) => area.active)} />
+      <ServiceAreas areas={calgaryAreas.map((area) => ({
+        id: area.slug,
+        name: area.neighborhood,
+        slug: area.slug,
+        active: true
+      }))} />
     </>
   );
 }
