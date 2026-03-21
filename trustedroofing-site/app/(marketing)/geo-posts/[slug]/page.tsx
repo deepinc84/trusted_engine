@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ProjectSchema from "@/components/ProjectSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
@@ -39,6 +40,7 @@ export default async function GeoPostDetailPage({ params }: { params: { slug: st
 
   return (
     <>
+      <ProjectSchema geoPost={geoPost} />
       <PageHero
         eyebrow={geoPost.service_slug ?? "Location post"}
         title={title}

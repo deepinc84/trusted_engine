@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import HeatMap from "@/components/HeatMap";
 import HeaderLocationProbe from "@/components/site/HeaderLocationProbe";
-import { getQuoteQuadrantHeat, getTopQuoteNeighborhoods } from "@/lib/seo-engine";
+import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborhoods } from "@/lib/seo-engine";
 
 const links = [
   { href: "/", label: "Home" },
@@ -11,9 +11,10 @@ const links = [
 ];
 
 export default async function SiteHeader() {
-  const [serviceAreas, heatmap] = await Promise.all([
-    getTopQuoteNeighborhoods(10),
-    getQuoteQuadrantHeat()
+  const [serviceAreas, heatmap, heatLinks] = await Promise.all([
+    getTopProjectNeighborhoods(10),
+    getProjectQuadrantHeat(),
+    getProjectQuadrantLinks()
   ]);
 
   return (
@@ -40,19 +41,19 @@ export default async function SiteHeader() {
             <Link href="/service-areas">Service Areas</Link>
             <div className="nav-service-areas__dropdown">
               <div>
-                <p className="nav-service-areas__eyebrow">Top Calgary quote activity</p>
+                <p className="nav-service-areas__eyebrow">Top Calgary project areas</p>
                 <div className="nav-service-areas__list">
                   {serviceAreas.map((area) => (
                     <Link key={area.slug} href={`/service-areas/${area.slug}`}>
                       <span>{area.neighborhood}</span>
-                      <strong>{area.quoteCount}</strong>
+                      <strong>{area.projectCount}</strong>
                     </Link>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="nav-service-areas__eyebrow">Quadrant heat</p>
-                <HeatMap counts={heatmap} />
+                <p className="nav-service-areas__eyebrow">Project heat</p>
+                <HeatMap counts={heatmap} links={heatLinks} />
               </div>
             </div>
           </div>
