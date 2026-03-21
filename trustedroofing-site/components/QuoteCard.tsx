@@ -6,7 +6,17 @@ function currencyRange(low: number | null, high: number | null) {
   return `$${Math.round(low).toLocaleString()} - $${Math.round(high).toLocaleString()}`;
 }
 
-export default function QuoteCard({ quote }: { quote: QuoteCardData }) {
+type Props = {
+  quote: QuoteCardData;
+  href?: string;
+  ctaLabel?: string;
+};
+
+export default function QuoteCard({
+  quote,
+  href = `/quotes#quote-${quote.id}`,
+  ctaLabel = `View full quote archive`
+}: Props) {
   return (
     <article className="ui-card ui-card--quote seo-card">
       <div className="seo-card__content">
@@ -15,7 +25,7 @@ export default function QuoteCard({ quote }: { quote: QuoteCardData }) {
         <p className="seo-card__eyebrow">{currencyRange(quote.estimateLow, quote.estimateHigh)}</p>
         <p className="seo-card__summary seo-card__summary--clamped">{quote.description}</p>
         <div className="seo-card__actions">
-          <Link href={`/service-areas/${quote.slug}`}>Explore {quote.neighborhood}</Link>
+          <Link href={href}>{ctaLabel}</Link>
         </div>
       </div>
 

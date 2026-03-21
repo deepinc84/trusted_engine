@@ -66,7 +66,7 @@ export default async function ServiceAreaDetailPage({ params }: { params: { slug
           </div>
 
           <div className="quote-card-grid" style={{ marginTop: 20 }}>
-            {area.cards.map((card) => (
+            {area.cards.slice(0, 6).map((card) => (
               <QuoteCard key={card.id} quote={card} />
             ))}
           </div>

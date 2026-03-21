@@ -2,50 +2,74 @@ import { NextResponse } from "next/server";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { extractQuadrant } from "@/lib/serviceAreas";
 
-type Precision = "street" | "neighborhood" | "quadrant" | "city";
+type Precision = "neighborhood" | "quadrant" | "city" | "region";
+type LocationSource = "edge" | "ip";
 
 type ResolvedLocation = {
   label: string;
-  source: "ip" | "google";
+  source: LocationSource;
   precision: Precision;
 };
 
-type GoogleAddressComponent = { long_name: string; short_name: string; types: string[] };
-
-function precisionScore(value: Precision) {
-  if (value === "street") return 4;
-  if (value === "neighborhood") return 3;
-  if (value === "quadrant") return 2;
-  return 1;
-}
-
-function getComponent(components: GoogleAddressComponent[] | undefined, type: string) {
-  const component = components?.find((entry) => entry.types.includes(type));
-  return component?.long_name ?? component?.short_name ?? null;
-}
+type EdgeLocation = {
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  postal: string | null;
+};
 
 function inferPrecision(parts: {
-  fullAddress?: string | null;
   neighborhood?: string | null;
   quadrant?: string | null;
   city?: string | null;
+  region?: string | null;
 }) {
-  if (parts.fullAddress && /\d/.test(parts.fullAddress)) return "street" as const;
   if (parts.neighborhood) return "neighborhood" as const;
   if (parts.quadrant) return "quadrant" as const;
-  return "city" as const;
+  if (parts.city) return "city" as const;
+  return "region" as const;
 }
 
 function buildLabel(parts: {
-  fullAddress?: string | null;
   neighborhood?: string | null;
   quadrant?: string | null;
   city?: string | null;
+  region?: string | null;
+  country?: string | null;
 }) {
-  return parts.fullAddress
-    ?? [parts.neighborhood, parts.quadrant, parts.city].filter(Boolean).join(", ")
-    ?? parts.city
-    ?? "Calgary";
+  const segments = [parts.neighborhood, parts.quadrant, parts.city, parts.region, parts.country]
+    .filter((value): value is string => Boolean(value && value.trim()));
+
+  return segments.join(", ") || "Calgary, AB, Canada";
+}
+
+function readFirstHeader(request: Request, names: string[]) {
+  for (const name of names) {
+    const value = request.headers.get(name)?.trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+function resolveFromEdgeHeaders(request: Request): ResolvedLocation | null {
+  const edge: EdgeLocation = {
+    city: readFirstHeader(request, ["x-vercel-ip-city", "cf-ipcity", "x-appengine-city"]),
+    region: readFirstHeader(request, ["x-vercel-ip-country-region", "cf-region-code", "x-appengine-region"]),
+    country: readFirstHeader(request, ["x-vercel-ip-country", "cf-ipcountry", "x-appengine-country"]),
+    postal: readFirstHeader(request, ["x-vercel-ip-postal-code"])
+  };
+
+  if (!edge.city && !edge.region && !edge.country) return null;
+
+  const quadrant = edge.city === "Calgary" && edge.postal
+    ? extractQuadrant(edge.postal.replace(/\s+/g, " "))
+    : null;
+
+  return {
+    label: buildLabel({ city: edge.city, region: edge.region, country: edge.country, quadrant }),
+    source: "edge",
+    precision: inferPrecision({ city: edge.city, region: edge.region, quadrant })
+  };
 }
 
 async function resolveViaIp(ip: string): Promise<ResolvedLocation | null> {
@@ -59,97 +83,24 @@ async function resolveViaIp(ip: string): Promise<ResolvedLocation | null> {
   const payload = (await response.json()) as {
     city?: string;
     region_code?: string;
+    country_name?: string;
     postal?: string;
-    latitude?: number;
-    longitude?: number;
   };
 
   const city = payload.city ?? null;
+  const region = payload.region_code ?? null;
+  const country = payload.country_name ?? null;
   const quadrant = city === "Calgary" && payload.postal
     ? extractQuadrant(payload.postal.replace(/\s+/g, " "))
     : null;
-  const label = [city, payload.region_code ?? "AB", payload.postal].filter(Boolean).join(", ");
-  const precision = inferPrecision({ quadrant, city, fullAddress: null, neighborhood: null });
 
-  return city ? {
-    label: label || city,
-    source: "ip",
-    precision
-  } : null;
-}
-
-async function reverseGeocodeGoogle(lat: number, lng: number) {
-  const key = process.env.GOOGLE_SECRET_KEY;
-  if (!key) return null;
-
-  const params = new URLSearchParams({ latlng: `${lat},${lng}`, key });
-  const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`, {
-    headers: { Accept: "application/json" },
-    cache: "no-store"
-  });
-
-  if (!response.ok) return null;
-
-  const payload = (await response.json()) as {
-    status?: string;
-    results?: Array<{
-      formatted_address?: string;
-      address_components?: GoogleAddressComponent[];
-    }>;
-  };
-
-  if (payload.status !== "OK" || !payload.results?.length) return null;
-  const top = payload.results[0];
-  const neighborhood =
-    getComponent(top.address_components, "neighborhood")
-    ?? getComponent(top.address_components, "sublocality_level_1")
-    ?? getComponent(top.address_components, "sublocality")
-    ?? null;
-  const city = getComponent(top.address_components, "locality") ?? "Calgary";
-  const quadrant = extractQuadrant(top.formatted_address ?? "");
-  const precision = inferPrecision({
-    fullAddress: top.formatted_address ?? null,
-    neighborhood,
-    quadrant,
-    city
-  });
+  if (!city && !region && !country) return null;
 
   return {
-    label: buildLabel({
-      fullAddress: top.formatted_address ?? null,
-      neighborhood,
-      quadrant,
-      city
-    }),
-    source: "google" as const,
-    precision
+    label: buildLabel({ city, region, country, quadrant }),
+    source: "ip",
+    precision: inferPrecision({ city, region, quadrant })
   };
-}
-
-async function resolveViaGoogle() {
-  const key = process.env.GOOGLE_SECRET_KEY;
-  if (!key) return null;
-
-  const response = await fetch(`https://www.googleapis.com/geolocation/v1/geolocate?key=${encodeURIComponent(key)}`, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ considerIp: true }),
-    cache: "no-store"
-  });
-
-  if (!response.ok) return null;
-  const payload = (await response.json()) as {
-    location?: { lat?: number; lng?: number };
-  };
-
-  const lat = payload.location?.lat;
-  const lng = payload.location?.lng;
-  if (typeof lat !== "number" || typeof lng !== "number") return null;
-
-  return reverseGeocodeGoogle(lat, lng);
 }
 
 export async function GET(request: Request) {
@@ -160,22 +111,22 @@ export async function GET(request: Request) {
   }
 
   try {
-    const ipLocation = ip && ip !== "unknown" ? await resolveViaIp(ip) : null;
-    const needsGoogleFallback = !ipLocation || precisionScore(ipLocation.precision) < precisionScore("neighborhood");
-    const googleLocation = needsGoogleFallback ? await resolveViaGoogle() : null;
-
-    const location = googleLocation && (!ipLocation || precisionScore(googleLocation.precision) >= precisionScore(ipLocation.precision))
-      ? googleLocation
-      : ipLocation;
+    const edgeLocation = resolveFromEdgeHeaders(request);
+    const ipLocation = (!edgeLocation && ip && ip !== "unknown") ? await resolveViaIp(ip) : null;
+    const location = edgeLocation ?? ipLocation;
 
     if (!location) {
-      return NextResponse.json({ error: "Location could not be resolved." }, { status: 404 });
+      return NextResponse.json({ error: "Approximate location could not be resolved." }, { status: 404 });
     }
 
-    return NextResponse.json({ ok: true, location });
+    return NextResponse.json({
+      ok: true,
+      location,
+      consentRequiredForPreciseLocation: true
+    });
   } catch (error) {
     return NextResponse.json({
-      error: error instanceof Error ? error.message : "Location could not be resolved."
+      error: error instanceof Error ? error.message : "Approximate location could not be resolved."
     }, { status: 500 });
   }
 }

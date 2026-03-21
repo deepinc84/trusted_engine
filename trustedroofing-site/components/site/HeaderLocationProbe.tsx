@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 type LocationPayload = {
   label: string;
-  source: "ip" | "google";
-  precision: "street" | "neighborhood" | "quadrant" | "city";
+  source: "edge" | "ip";
+  precision: "neighborhood" | "quadrant" | "city" | "region";
 };
 
 type LocationState = {
@@ -14,7 +14,7 @@ type LocationState = {
   error: string | null;
 };
 
-const STORAGE_KEY = "trusted-location-probe-v1";
+const STORAGE_KEY = "trusted-location-probe-v2";
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function readCachedLocation(): LocationPayload | null {
@@ -81,11 +81,14 @@ export default function HeaderLocationProbe() {
 
   return (
     <div className="site-header__location-test">
-      <strong>Location test:</strong>{" "}
+      <strong>Approximate area:</strong>{" "}
       {state.loading ? "Detecting…" : state.location?.label ?? state.error ?? "Unavailable"}
       {" · "}
       <span>
-        source: {state.location?.source ?? "n/a"} / precision: {state.location?.precision ?? "n/a"}
+        source: {state.location?.source === "edge" ? "hosting geo headers" : state.location?.source ?? "n/a"}
+        {" / "}
+        precision: {state.location?.precision ?? "n/a"}
+        {" / no browser GPS used"}
       </span>
     </div>
   );

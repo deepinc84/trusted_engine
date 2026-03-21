@@ -137,7 +137,6 @@ async function buildNeighborhoodSummaries() {
       centroidLng: averageFloat(value.lngs),
       cards: value.cards
         .sort((a, b) => new Date(b.queriedAt).getTime() - new Date(a.queriedAt).getTime())
-        .slice(0, 6)
     }))
     .sort((a, b) => b.quoteCount - a.quoteCount || a.neighborhood.localeCompare(b.neighborhood));
 }
@@ -153,6 +152,13 @@ export async function getTopQuoteNeighborhoods(limit = 10) {
 
 export async function getAllQuoteNeighborhoods() {
   return getCachedNeighborhoodSummaries();
+}
+
+export async function getAllQuoteCards() {
+  const rows = await getCachedNeighborhoodSummaries();
+  return rows
+    .flatMap((row) => row.cards)
+    .sort((a, b) => new Date(b.queriedAt).getTime() - new Date(a.queriedAt).getTime());
 }
 
 export async function getQuoteNeighborhoodBySlug(slug: string) {

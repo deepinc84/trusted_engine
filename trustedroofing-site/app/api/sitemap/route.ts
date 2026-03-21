@@ -21,6 +21,8 @@ export async function GET() {
     ...services.map((service) => canonicalUrl(`/services/${service.slug}`)),
     canonicalUrl("/projects"),
     ...projects.map((project) => canonicalUrl(`/projects/${project.slug}`)),
+    canonicalUrl("/quote"),
+    canonicalUrl("/quotes"),
     canonicalUrl("/service-areas"),
     ...serviceAreas.map((area) => canonicalUrl(`/service-areas/${area.slug}`)),
     canonicalUrl("/geo-posts"),
