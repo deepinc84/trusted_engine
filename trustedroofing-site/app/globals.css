@@ -1737,8 +1737,7 @@ body {
   transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
 }
 
-.nav-service-areas:hover .nav-service-areas__dropdown,
-.nav-service-areas:focus-within .nav-service-areas__dropdown {
+.nav-service-areas:hover .nav-service-areas__dropdown {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
