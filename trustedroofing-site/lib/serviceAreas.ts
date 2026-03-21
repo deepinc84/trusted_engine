@@ -4,9 +4,14 @@ const STREET_SUFFIX_RE = /\b(?:street|st|avenue|ave|road|rd|drive|dr|boulevard|b
 const PROVINCE_RE = /\b(?:AB|Alberta)\b/i;
 const COUNTRY_RE = /\b(?:Canada)\b/i;
 const POSTAL_RE = /\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/i;
+const QUADRANT_RE = /\b(NE|NW|SE|SW)\b/i;
 
 function cleanPart(value: string) {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function stripQuadrant(value: string) {
+  return cleanPart(value.replace(QUADRANT_RE, ""));
 }
 
 function titleCase(value: string) {
@@ -22,9 +27,21 @@ export function extractQuadrant(value: string | null | undefined) {
 
 export function extractCity(value: string | null | undefined) {
   if (!value) return null;
-  const parts = value.split(",").map(cleanPart).filter(Boolean);
-  const cityPart = parts.find((part) => /calgary/i.test(part));
-  return cityPart ? "Calgary" : null;
+
+  const parts = value
+    .split(",")
+    .map(cleanPart)
+    .filter(Boolean)
+    .filter((part) => !PROVINCE_RE.test(part))
+    .filter((part) => !COUNTRY_RE.test(part))
+    .filter((part) => !POSTAL_RE.test(part));
+
+  const candidate = [...parts]
+    .reverse()
+    .find((part) => !/\d/.test(part) && !STREET_SUFFIX_RE.test(part));
+
+  const cleaned = candidate ? stripQuadrant(candidate) : "";
+  return cleaned ? titleCase(cleaned) : null;
 }
 
 export function normalizeLocalityCandidate(value: string | null | undefined, city?: string | null) {
@@ -33,26 +50,33 @@ export function normalizeLocalityCandidate(value: string | null | undefined, cit
   if (POSTAL_RE.test(cleaned)) return null;
   if (PROVINCE_RE.test(cleaned)) return null;
   if (COUNTRY_RE.test(cleaned)) return null;
-  if (city && cleaned.toLowerCase() === city.toLowerCase()) return null;
-  return titleCase(cleaned);
+
+  const withoutQuadrant = stripQuadrant(cleaned);
+  if (city && withoutQuadrant.toLowerCase() === city.toLowerCase()) return null;
+  if (/\d/.test(cleaned) && STREET_SUFFIX_RE.test(cleaned)) return null;
+
+  return withoutQuadrant ? titleCase(withoutQuadrant) : null;
 }
 
 export function extractNeighborhood(value: string | null | undefined) {
   if (!value) return null;
 
+  const city = extractCity(value);
   const parts = value
     .split(",")
     .map(cleanPart)
     .filter(Boolean)
-    .filter((part) => !/calgary/i.test(part))
     .filter((part) => !PROVINCE_RE.test(part))
     .filter((part) => !COUNTRY_RE.test(part))
     .filter((part) => !POSTAL_RE.test(part));
 
-  const candidate = parts.find((part) => !/\d/.test(part) && !STREET_SUFFIX_RE.test(part));
-  if (!candidate) return null;
+  const candidate = parts.find((part) => {
+    if (/\d/.test(part) || STREET_SUFFIX_RE.test(part)) return false;
+    const normalized = normalizeLocalityCandidate(part, city);
+    return !!normalized;
+  });
 
-  return normalizeLocalityCandidate(candidate) ?? null;
+  return normalizeLocalityCandidate(candidate, city) ?? null;
 }
 
 export function neighborhoodSlug(value: string) {
@@ -75,7 +99,13 @@ export function quoteComplexityLabel(value: string | null | undefined) {
 }
 
 export function buildQuoteSignalTitle(service: string, locality: string, city: string) {
-  return `${service} estimate signal in ${locality}, ${city}`;
+  return locality === city
+    ? `${service} estimate signal in ${city}`
+    : `${service} estimate signal in ${locality}, ${city}`;
+}
+
+export function buildQuoteAnchorSlug(service: string, locality: string, city: string, uniqueId: string) {
+  return sanitizeText(`${service}-${locality}-${city}-${uniqueId.slice(0, 8)}`);
 }
 
 export function resolvePublicLocation(input: {
@@ -83,18 +113,32 @@ export function resolvePublicLocation(input: {
   address?: string | null;
   city?: string | null;
   quadrant?: string | null;
-}) {
-  const city = normalizeLocalityCandidate(input.city ?? extractCity(input.address), null) ?? "Calgary";
+}): {
+  locality: string;
+  city: string;
+  quadrant: string | null;
+  kind: "neighborhood" | "quadrant" | "city";
+  label: string;
+  cityQuadrantLabel: string;
+} {
+  const city = titleCase(stripQuadrant(input.city ?? extractCity(input.address) ?? "Calgary"));
   const neighborhood = normalizeLocalityCandidate(input.neighborhood, city)
     ?? normalizeLocalityCandidate(extractNeighborhood(input.address), city);
-  const quadrant = input.quadrant ?? extractQuadrant(input.address) ?? null;
+  const quadrant = extractQuadrant(input.quadrant ?? input.address) ?? null;
   const locality = neighborhood ?? quadrant ?? city;
-  const label = locality === city ? city : `${locality}, ${city}`;
+  const kind = neighborhood ? "neighborhood" : quadrant ? "quadrant" : "city";
+  const label = kind === "neighborhood"
+    ? `${locality}, ${city}`
+    : kind === "quadrant"
+      ? `${quadrant} ${city}`
+      : city;
 
   return {
     locality,
     city,
     quadrant,
-    label
+    kind,
+    label,
+    cityQuadrantLabel: quadrant ? `${quadrant} ${city}` : city
   };
 }

@@ -2,6 +2,7 @@ import type { Project, InstaquoteAddressQuery } from "./db";
 import { listProjects, listRecentInstaquoteAddressQueries } from "./db";
 import { haversineKm } from "./geo";
 import {
+  buildQuoteAnchorSlug,
   buildQuoteSignalTitle,
   neighborhoodSlug,
   quoteComplexityLabel,
@@ -16,6 +17,8 @@ export type QuoteCardData = {
   slug: string;
   city: string;
   locationLabel: string;
+  cityQuadrantLabel: string;
+  locationKind: "neighborhood" | "quadrant" | "city";
   quadrant: string | null;
   complexity: string;
   material: string;
@@ -39,6 +42,22 @@ export type QuoteNeighborhoodSummary = {
   centroidLat: number | null;
   centroidLng: number | null;
   cards: QuoteCardData[];
+};
+
+export type QuoteAggregateSummary = {
+  key: string;
+  title: string;
+  city: string;
+  quadrant: string | null;
+  quoteCount: number;
+  averageLow: number | null;
+  averageHigh: number | null;
+};
+
+export type QuoteArchiveAggregates = {
+  cities: QuoteAggregateSummary[];
+  cityQuadrants: QuoteAggregateSummary[];
+  neighborhoods: QuoteAggregateSummary[];
 };
 
 export type QuadrantHeat = Record<"NW" | "NE" | "SW" | "SE", number>;
@@ -66,7 +85,6 @@ function toQuoteCard(row: InstaquoteAddressQuery): QuoteCardData {
     neighborhood: row.neighborhood,
     address: row.address
   });
-  const slug = neighborhoodSlug(location.locality);
   const material = quoteMaterialLabel(row.service_type, row.requested_scopes);
   const complexity = quoteComplexityLabel(row.complexity_band);
   const estimateLow = typeof row.estimate_low === "number" ? row.estimate_low : null;
@@ -76,9 +94,11 @@ function toQuoteCard(row: InstaquoteAddressQuery): QuoteCardData {
     id: row.id,
     locality: location.locality,
     neighborhood: location.locality,
-    slug,
+    slug: buildQuoteAnchorSlug(material, location.locality, location.city, String(row.id)),
     city: location.city,
     locationLabel: location.label,
+    cityQuadrantLabel: location.cityQuadrantLabel,
+    locationKind: location.kind,
     quadrant: location.quadrant,
     complexity,
     material,
@@ -92,8 +112,16 @@ function toQuoteCard(row: InstaquoteAddressQuery): QuoteCardData {
   };
 }
 
+async function getAllQuoteCardsInternal() {
+  const rows = await listRecentInstaquoteAddressQueries(1200);
+  return rows
+    .map(toQuoteCard)
+    .filter((card) => card.city.length > 0)
+    .sort((a, b) => new Date(b.queriedAt).getTime() - new Date(a.queriedAt).getTime());
+}
+
 async function buildNeighborhoodSummaries() {
-  const rows = await listRecentInstaquoteAddressQueries(800);
+  const rows = await listRecentInstaquoteAddressQueries(1200);
   const grouped = new Map<string, {
     neighborhood: string;
     city: string;
@@ -107,9 +135,11 @@ async function buildNeighborhoodSummaries() {
 
   for (const row of rows) {
     const card = toQuoteCard(row);
-    if (card.city !== "Calgary") continue;
+    if (card.locationKind !== "neighborhood") continue;
 
-    const slug = neighborhoodSlug(card.locality);
+    const slug = card.city === "Calgary"
+      ? neighborhoodSlug(card.locality)
+      : neighborhoodSlug(`${card.city}-${card.locality}`);
     const existing = grouped.get(slug) ?? {
       neighborhood: card.locality,
       city: card.city,
@@ -147,6 +177,55 @@ async function buildNeighborhoodSummaries() {
     .sort((a, b) => b.quoteCount - a.quoteCount || a.neighborhood.localeCompare(b.neighborhood));
 }
 
+function buildAggregateSummaries(cards: QuoteCardData[]): QuoteArchiveAggregates {
+  const cityMap = new Map<string, QuoteCardData[]>();
+  const cityQuadrantMap = new Map<string, QuoteCardData[]>();
+  const neighborhoodMap = new Map<string, QuoteCardData[]>();
+
+  for (const card of cards) {
+    const cityKey = card.city;
+    cityMap.set(cityKey, [...(cityMap.get(cityKey) ?? []), card]);
+
+    if (card.quadrant) {
+      const cityQuadrantKey = `${card.city}|${card.quadrant}`;
+      cityQuadrantMap.set(cityQuadrantKey, [...(cityQuadrantMap.get(cityQuadrantKey) ?? []), card]);
+    }
+
+    if (card.locationKind === "neighborhood") {
+      const neighborhoodKey = `${card.city}|${card.locality}`;
+      neighborhoodMap.set(neighborhoodKey, [...(neighborhoodMap.get(neighborhoodKey) ?? []), card]);
+    }
+  }
+
+  const toSummary = (
+    entries: Array<[string, QuoteCardData[]]>,
+    buildTitle: (key: string, cards: QuoteCardData[]) => string,
+    buildQuadrant: (key: string, cards: QuoteCardData[]) => string | null = (_, cards) => cards[0]?.quadrant ?? null
+  ) => entries
+    .map(([key, groupedCards]) => ({
+      key,
+      title: buildTitle(key, groupedCards),
+      city: groupedCards[0]?.city ?? "Calgary",
+      quadrant: buildQuadrant(key, groupedCards),
+      quoteCount: groupedCards.length,
+      averageLow: average(groupedCards.flatMap((card) => card.estimateLow !== null ? [card.estimateLow] : [])),
+      averageHigh: average(groupedCards.flatMap((card) => card.estimateHigh !== null ? [card.estimateHigh] : []))
+    }))
+    .sort((a, b) => b.quoteCount - a.quoteCount || a.title.localeCompare(b.title));
+
+  return {
+    cities: toSummary(Array.from(cityMap.entries()), (key) => key, (_, cards) => cards[0]?.quadrant ?? null),
+    cityQuadrants: toSummary(Array.from(cityQuadrantMap.entries()), (_, groupedCards) => groupedCards[0]?.cityQuadrantLabel ?? groupedCards[0]?.city ?? "Calgary"),
+    neighborhoods: toSummary(
+      Array.from(neighborhoodMap.entries()),
+      (_, groupedCards) => groupedCards[0]?.city === "Calgary"
+        ? groupedCards[0].locality
+        : `${groupedCards[0]?.locality}, ${groupedCards[0]?.city}`,
+      () => null
+    )
+  };
+}
+
 export async function getTopQuoteNeighborhoods(limit = 10) {
   const rows = await buildNeighborhoodSummaries();
   return rows.slice(0, limit);
@@ -157,10 +236,12 @@ export async function getAllQuoteNeighborhoods() {
 }
 
 export async function getAllQuoteCards() {
-  const rows = await buildNeighborhoodSummaries();
-  return rows
-    .flatMap((row) => row.cards)
-    .sort((a, b) => new Date(b.queriedAt).getTime() - new Date(a.queriedAt).getTime());
+  return getAllQuoteCardsInternal();
+}
+
+export async function getQuoteArchiveAggregates() {
+  const cards = await getAllQuoteCardsInternal();
+  return buildAggregateSummaries(cards);
 }
 
 export async function getQuoteNeighborhoodBySlug(slug: string) {
@@ -171,7 +252,7 @@ export async function getQuoteNeighborhoodBySlug(slug: string) {
 export async function getQuoteQuadrantHeat(): Promise<QuadrantHeat> {
   const rows = await buildNeighborhoodSummaries();
   return rows.reduce<QuadrantHeat>((acc, row) => {
-    if (row.quadrant === "NW" || row.quadrant === "NE" || row.quadrant === "SW" || row.quadrant === "SE") {
+    if (row.city === "Calgary" && (row.quadrant === "NW" || row.quadrant === "NE" || row.quadrant === "SW" || row.quadrant === "SE")) {
       acc[row.quadrant] += row.quoteCount;
     }
     return acc;
@@ -181,7 +262,7 @@ export async function getQuoteQuadrantHeat(): Promise<QuadrantHeat> {
 export async function getNearestNeighborhoodLinksForProject(project: Project, limit = 3) {
   const rows = await buildNeighborhoodSummaries();
   const sameNeighborhood = project.neighborhood
-    ? rows.find((row) => row.neighborhood.toLowerCase() === project.neighborhood?.toLowerCase())
+    ? rows.find((row) => row.neighborhood.toLowerCase() === project.neighborhood?.toLowerCase() && row.city === project.city)
     : null;
 
   const ranked = rows

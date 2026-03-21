@@ -1061,6 +1061,51 @@ export async function listHomepageMetrics(): Promise<HomepageMetric[]> {
   return [...mockHomepageMetrics].filter((item) => item.is_active).sort((a, b) => a.sort_order - b.sort_order);
 }
 
+export async function countLiveQuoteSignals(): Promise<number> {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (client) {
+      const { count } = await client
+        .from("quote_events")
+        .select("id", { count: "exact", head: true })
+        .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted");
+      return count ?? 0;
+    }
+  }
+
+  return mockQuoteEvents.length;
+}
+
+export async function countPublishedProjects(): Promise<number> {
+  if (getDataMode() === "supabase") {
+    const client = getAnonClient();
+    if (client) {
+      const { count } = await client
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("is_published", true);
+      return count ?? 0;
+    }
+  }
+
+  return mockProjects.filter((project) => project.is_published).length;
+}
+
+export async function countLiveGeoPosts(): Promise<number> {
+  if (getDataMode() === "supabase") {
+    const client = getAnonClient();
+    if (client) {
+      const { count } = await client
+        .from("geo_posts")
+        .select("id", { count: "exact", head: true })
+        .not("slug", "is", null);
+      return count ?? 0;
+    }
+  }
+
+  return mockGeoPosts.filter((geoPost) => !!geoPost.slug).length;
+}
+
 export async function listServiceAreas(): Promise<ServiceArea[]> {
   if (getDataMode() === "supabase") {
     const client = getAnonClient();

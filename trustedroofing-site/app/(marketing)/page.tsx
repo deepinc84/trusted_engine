@@ -7,11 +7,11 @@ import ProofStrip from "@/components/home/ProofStrip";
 import ServiceAreas from "@/components/home/ServiceAreas";
 import ServicesGrid from "@/components/home/ServicesGrid";
 import WhyTrusted from "@/components/home/WhyTrusted";
-import type { HomeProject, HomeService } from "@/components/home/types";
-import { listHomepageMetrics, listProjects, listServices } from "@/lib/db";
+import type { HomeMetric, HomeProject, HomeService } from "@/components/home/types";
+import { countLiveGeoPosts, countLiveQuoteSignals, countPublishedProjects, listProjects, listServices } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
 import { getLiveActivityFeed } from "@/lib/activity-feed";
-import { getTopQuoteNeighborhoods } from "@/lib/seo-engine";
+import { getAllQuoteNeighborhoods, getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -31,13 +31,51 @@ function toTitle(slug: string) {
 }
 
 export default async function HomePage() {
-  const [projects, services, metrics, areas, activity] = await Promise.all([
+  const [projects, services, quoteCount, projectCount, geoPostCount, allAreas, topAreas, activity] = await Promise.all([
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
-    listHomepageMetrics(),
-    getTopQuoteNeighborhoods(8),
+    countLiveQuoteSignals(),
+    countPublishedProjects(),
+    countLiveGeoPosts(),
+    getAllQuoteNeighborhoods(),
+    getTopQuoteNeighborhoods(20),
     getLiveActivityFeed(12)
   ]);
+
+  const metrics: HomeMetric[] = [
+    {
+      id: "live-quotes",
+      key_name: "live_quote_signals",
+      label: "Instant quote signals",
+      value_text: quoteCount.toLocaleString(),
+      sort_order: 1,
+      is_active: true
+    },
+    {
+      id: "live-areas",
+      key_name: "live_quote_localities",
+      label: "Neighborhoods with live quote data",
+      value_text: allAreas.length.toLocaleString(),
+      sort_order: 2,
+      is_active: true
+    },
+    {
+      id: "live-projects",
+      key_name: "published_projects",
+      label: "Published projects",
+      value_text: projectCount.toLocaleString(),
+      sort_order: 3,
+      is_active: true
+    },
+    {
+      id: "live-geo-posts",
+      key_name: "live_geo_posts",
+      label: "Geo posts live",
+      value_text: geoPostCount.toLocaleString(),
+      sort_order: 4,
+      is_active: true
+    }
+  ];
 
   const homeServices: HomeService[] = services.slice(0, 4).map((service) => ({
     slug: service.slug,
@@ -60,6 +98,8 @@ export default async function HomePage() {
     })
   }));
 
+  const calgaryAreas = topAreas.filter((area) => area.city === "Calgary").slice(0, 8);
+
   return (
     <>
       <LocalBusinessSchema />
@@ -70,7 +110,7 @@ export default async function HomePage() {
       <FeaturedProjects projects={featuredProjects} />
       <WhyTrusted />
       <CTABand />
-      <ServiceAreas areas={areas.map((area) => ({
+      <ServiceAreas areas={calgaryAreas.map((area) => ({
         id: area.slug,
         name: area.neighborhood,
         slug: area.slug,

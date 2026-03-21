@@ -1350,6 +1350,11 @@ main {
 
 .quote-card {
   padding: 0;
+  scroll-margin-top: 120px;
+}
+
+.quote-card--flash {
+  box-shadow: 0 0 0 3px rgba(47, 78, 140, 0.22), 0 14px 30px rgba(15, 23, 42, 0.12);
 }
 
 .quote-card__link {
@@ -1361,6 +1366,11 @@ main {
 .quote-card__content {
   padding: 18px !important;
   gap: 12px;
+}
+
+.quote-card--compact .quote-card__content {
+  padding: 14px !important;
+  gap: 10px;
 }
 
 .quote-card__topline {
@@ -1389,11 +1399,20 @@ main {
   margin-top: 4px;
 }
 
+.quote-card__meta--compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .quote-card__meta div {
   border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 10px 12px;
   background: #f8fbff;
+}
+
+.quote-card__meta--compact div {
+  padding: 8px 10px;
 }
 
 .quote-card__meta dt {
@@ -1404,11 +1423,20 @@ main {
   margin-bottom: 4px;
 }
 
+.quote-card__meta--compact dt {
+  font-size: 0.68rem;
+}
+
 .quote-card__meta dd {
   margin: 0;
   font-size: 0.94rem;
   font-weight: 700;
   color: var(--ink);
+}
+
+.quote-card--compact h3 {
+  font-size: 1.02rem;
+  line-height: 1.2;
 }
 
 .quote-card__cta {
@@ -1417,6 +1445,17 @@ main {
   color: var(--color-primary);
   font-weight: 700;
   font-size: 0.9rem;
+}
+
+.quote-card--compact .quote-card__cta {
+  padding: 0 14px 14px;
+  font-size: 0.82rem;
+}
+
+.quote-aggregate-card__range {
+  margin-top: 8px;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .seo-card__eyebrow {
@@ -2154,7 +2193,8 @@ main {
 }
 
 @media (max-width: 900px) {
-  .quote-card__meta {
+  .quote-card__meta,
+  .quote-card__meta--compact {
     grid-template-columns: 1fr;
   }
 }

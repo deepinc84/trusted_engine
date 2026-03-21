@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import QuoteCard from "@/components/QuoteCard";
 import { buildEstimateRanges, type ComplexityBand } from "@/lib/quote";
-import { buildQuoteSignalTitle, neighborhoodSlug, quoteComplexityLabel, quoteMaterialLabel, resolvePublicLocation } from "@/lib/serviceAreas";
+import { buildQuoteAnchorSlug, buildQuoteSignalTitle, quoteComplexityLabel, quoteMaterialLabel, resolvePublicLocation } from "@/lib/serviceAreas";
 
 type NearbyItem = {
   lat: number;
@@ -98,9 +98,11 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
         id: `${item.queried_at}-${index}`,
         locality: location.locality,
         neighborhood: location.locality,
-        slug: neighborhoodSlug(location.locality),
+        slug: buildQuoteAnchorSlug(material, location.locality, location.city, `${item.queried_at}-${index}`),
         city: location.city,
         locationLabel: location.label,
+        cityQuadrantLabel: location.cityQuadrantLabel,
+        locationKind: location.kind,
         quadrant: location.quadrant,
         complexity: complexityLabel,
         material,
