@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import QuoteCard from "@/components/QuoteCard";
 import { buildEstimateRanges, type ComplexityBand } from "@/lib/quote";
+import { buildQuoteSignalTitle, neighborhoodSlug, quoteComplexityLabel, quoteMaterialLabel, resolvePublicLocation } from "@/lib/serviceAreas";
 
 type NearbyItem = {
   lat: number;
@@ -10,6 +12,8 @@ type NearbyItem = {
   neighborhood: string | null;
   quadrant: string | null;
   city: string | null;
+  service_type: string | null;
+  requested_scopes: string[] | null;
   roof_area_sqft: number | null;
   pitch_degrees: number | null;
   complexity_band: string | null;
@@ -22,16 +26,6 @@ type Props = {
   coords: { lat: number; lng: number } | null;
   address: string | null;
 };
-
-function timeAgo(iso: string) {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.max(1, Math.round(diffMs / 60000));
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 48) return `${hours} hr ago`;
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
-}
 
 function normalizeComplexity(input: string | null): ComplexityBand {
   return input === "simple" || input === "complex" ? input : "moderate";
@@ -91,21 +85,32 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
         ? item.estimate_high
         : null;
       const hasStoredRange = estimateLow !== null && estimateHigh !== null;
+      const location = resolvePublicLocation({
+        neighborhood: item.neighborhood,
+        city: item.city,
+        quadrant: item.quadrant,
+        address: item.address
+      });
+      const material = quoteMaterialLabel(item.service_type, item.requested_scopes);
+      const complexityLabel = quoteComplexityLabel(item.complexity_band);
+
       return {
         id: `${item.queried_at}-${index}`,
-        locationLabel:
-          item.neighborhood ??
-          (item.quadrant && item.city ? `${item.quadrant} ${item.city}` : null) ??
-          item.city ??
-          (item.quadrant ? `${item.quadrant} Calgary` : null) ??
-          "Calgary",
-        address: item.address,
-        complexity,
-        roofArea: area,
-        range: hasStoredRange
-          ? `$${Math.round(estimateLow).toLocaleString()} - $${Math.round(estimateHigh).toLocaleString()}`
-          : `$${ranges.good.low.toLocaleString()} - $${ranges.good.high.toLocaleString()}`,
-        completed: timeAgo(item.queried_at)
+        locality: location.locality,
+        neighborhood: location.locality,
+        slug: neighborhoodSlug(location.locality),
+        city: location.city,
+        locationLabel: location.label,
+        quadrant: location.quadrant,
+        complexity: complexityLabel,
+        material,
+        estimateLow: hasStoredRange ? estimateLow : ranges.good.low,
+        estimateHigh: hasStoredRange ? estimateHigh : ranges.good.high,
+        roofAreaSqft: area,
+        pitchDegrees,
+        queriedAt: item.queried_at,
+        title: buildQuoteSignalTitle(material, location.locality, location.city),
+        description: `Recent address-level ${material.toLowerCase()} estimate generated for this area. Modeled estimate signal based on recent local property inputs.`
       };
     });
   }, [items]);
@@ -124,14 +129,9 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
       {error ? <p className="instant-quote__error">{error}</p> : null}
 
       {cards.length > 0 ? (
-        <div className="nearby-quotes__carousel" aria-live="polite">
+        <div className="nearby-quotes__grid" aria-live="polite">
           {cards.map((quote) => (
-            <article key={quote.id} className="nearby-quotes__card">
-              <p className="nearby-quotes__badge">{quote.locationLabel}</p>
-              <p className="nearby-quotes__area">{quote.range}</p>
-              <p className="nearby-quotes__detail">Roof size: {quote.roofArea} sqft · Complexity: {quote.complexity}</p>
-              <p className="nearby-quotes__time">{quote.completed}</p>
-            </article>
+            <QuoteCard key={quote.id} quote={quote} variant="compact" />
           ))}
         </div>
       ) : null}
