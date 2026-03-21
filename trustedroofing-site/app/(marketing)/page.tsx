@@ -12,13 +12,10 @@ import {
   listHomepageMetrics,
   listProjects,
   listRecentInstaquoteAddressQueries,
-  listServiceAreas,
   listServices
 } from "@/lib/db";
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
 import { getPlaceholderProjectImage } from "@/lib/images";
-=======
->>>>>>> main
+import { getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -30,14 +27,6 @@ export const metadata = buildMetadata({
   path: "/"
 });
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
-=======
-const projectFallbackImage = [
-  "/projects/project-1.svg",
-  "/projects/project-2.svg",
-  "/projects/project-3.svg"
-];
->>>>>>> main
 
 function scopeLabel(serviceType: string | null, scopes: string[] | null) {
   if (serviceType?.includes("SidingHardie") || scopes?.includes("siding_hardie")) return "Instant hardie siding estimate";
@@ -67,7 +56,7 @@ export default async function HomePage() {
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
     listHomepageMetrics(),
-    listServiceAreas(),
+    getTopQuoteNeighborhoods(8),
     listRecentInstaquoteAddressQueries(8)
   ]);
 
@@ -86,27 +75,19 @@ export default async function HomePage() {
 
   const activity = recentQuoteActivity.slice(0, 8);
 
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
   const featuredProjects: HomeProject[] = projects.slice(0, 3).map((project) => ({
-=======
-  const featuredProjects: HomeProject[] = projects.slice(0, 3).map((project, index) => ({
->>>>>>> main
     id: project.id,
     slug: project.slug,
     title: project.title,
     service: toTitle(project.service_slug),
     neighborhood: `${project.neighborhood ?? project.city}, ${project.province}`,
     summary: project.summary,
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
     image: project.photos?.[0]?.public_url ?? getPlaceholderProjectImage({
       seed: project.slug,
       neighborhood: project.neighborhood,
       quadrant: project.quadrant,
       city: project.city
     })
-=======
-    image: project.photos?.[0]?.public_url ?? projectFallbackImage[index % projectFallbackImage.length]
->>>>>>> main
   }));
 
   return (
@@ -119,7 +100,12 @@ export default async function HomePage() {
       <FeaturedProjects projects={featuredProjects} />
       <WhyTrusted />
       <CTABand />
-      <ServiceAreas areas={areas.filter((area) => area.active)} />
+      <ServiceAreas areas={areas.map((area) => ({
+        id: area.slug,
+        name: area.neighborhood,
+        slug: area.slug,
+        active: true
+      }))} />
     </>
   );
 }
