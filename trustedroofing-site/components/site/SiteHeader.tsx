@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import HeatMap from "@/components/HeatMap";
+import HeaderLocationProbe from "@/components/site/HeaderLocationProbe";
+import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborhoods } from "@/lib/seo-engine";
 
 const links = [
   { href: "/", label: "Home" },
@@ -7,7 +10,13 @@ const links = [
   { href: "/projects", label: "Projects" }
 ];
 
-export default function SiteHeader() {
+export default async function SiteHeader() {
+  const [serviceAreas, heatmap, heatLinks] = await Promise.all([
+    getTopProjectNeighborhoods(10),
+    getProjectQuadrantHeat(),
+    getProjectQuadrantLinks()
+  ]);
+
   return (
     <header className="site-header site-header--v3">
       <div className="site-shell site-header__inner">
@@ -15,8 +24,8 @@ export default function SiteHeader() {
           <Image
             src="/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png"
             alt="Trusted Roofing & Exteriors"
-            width={160}
-            height={56}
+            width={1536}
+            height={1024}
             className="brand-logo"
             priority
           />
@@ -28,6 +37,26 @@ export default function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          <div className="nav-service-areas">
+            <Link href="/service-areas">Service Areas</Link>
+            <div className="nav-service-areas__dropdown">
+              <div>
+                <p className="nav-service-areas__eyebrow">Top Calgary project areas</p>
+                <div className="nav-service-areas__list">
+                  {serviceAreas.map((area) => (
+                    <Link key={area.slug} href={`/service-areas/${area.slug}`}>
+                      <span>{area.neighborhood}</span>
+                      <strong>{area.projectCount}</strong>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="nav-service-areas__eyebrow">Project heat</p>
+                <HeatMap counts={heatmap} links={heatLinks} />
+              </div>
+            </div>
+          </div>
         </nav>
 
         <div className="nav-right">
@@ -38,6 +67,9 @@ export default function SiteHeader() {
             Get instant quote
           </Link>
         </div>
+      </div>
+      <div className="site-shell">
+        <HeaderLocationProbe />
       </div>
     </header>
   );

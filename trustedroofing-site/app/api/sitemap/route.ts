@@ -1,8 +1,5 @@
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
 import { listGeoPosts, listProjects, listServices } from "@/lib/db";
-=======
-import { listProjects, listServices } from "@/lib/db";
->>>>>>> main
+import { getAllQuoteNeighborhoods } from "@/lib/seo-engine";
 import { canonicalUrl } from "@/lib/seo";
 
 function buildUrlset(urls: string[]) {
@@ -11,16 +8,11 @@ function buildUrlset(urls: string[]) {
 }
 
 export async function GET() {
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
-  const [services, projects, geoPosts] = await Promise.all([
+  const [services, projects, geoPosts, serviceAreas] = await Promise.all([
     listServices(),
     listProjects({ include_unpublished: false, limit: 2000 }),
-    listGeoPosts()
-=======
-  const [services, projects] = await Promise.all([
-    listServices(),
-    listProjects({ include_unpublished: false, limit: 2000 })
->>>>>>> main
+    listGeoPosts(),
+    getAllQuoteNeighborhoods()
   ]);
 
   const urls = [
@@ -28,13 +20,11 @@ export async function GET() {
     canonicalUrl("/services"),
     ...services.map((service) => canonicalUrl(`/services/${service.slug}`)),
     canonicalUrl("/projects"),
-<<<<<<< codex/set-up-foundation-for-trustedroofing-site-bbrh8t
     ...projects.map((project) => canonicalUrl(`/projects/${project.slug}`)),
+    canonicalUrl("/service-areas"),
+    ...serviceAreas.map((area) => canonicalUrl(`/service-areas/${area.slug}`)),
     canonicalUrl("/geo-posts"),
     ...geoPosts.flatMap((geoPost) => (geoPost.slug ? [canonicalUrl(`/geo-posts/${geoPost.slug}`)] : []))
-=======
-    ...projects.map((project) => canonicalUrl(`/projects/${project.slug}`))
->>>>>>> main
   ];
 
   return new Response(buildUrlset(urls), {
