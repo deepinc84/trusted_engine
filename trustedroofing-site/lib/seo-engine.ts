@@ -2,25 +2,29 @@ import type { Project, InstaquoteAddressQuery } from "./db";
 import { listProjects, listRecentInstaquoteAddressQueries } from "./db";
 import { haversineKm } from "./geo";
 import {
-  extractCity,
-  extractNeighborhood,
-  extractQuadrant,
+  buildQuoteSignalTitle,
   neighborhoodSlug,
   quoteComplexityLabel,
-  quoteMaterialLabel
+  quoteMaterialLabel,
+  resolvePublicLocation
 } from "./serviceAreas";
 
 export type QuoteCardData = {
   id: string;
+  locality: string;
   neighborhood: string;
   slug: string;
   city: string;
+  locationLabel: string;
   quadrant: string | null;
   complexity: string;
   material: string;
   estimateLow: number | null;
   estimateHigh: number | null;
+  roofAreaSqft: number | null;
+  pitchDegrees: number | null;
   queriedAt: string;
+  title: string;
   description: string;
 };
 
@@ -57,9 +61,12 @@ function averageFloat(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function toQuoteCard(row: InstaquoteAddressQuery, neighborhood: string, city: string): QuoteCardData {
-  const slug = neighborhoodSlug(neighborhood);
-  const quadrant = extractQuadrant(row.address);
+function toQuoteCard(row: InstaquoteAddressQuery): QuoteCardData {
+  const location = resolvePublicLocation({
+    neighborhood: row.neighborhood,
+    address: row.address
+  });
+  const slug = neighborhoodSlug(location.locality);
   const material = quoteMaterialLabel(row.service_type, row.requested_scopes);
   const complexity = quoteComplexityLabel(row.complexity_band);
   const estimateLow = typeof row.estimate_low === "number" ? row.estimate_low : null;
@@ -67,18 +74,21 @@ function toQuoteCard(row: InstaquoteAddressQuery, neighborhood: string, city: st
 
   return {
     id: row.id,
-    neighborhood,
+    locality: location.locality,
+    neighborhood: location.locality,
     slug,
-    city,
-    quadrant,
+    city: location.city,
+    locationLabel: location.label,
+    quadrant: location.quadrant,
     complexity,
     material,
     estimateLow,
     estimateHigh,
+    roofAreaSqft: typeof row.roof_area_sqft === "number" ? row.roof_area_sqft : null,
+    pitchDegrees: typeof row.pitch_degrees === "number" ? row.pitch_degrees : null,
     queriedAt: row.queried_at,
-    description: estimateLow !== null && estimateHigh !== null
-      ? `Recent ${material.toLowerCase()} quote activity in ${neighborhood} ranging from $${Math.round(estimateLow).toLocaleString()} to $${Math.round(estimateHigh).toLocaleString()}.`
-      : `Recent ${material.toLowerCase()} quote activity in ${neighborhood}, Calgary with live pricing context.`
+    title: buildQuoteSignalTitle(material, location.locality, location.city),
+    description: `Recent address-level ${material.toLowerCase()} estimate generated for this area. Modeled estimate signal based on recent local property inputs.`
   };
 }
 
@@ -96,17 +106,14 @@ async function buildNeighborhoodSummaries() {
   }>();
 
   for (const row of rows) {
-    const city = extractCity(row.address) ?? "Calgary";
-    if (city !== "Calgary") continue;
+    const card = toQuoteCard(row);
+    if (card.city !== "Calgary") continue;
 
-    const neighborhood = row.neighborhood ?? extractNeighborhood(row.address);
-    if (!neighborhood) continue;
-
-    const slug = neighborhoodSlug(neighborhood);
+    const slug = neighborhoodSlug(card.locality);
     const existing = grouped.get(slug) ?? {
-      neighborhood,
-      city,
-      quadrant: extractQuadrant(row.address),
+      neighborhood: card.locality,
+      city: card.city,
+      quadrant: card.quadrant,
       lows: [],
       highs: [],
       lats: [],
@@ -118,7 +125,7 @@ async function buildNeighborhoodSummaries() {
     if (typeof row.estimate_high === "number") existing.highs.push(row.estimate_high);
     if (typeof row.lat === "number") existing.lats.push(row.lat);
     if (typeof row.lng === "number") existing.lngs.push(row.lng);
-    existing.cards.push(toQuoteCard(row, neighborhood, city));
+    existing.cards.push(card);
 
     grouped.set(slug, existing);
   }
@@ -204,7 +211,12 @@ async function buildProjectNeighborhoodSummaries() {
 
   for (const project of projects) {
     if (project.city !== "Calgary") continue;
-    const neighborhood = project.neighborhood ?? project.city;
+    const location = resolvePublicLocation({
+      neighborhood: project.neighborhood,
+      city: project.city,
+      quadrant: project.quadrant
+    });
+    const neighborhood = location.locality;
     const slug = neighborhoodSlug(neighborhood);
     const existing = grouped.get(slug);
 
@@ -217,7 +229,7 @@ async function buildProjectNeighborhoodSummaries() {
       neighborhood,
       slug,
       city: project.city,
-      quadrant: project.quadrant,
+      quadrant: location.quadrant,
       projectCount: 1
     });
   }

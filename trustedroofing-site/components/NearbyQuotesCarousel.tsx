@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { buildEstimateRanges, type ComplexityBand } from "@/lib/quote";
-import { neighborhoodSlug, quoteComplexityLabel, quoteMaterialLabel } from "@/lib/serviceAreas";
 import QuoteCard from "@/components/QuoteCard";
+import { buildEstimateRanges, type ComplexityBand } from "@/lib/quote";
+import { buildQuoteSignalTitle, neighborhoodSlug, quoteComplexityLabel, quoteMaterialLabel, resolvePublicLocation } from "@/lib/serviceAreas";
 
 type NearbyItem = {
   lat: number;
@@ -26,16 +26,6 @@ type Props = {
   coords: { lat: number; lng: number } | null;
   address: string | null;
 };
-
-function timeAgo(iso: string) {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.max(1, Math.round(diffMs / 60000));
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 48) return `${hours} hr ago`;
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
-}
 
 function normalizeComplexity(input: string | null): ComplexityBand {
   return input === "simple" || input === "complex" ? input : "moderate";
@@ -95,21 +85,32 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
         ? item.estimate_high
         : null;
       const hasStoredRange = estimateLow !== null && estimateHigh !== null;
-      const neighborhood = item.neighborhood ?? item.city ?? "Calgary";
+      const location = resolvePublicLocation({
+        neighborhood: item.neighborhood,
+        city: item.city,
+        quadrant: item.quadrant,
+        address: item.address
+      });
       const material = quoteMaterialLabel(item.service_type, item.requested_scopes);
       const complexityLabel = quoteComplexityLabel(item.complexity_band);
+
       return {
         id: `${item.queried_at}-${index}`,
-        neighborhood,
-        slug: neighborhoodSlug(neighborhood),
-        city: item.city ?? "Calgary",
-        quadrant: item.quadrant,
+        locality: location.locality,
+        neighborhood: location.locality,
+        slug: neighborhoodSlug(location.locality),
+        city: location.city,
+        locationLabel: location.label,
+        quadrant: location.quadrant,
         complexity: complexityLabel,
         material,
         estimateLow: hasStoredRange ? estimateLow : ranges.good.low,
         estimateHigh: hasStoredRange ? estimateHigh : ranges.good.high,
+        roofAreaSqft: area,
+        pitchDegrees,
         queriedAt: item.queried_at,
-        description: `${material} quote snapshot for ${neighborhood} updated ${timeAgo(item.queried_at).toLowerCase()} with ${area} sqft pricing context.`
+        title: buildQuoteSignalTitle(material, location.locality, location.city),
+        description: `Recent address-level ${material.toLowerCase()} estimate generated for this area. Modeled estimate signal based on recent local property inputs.`
       };
     });
   }, [items]);
@@ -130,7 +131,7 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
       {cards.length > 0 ? (
         <div className="nearby-quotes__grid" aria-live="polite">
           {cards.map((quote) => (
-            <QuoteCard key={quote.id} quote={quote} />
+            <QuoteCard key={quote.id} quote={quote} variant="compact" />
           ))}
         </div>
       ) : null}

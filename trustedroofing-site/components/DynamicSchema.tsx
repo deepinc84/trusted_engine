@@ -87,7 +87,7 @@ function buildQuoteSchema(quote: QuoteNeighborhoodSummary, relatedNeighborhoods:
       offerCount: quote.quoteCount,
       offers: quote.cards.slice(0, 3).map((card) => ({
         "@type": "Offer",
-        name: `${card.material} quote in ${card.neighborhood}`,
+        name: card.title,
         description: card.description,
         priceCurrency: "CAD",
         lowPrice: card.estimateLow ?? lowPrice,

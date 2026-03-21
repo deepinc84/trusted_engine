@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
 import { createInstaquoteAddressQuery } from "@/lib/db";
-import { extractNeighborhood } from "@/lib/serviceAreas";
+import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
 type EstimateBody = {
@@ -56,8 +56,7 @@ function getGoogleNeighborhood(components: GoogleAddressComponent[] | undefined)
 }
 
 function normalizeNeighborhood(value: string | null | undefined) {
-  const cleaned = value?.trim();
-  return cleaned ? cleaned : null;
+  return normalizeLocalityCandidate(value) ?? null;
 }
 
 async function geocodeAddress(address: string) {

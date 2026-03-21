@@ -7,14 +7,10 @@ import ProofStrip from "@/components/home/ProofStrip";
 import ServiceAreas from "@/components/home/ServiceAreas";
 import ServicesGrid from "@/components/home/ServicesGrid";
 import WhyTrusted from "@/components/home/WhyTrusted";
-import type { HomeActivity, HomeProject, HomeService } from "@/components/home/types";
-import {
-  listHomepageMetrics,
-  listProjects,
-  listRecentInstaquoteAddressQueries,
-  listServices
-} from "@/lib/db";
+import type { HomeProject, HomeService } from "@/components/home/types";
+import { listHomepageMetrics, listProjects, listServices } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
+import { getLiveActivityFeed } from "@/lib/activity-feed";
 import { getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
@@ -27,15 +23,6 @@ export const metadata = buildMetadata({
   path: "/"
 });
 
-
-function scopeLabel(serviceType: string | null, scopes: string[] | null) {
-  if (serviceType?.includes("SidingHardie") || scopes?.includes("siding_hardie")) return "Instant hardie siding estimate";
-  if (serviceType?.includes("SidingVinyl") || scopes?.includes("siding_vinyl")) return "Instant vinyl siding estimate";
-  if (serviceType?.includes("Eavestrough") || scopes?.includes("eavestrough")) return "Instant eavestrough estimate";
-  if (serviceType?.includes("All") || (scopes?.length ?? 0) > 1) return "Instant full exterior estimate";
-  return "Instant roof estimate";
-}
-
 function toTitle(slug: string) {
   return slug
     .split("-")
@@ -43,21 +30,13 @@ function toTitle(slug: string) {
     .join(" ");
 }
 
-function publicLocationFromAddress(address: string) {
-  const upper = address.toUpperCase();
-  const quadrant = upper.match(/\b(NE|NW|SE|SW)\b/)?.[1] ?? null;
-  if (quadrant) return `${quadrant} Calgary`;
-  if (address.toLowerCase().includes("calgary")) return "Calgary";
-  return "Calgary area";
-}
-
 export default async function HomePage() {
-  const [projects, services, metrics, areas, quoteActivity] = await Promise.all([
+  const [projects, services, metrics, areas, activity] = await Promise.all([
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
     listHomepageMetrics(),
     getTopQuoteNeighborhoods(8),
-    listRecentInstaquoteAddressQueries(8)
+    getLiveActivityFeed(12)
   ]);
 
   const homeServices: HomeService[] = services.slice(0, 4).map((service) => ({
@@ -65,15 +44,6 @@ export default async function HomePage() {
     title: service.title,
     copy: service.base_sales_copy ?? "Exterior service tailored for Calgary homes."
   }));
-
-  const recentQuoteActivity: HomeActivity[] = quoteActivity.map((row) => ({
-    id: `quote-${row.id}`,
-    service: scopeLabel(row.service_type, row.requested_scopes),
-    location: publicLocationFromAddress(row.address),
-    occurredAt: row.queried_at
-  }));
-
-  const activity = recentQuoteActivity.slice(0, 8);
 
   const featuredProjects: HomeProject[] = projects.slice(0, 3).map((project) => ({
     id: project.id,

@@ -803,7 +803,7 @@ main {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
   padding: 12px 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -924,7 +924,7 @@ main {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
   padding: 15px 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -935,6 +935,17 @@ main {
 
 .homev3-feed strong {
   font-size: 0.95rem;
+}
+
+.homev3-activity-card li strong a,
+.homev3-feed strong a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.homev3-activity-card li strong a:hover,
+.homev3-feed strong a:hover {
+  text-decoration: underline;
 }
 
 .homev3-feed p {
@@ -1335,6 +1346,77 @@ main {
 .ui-card--project .seo-card__content,
 .ui-card--quote .seo-card__content {
   padding: 0 18px;
+}
+
+.quote-card {
+  padding: 0;
+}
+
+.quote-card__link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.quote-card__content {
+  padding: 18px !important;
+  gap: 12px;
+}
+
+.quote-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quote-card__time {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.quote-card__summary {
+  color: var(--muted);
+  font-size: 0.96rem;
+}
+
+.quote-card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.quote-card__meta div {
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f8fbff;
+}
+
+.quote-card__meta dt {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.quote-card__meta dd {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.quote-card__cta {
+  display: block;
+  padding: 0 18px 18px;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .seo-card__eyebrow {
@@ -2068,5 +2150,11 @@ main {
   .site-footer__grid--expanded {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .quote-card__meta {
+    grid-template-columns: 1fr;
   }
 }

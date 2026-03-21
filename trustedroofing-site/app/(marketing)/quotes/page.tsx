@@ -30,7 +30,7 @@ function buildArchiveSchema(cards: Awaited<ReturnType<typeof getAllQuoteCards>>)
         "@type": "ListItem",
         position: index + 1,
         url: `${canonicalUrl("/quotes")}#quote-${card.id}`,
-        name: `${card.material} quote in ${card.neighborhood}, Calgary`
+        name: card.title
       }))
     }
   };
@@ -57,7 +57,7 @@ export default async function QuotesArchivePage() {
       <PageHero
         eyebrow="Quote archive"
         title="Every recent Calgary quote signal in one place"
-        description="A crawlable archive of roofing, siding, Hardie, and eavestrough estimate activity grouped by neighborhood and updated from the instant estimator feed."
+        description="A crawlable archive of roofing, siding, Hardie, and eavestrough estimate signals generated from live address-level modeled outputs."
       />
 
       <section className="ui-page-section">
@@ -65,15 +65,15 @@ export default async function QuotesArchivePage() {
           <div className="quote-card-grid">
             <article className="ui-card">
               <h2>Total quote signals</h2>
-              <p className="homev3-copy">{cards.length.toLocaleString()} recent quote records are available on this page.</p>
+              <p className="homev3-copy">{cards.length.toLocaleString()} recent address-level modeled estimate signals are available on this page.</p>
             </article>
             <article className="ui-card">
               <h2>Neighborhoods covered</h2>
-              <p className="homev3-copy">{areas.length.toLocaleString()} Calgary neighborhoods currently have published quote activity.</p>
+              <p className="homev3-copy">{areas.length.toLocaleString()} Calgary localities currently have published quote activity.</p>
             </article>
             <article className="ui-card">
               <h2>Latest update</h2>
-              <p className="homev3-copy">{lastUpdated ?? "Live updates available as new quotes are generated."}</p>
+              <p className="homev3-copy">{lastUpdated ?? "Live updates appear here as new quotes are generated."}</p>
             </article>
           </div>
 
@@ -84,7 +84,7 @@ export default async function QuotesArchivePage() {
                 <article key={area.slug} className="ui-card">
                   <h3>{area.neighborhood}</h3>
                   <p className="homev3-copy">
-                    {area.quoteCount.toLocaleString()} quotes · average range {area.averageLow ? `$${area.averageLow.toLocaleString()}` : "N/A"} - {area.averageHigh ? `$${area.averageHigh.toLocaleString()}` : "N/A"}
+                    {area.quoteCount.toLocaleString()} quote signals · recent modeled range window {area.averageLow ? `$${area.averageLow.toLocaleString()}` : "N/A"} - {area.averageHigh ? `$${area.averageHigh.toLocaleString()}` : "N/A"}
                   </p>
                 </article>
               ))}
@@ -99,7 +99,7 @@ export default async function QuotesArchivePage() {
             <div className="quote-card-grid" style={{ marginTop: 18 }}>
               {cards.map((card) => (
                 <div key={card.id} id={`quote-${card.id}`}>
-                  <QuoteCard quote={card} href={null} />
+                  <QuoteCard quote={card} href={null} variant="full" />
                 </div>
               ))}
             </div>

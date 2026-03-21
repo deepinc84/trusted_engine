@@ -495,7 +495,7 @@ export async function getProjectById(id: string): Promise<Project | null> {
   };
 }
 
-export async function listGeoPosts(): Promise<ResolvedGeoPost[]> {
+export async function listGeoPosts(limit?: number | null): Promise<ResolvedGeoPost[]> {
   const resolveGeoPosts = async (geoPosts: GeoPost[]) => {
     const imageSets = await getProjectImageSets(geoPosts.map((geoPost) => geoPost.project_id));
 
@@ -526,17 +526,21 @@ export async function listGeoPosts(): Promise<ResolvedGeoPost[]> {
   if (getDataMode() === "supabase") {
     const client = getAnonClient();
     if (client) {
-      const { data } = await client
+      let query = client
         .from("geo_posts")
         .select("*")
         .order("created_at", { ascending: false });
+
+      if (limit) query = query.limit(limit);
+
+      const { data } = await query;
 
       const geoPosts = ((data ?? []) as GeoPost[]).filter((geoPost) => !!geoPost.slug);
       return resolveGeoPosts(geoPosts);
     }
   }
 
-  return resolveGeoPosts(mockGeoPosts.filter((geoPost) => !!geoPost.slug));
+  return resolveGeoPosts(mockGeoPosts.filter((geoPost) => !!geoPost.slug).slice(0, limit ?? undefined));
 }
 
 export async function getGeoPostBySlug(slug: string): Promise<ResolvedGeoPost | null> {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { listRecentInstaquoteAddressQueries } from "@/lib/db";
 import { haversineKm } from "@/lib/geo";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
-import { extractCity, extractNeighborhood, extractQuadrant } from "@/lib/serviceAreas";
+import { extractCity, extractNeighborhood, extractQuadrant, resolvePublicLocation } from "@/lib/serviceAreas";
 
 type Row = {
   lat: number;
@@ -23,24 +23,19 @@ function normalize(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
-function toPublicAreaLabel(address: string) {
-  const quadrant = extractQuadrant(address);
-  const city = extractCity(address);
-  if (quadrant && city) return `${quadrant} ${city}`;
-  if (city) return city;
-  if (quadrant) return `${quadrant} Calgary`;
-  return "Calgary";
-}
-
 function rankRows(rows: Row[], targetAddress: string | null) {
   const targetNeighborhood = normalize(extractNeighborhood(targetAddress ?? ""));
   const targetQuadrant = normalize(extractQuadrant(targetAddress ?? ""));
   const targetCity = normalize(extractCity(targetAddress ?? ""));
 
   const enriched = rows.map((row, index) => {
-    const neighborhood = normalize(row.neighborhood ?? extractNeighborhood(row.address));
-    const quadrant = normalize(extractQuadrant(row.address));
-    const city = normalize(extractCity(row.address));
+    const location = resolvePublicLocation({
+      neighborhood: row.neighborhood,
+      address: row.address
+    });
+    const neighborhood = normalize(location.locality);
+    const quadrant = normalize(location.quadrant);
+    const city = normalize(location.city);
 
     return {
       row,
@@ -112,22 +107,29 @@ export async function GET(request: Request) {
   const rankedFallback = rankRows(recentRows, address);
   const source = rankedPrimary.length > 0 ? rankedPrimary : rankedFallback;
 
-  const items = source.slice(0, 50).map((row) => ({
-    lat: row.lat,
-    lng: row.lng,
-    address: toPublicAreaLabel(row.address),
-    neighborhood: row.neighborhood ?? extractNeighborhood(row.address),
-    quadrant: extractQuadrant(row.address),
-    city: extractCity(row.address),
-    service_type: row.service_type,
-    requested_scopes: row.requested_scopes,
-    roof_area_sqft: row.roof_area_sqft,
-    pitch_degrees: row.pitch_degrees,
-    complexity_band: row.complexity_band,
-    estimate_low: row.estimate_low,
-    estimate_high: row.estimate_high,
-    queried_at: row.queried_at
-  }));
+  const items = source.slice(0, 50).map((row) => {
+    const location = resolvePublicLocation({
+      neighborhood: row.neighborhood,
+      address: row.address
+    });
+
+    return {
+      lat: row.lat,
+      lng: row.lng,
+      address: location.label,
+      neighborhood: location.locality,
+      quadrant: location.quadrant,
+      city: location.city,
+      service_type: row.service_type,
+      requested_scopes: row.requested_scopes,
+      roof_area_sqft: row.roof_area_sqft,
+      pitch_degrees: row.pitch_degrees,
+      complexity_band: row.complexity_band,
+      estimate_low: row.estimate_low,
+      estimate_high: row.estimate_high,
+      queried_at: row.queried_at
+    };
+  });
 
   return NextResponse.json({ ok: true, items });
 }
