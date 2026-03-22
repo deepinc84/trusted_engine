@@ -1,21 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import { formatRelativeTime } from "@/lib/time";
 import type { HomeActivity, HomeMetric } from "./types";
 
 type Props = {
   metrics: HomeMetric[];
   activity: HomeActivity[];
 };
-
-function formatRelative(timestamp: string) {
-  const ms = Date.now() - new Date(timestamp).getTime();
-  const mins = Math.max(1, Math.round(ms / 60000));
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
-}
 
 export default function HeroSection({ metrics, activity }: Props) {
   return (
@@ -52,16 +43,16 @@ export default function HeroSection({ metrics, activity }: Props) {
         <aside className="homev3-activity-card">
           <div className="homev3-activity-card__head">
             <h3>Recent activity</h3>
-            <span>Recent</span>
+            <span>Live</span>
           </div>
           <ul>
             {activity.slice(0, 5).map((item) => (
               <li key={item.id}>
                 <div>
-                  <strong>{item.service}</strong>
+                  <strong><Link href={item.href}>{item.message}</Link></strong>
                   <p>{item.location}</p>
                 </div>
-                <em>{formatRelative(item.occurredAt)}</em>
+                <em>{formatRelativeTime(item.occurredAt)}</em>
               </li>
             ))}
           </ul>
