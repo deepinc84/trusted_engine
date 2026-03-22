@@ -60,6 +60,12 @@ export type QuoteArchiveAggregates = {
   neighborhoods: QuoteAggregateSummary[];
 };
 
+export type QuoteArchiveMaterialSection = {
+  material: string;
+  cards: QuoteCardData[];
+  aggregates: QuoteArchiveAggregates;
+};
+
 export type QuadrantHeat = Record<"NW" | "NE" | "SW" | "SE", number>;
 
 export type ProjectNeighborhoodSummary = {
@@ -242,6 +248,24 @@ export async function getAllQuoteCards() {
 export async function getQuoteArchiveAggregates() {
   const cards = await getAllQuoteCardsInternal();
   return buildAggregateSummaries(cards);
+}
+
+export async function getQuoteArchiveByMaterial(): Promise<QuoteArchiveMaterialSection[]> {
+  const cards = await getAllQuoteCardsInternal();
+  const grouped = new Map<string, QuoteCardData[]>();
+  const sortOrder = new Map([["Roofing", 1], ["Vinyl siding", 2], ["Hardie siding", 3], ["Eavestrough", 4], ["Mixed exterior scope", 5]]);
+
+  for (const card of cards) {
+    grouped.set(card.material, [...(grouped.get(card.material) ?? []), card]);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([material, materialCards]) => ({
+      material,
+      cards: materialCards,
+      aggregates: buildAggregateSummaries(materialCards)
+    }))
+    .sort((a, b) => (sortOrder.get(a.material) ?? 99) - (sortOrder.get(b.material) ?? 99) || a.material.localeCompare(b.material));
 }
 
 export async function getQuoteNeighborhoodBySlug(slug: string) {
