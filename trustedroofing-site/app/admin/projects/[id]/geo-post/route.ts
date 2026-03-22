@@ -1,5 +1,24 @@
 import { NextResponse } from "next/server";
 import { getProjectById, syncGeoPostForProject } from "@/lib/db";
+import { getSiteUrl } from "@/lib/indexnow";
+
+async function triggerIndexing(urls: string[]) {
+  if (!process.env.INDEXING_TOKEN) return;
+
+  try {
+    await fetch(new URL("/api/index-project", getSiteUrl()), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-indexing-token": process.env.INDEXING_TOKEN
+      },
+      body: JSON.stringify({ urlList: urls, type: "URL_UPDATED" }),
+      cache: "no-store"
+    });
+  } catch {
+    // best effort only; geo-post publishing should not fail if indexing ping fails
+  }
+}
 
 export async function POST(
   _request: Request,
@@ -19,6 +38,10 @@ export async function POST(
     }
 
     const geoPost = await syncGeoPostForProject(project.id);
+    if (geoPost.slug) {
+      await triggerIndexing([`${getSiteUrl()}/geo-posts/${geoPost.slug}`]);
+    }
+
     return NextResponse.json({ geo_post: geoPost });
   } catch (error) {
     return NextResponse.json(
