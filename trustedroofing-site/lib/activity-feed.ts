@@ -79,7 +79,7 @@ export async function getLiveActivityFeed(limit = 20): Promise<LiveActivityItem[
       location: location.label,
       message: `${service} project published in ${location.label}`,
       occurredAt: geoPost.created_at,
-      href: geoPost.slug ? `/geo-posts/${geoPost.slug}` : "/geo-posts"
+      href: geoPost.slug ? `/geo-posts/${geoPost.slug}` : "/projects"
     };
   });
 

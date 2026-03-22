@@ -25,7 +25,6 @@ export async function GET() {
     canonicalUrl("/quotes"),
     canonicalUrl("/service-areas"),
     ...serviceAreas.map((area) => canonicalUrl(`/service-areas/${area.slug}`)),
-    canonicalUrl("/geo-posts"),
     ...geoPosts.flatMap((geoPost) => (geoPost.slug ? [canonicalUrl(`/geo-posts/${geoPost.slug}`)] : []))
   ];
 

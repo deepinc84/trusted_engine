@@ -47,7 +47,7 @@ export default async function GeoPostDetailPage({ params }: { params: { slug: st
         description={`${geoPost.neighborhood ?? geoPost.city ?? "Calgary"}, ${geoPost.province ?? "AB"}`}
         actions={
           <>
-            <Link href="/geo-posts" className="button">All geo posts</Link>
+            <Link href="/projects" className="button">All projects</Link>
             <Link href={`/projects/${params.slug}`} className="button button--ghost">Linked project</Link>
           </>
         }
