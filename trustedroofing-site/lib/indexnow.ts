@@ -20,6 +20,10 @@ export function getIndexNowHost() {
   return new URL(getSiteUrl()).host;
 }
 
+function isAllowedIndexNowUrl(url: URL | null, allowedHost: string): url is URL {
+  return url instanceof URL && url.host === allowedHost;
+}
+
 export function normalizeIndexNowUrls(urls: string[]) {
   const allowedHost = getIndexNowHost();
 
@@ -31,7 +35,7 @@ export function normalizeIndexNowUrls(urls: string[]) {
         return null;
       }
     })
-    .filter((url): url is URL => Boolean(url) && url.host === allowedHost)
+    .filter((url): url is URL => isAllowedIndexNowUrl(url, allowedHost))
     .map((url) => url.toString());
 }
 
