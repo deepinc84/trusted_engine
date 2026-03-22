@@ -8,10 +8,10 @@ import ServiceAreas from "@/components/home/ServiceAreas";
 import ServicesGrid from "@/components/home/ServicesGrid";
 import WhyTrusted from "@/components/home/WhyTrusted";
 import type { HomeMetric, HomeProject, HomeService } from "@/components/home/types";
-import { countLiveGeoPosts, countLiveQuoteSignals, countPublishedProjects, listProjects, listServices } from "@/lib/db";
+import { countLiveQuoteSignals, listProjects, listServices } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
 import { getLiveActivityFeed } from "@/lib/activity-feed";
-import { getAllQuoteNeighborhoods, getTopQuoteNeighborhoods } from "@/lib/seo-engine";
+import { getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -31,13 +31,10 @@ function toTitle(slug: string) {
 }
 
 export default async function HomePage() {
-  const [projects, services, quoteCount, projectCount, geoPostCount, allAreas, topAreas, activity] = await Promise.all([
+  const [projects, services, quoteCount, topAreas, activity] = await Promise.all([
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
     countLiveQuoteSignals(),
-    countPublishedProjects(),
-    countLiveGeoPosts(),
-    getAllQuoteNeighborhoods(),
     getTopQuoteNeighborhoods(20),
     getLiveActivityFeed(12)
   ]);
@@ -46,32 +43,32 @@ export default async function HomePage() {
     {
       id: "live-quotes",
       key_name: "live_quote_signals",
-      label: "Instant quote signals",
+      label: "Instant Quotes Generated",
       value_text: quoteCount.toLocaleString(),
       sort_order: 1,
       is_active: true
     },
     {
-      id: "live-areas",
-      key_name: "live_quote_localities",
-      label: "Neighborhoods with live quote data",
-      value_text: allAreas.length.toLocaleString(),
+      id: "turnaround",
+      key_name: "instant_quote_turnaround",
+      label: "Instant Quote Turnaround",
+      value_text: "< 60s",
       sort_order: 2,
       is_active: true
     },
     {
-      id: "live-projects",
-      key_name: "published_projects",
-      label: "Published projects",
-      value_text: projectCount.toLocaleString(),
+      id: "warranty",
+      key_name: "workmanship_warranty",
+      label: "Workmanship warranty",
+      value_text: "10yr",
       sort_order: 3,
       is_active: true
     },
     {
-      id: "live-geo-posts",
-      key_name: "live_geo_posts",
-      label: "Geo posts live",
-      value_text: geoPostCount.toLocaleString(),
+      id: "accuracy",
+      key_name: "instant_quote_accuracy",
+      label: "Final Quote Accuracy",
+      value_text: "99%",
       sort_order: 4,
       is_active: true
     }
