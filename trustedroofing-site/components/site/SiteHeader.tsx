@@ -67,6 +67,9 @@ export default async function SiteHeader() {
           </Link>
         </div>
       </div>
+      {/* <div className="site-shell">
+        <HeaderLocationProbe />
+      </div> */}
     </header>
   );
 }

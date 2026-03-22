@@ -67,7 +67,7 @@ export default async function HomePage() {
     {
       id: "accuracy",
       key_name: "instant_quote_accuracy",
-      label: "Instant Quote Accuracy",
+      label: "Final Quote Accuracy",
       value_text: "99%",
       sort_order: 4,
       is_active: true
