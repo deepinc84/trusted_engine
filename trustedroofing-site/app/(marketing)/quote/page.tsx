@@ -28,6 +28,21 @@ export const metadata = buildMetadata({
 
 export const dynamic = "force-dynamic";
 
+const quoteFlowSteps = [
+  {
+    title: "Start with the estimate first",
+    description: "Use the address lookup and scope selector to see a planning range before you commit to a call."
+  },
+  {
+    title: "Compare scope options quickly",
+    description: "Switch between roofing, siding, eavestrough, or whole-exterior work without leaving the quote flow."
+  },
+  {
+    title: "Get follow-up only when you want it",
+    description: "Detailed quote follow-up happens after the instant estimate, not before, so the tool stays usable and fast."
+  }
+];
+
 export default function QuotePage() {
   return (
     <>
@@ -44,6 +59,21 @@ export default function QuotePage() {
       <section className="ui-page-section ui-page-section--soft">
         <PageContainer>
           <div className="quote-page-stack">
+            <section className="quote-flow-overview" aria-labelledby="quote-flow-overview-title">
+              <div className="quote-flow-overview__header">
+                <p className="ui-page-hero__eyebrow">How it works</p>
+                <h2 id="quote-flow-overview-title">Get the estimate first, then decide what happens next</h2>
+              </div>
+              <div className="quote-flow-overview__grid">
+                {quoteFlowSteps.map((step) => (
+                  <article key={step.title} className="ui-card quote-flow-step">
+                    <h3>{step.title}</h3>
+                    <p>{step.description}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
             <div className="quote-shell">
               <div className="quote-shell__form">
                 <QuoteFlow />

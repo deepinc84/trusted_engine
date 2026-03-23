@@ -35,8 +35,6 @@ export default function QuoteCard({
   const pitchLabel = formatPitch(quote.pitchDegrees);
 
   const compactMeta = [
-    { label: "Quadrant", value: quote.quadrant },
-    { label: "City", value: quote.city },
     { label: "Sqft", value: areaLabel },
     { label: "Pitch", value: pitchLabel },
     { label: "Updated", value: relativeTime }
