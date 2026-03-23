@@ -83,6 +83,14 @@ export function neighborhoodSlug(value: string) {
   return sanitizeText(value);
 }
 
+export function normalizeNeighborhoodSlug(value: string) {
+  try {
+    return neighborhoodSlug(decodeURIComponent(value));
+  } catch {
+    return neighborhoodSlug(value);
+  }
+}
+
 export function quoteMaterialLabel(serviceType: string | null, requestedScopes: string[] | null) {
   if (requestedScopes?.includes("siding_hardie") || serviceType?.includes("Hardie")) return "Hardie siding";
   if (requestedScopes?.includes("siding_vinyl") || serviceType?.includes("Vinyl")) return "Vinyl siding";

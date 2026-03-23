@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { HomeArea } from "./types";
+import { normalizeNeighborhoodSlug } from "@/lib/serviceAreas";
 
 export default function ServiceAreas({ areas }: { areas: HomeArea[] }) {
   return (
@@ -13,15 +14,19 @@ export default function ServiceAreas({ areas }: { areas: HomeArea[] }) {
           </p>
         </div>
         <div className="homev3-area-chips">
-          {areas.filter((area) => area.active).map((area) => (
-            <Link
-              key={area.id}
-              href={`/service-areas/${area.slug}`}
-              prefetch={false}
-            >
-              {area.name}
-            </Link>
-          ))}
+          {areas.filter((area) => area.active).map((area) => {
+            const slug = normalizeNeighborhoodSlug(area.slug || area.name);
+
+            return (
+              <Link
+                key={area.id}
+                href={`/service-areas/${slug}`}
+                prefetch={false}
+              >
+                {area.name}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -5,6 +5,7 @@ import {
   buildQuoteAnchorSlug,
   buildQuoteSignalTitle,
   neighborhoodSlug,
+  normalizeNeighborhoodSlug,
   quoteComplexityLabel,
   quoteMaterialLabel,
   resolvePublicLocation
@@ -270,7 +271,8 @@ export async function getQuoteArchiveByMaterial(): Promise<QuoteArchiveMaterialS
 
 export async function getQuoteNeighborhoodBySlug(slug: string) {
   const rows = await buildNeighborhoodSummaries();
-  return rows.find((row) => row.slug === slug) ?? null;
+  const normalizedSlug = normalizeNeighborhoodSlug(slug);
+  return rows.find((row) => row.slug === normalizedSlug) ?? null;
 }
 
 export async function getQuoteQuadrantHeat(): Promise<QuadrantHeat> {
