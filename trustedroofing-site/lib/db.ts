@@ -126,7 +126,7 @@ const defaultServices: Service[] = [
     id: "seed-roofing",
     slug: "roofing",
     title: "Roofing",
-    base_sales_copy: "Full roof replacements and high-performance installs.",
+    base_sales_copy: "Roof replacements and roofing system upgrades planned for Calgary hail, ventilation, and weather exposure.",
     created_at: new Date().toISOString()
   },
   {
@@ -140,14 +140,14 @@ const defaultServices: Service[] = [
     id: "seed-siding",
     slug: "siding",
     title: "Siding",
-    base_sales_copy: "Vinyl and Hardie siding upgrades with clean detailing.",
+    base_sales_copy: "Standard and premium siding options with moisture-aware detailing around the full exterior envelope.",
     created_at: new Date().toISOString()
   },
   {
     id: "seed-gutters",
     slug: "gutters",
-    title: "Gutters",
-    base_sales_copy: "Eavestrough and drainage system replacements.",
+    title: "Eavestrough & Gutters",
+    base_sales_copy: "5-inch and 6-inch eavestrough systems planned around real runoff and drainage conditions.",
     created_at: new Date().toISOString()
   },
   {
