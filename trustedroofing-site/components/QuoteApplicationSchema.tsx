@@ -1,5 +1,28 @@
 import { canonicalUrl } from "@/lib/seo";
 
+export const quoteFaqItems = [
+  {
+    question: "How accurate is the instant quote?",
+    answer:
+      "The instant quote uses address data, roof geometry, and current pricing bands to generate a fast planning range. We refine the final number after confirming access, material choices, and any site-specific complexity."
+  },
+  {
+    question: "Do I need to enter my contact information first?",
+    answer:
+      "No. You can generate the instant estimate before sharing any contact details. Contact information is only requested if you want a detailed follow-up quote."
+  },
+  {
+    question: "What project types can I price here?",
+    answer:
+      "The tool can model roofing, vinyl siding, Hardie siding, eavestrough work, and bundled full-exterior scopes for Calgary-area homes."
+  },
+  {
+    question: "What happens after I submit my detailed quote request?",
+    answer:
+      "Once you submit, the team reviews the estimate, confirms scope assumptions, and follows up with next-step recommendations, timing, and any material options that affect the final price."
+  }
+] as const;
+
 const quoteApplicationSchema = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -41,11 +64,24 @@ const quoteApplicationSchema = {
   ]
 };
 
+const quoteFaqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: quoteFaqItems.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer
+    }
+  }))
+};
+
 export default function QuoteApplicationSchema() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(quoteApplicationSchema) }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify([quoteApplicationSchema, quoteFaqSchema]) }}
     />
   );
 }

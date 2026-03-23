@@ -1,29 +1,34 @@
-import QuoteApplicationSchema from "@/components/QuoteApplicationSchema";
+import QuoteApplicationSchema, { quoteFaqItems } from "@/components/QuoteApplicationSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import QuoteFlow from "@/components/QuoteFlow";
 import { buildMetadata } from "@/lib/seo";
 
-const faqs = [
-  { question: "How accurate is the instant roofing estimate?", answer: "It is meant to be a realistic budget range, not a fake teaser number. The system uses real completed projects and quote data, then adjusts for roof size, pitch, complexity, and location within Calgary. Final pricing still depends on the site review." },
-  { question: "Does the quote tool work for siding and eavestrough too?", answer: "Yes. The tool supports roofing, vinyl siding, Hardie-style siding, and eavestrough scopes. Each uses different pricing logic, so the range reflects the service you actually need." },
-  { question: "How long does it take to get a price range?", answer: "Most homeowners can get through the estimate flow in under a minute once the address is selected. The system is built to give a useful range quickly, then let the team confirm details afterward." },
-  { question: "Why does location matter in the quote?", answer: "Pricing shifts with real project conditions. Access, neighbourhood patterns, home style, and local demand all influence the range. That is why the tool uses location-aware pricing rather than pretending every Calgary job costs the same." },
-  { question: "Do I need an inspection after using the quote tool?", answer: "Yes, if you want a final proposal. The quote is for planning and budget clarity. Inspection confirms measurements, material choice, ventilation issues, hidden repairs, and the final written scope." },
-  { question: "Will this replace talking to a real person?", answer: "No. It shortens the early research stage so you can make better decisions faster. If the range makes sense, the next step is still a proper conversation about scope, timing, and materials." }
-];
+const quoteBenefits = [
+  {
+    title: "Start with the estimate first",
+    body: "Use the address lookup and scope selector to see a planning range before you commit to a call."
+  },
+  {
+    title: "Compare scope options quickly",
+    body: "Switch between roofing, siding, eavestrough, or whole-exterior work without leaving the quote flow."
+  },
+  {
+    title: "Get follow-up only when you want it",
+    body: "Detailed quote follow-up happens after the instant estimate, not before, so the tool stays usable and fast."
+  }
+] as const;
 
 export const metadata = buildMetadata({
   title: "Instant quote",
-  description: "A Calgary-specific instant quote tool for roofing, siding, and eavestrough work, built from real project data rather than generic estimator logic.",
+  description: "Anonymous instant roofing, siding, and eavestrough estimates for Calgary homeowners.",
   path: "/quote"
 });
 
 export default function QuotePage() {
   return (
     <>
-      {/* Schema note: keep SoftwareApplication schema as the primary schema on this page. LocalBusiness schema should remain site-wide, not duplicated here. */}
       <QuoteApplicationSchema />
       <PageHero
         eyebrow="Instant quote"
@@ -44,9 +49,45 @@ export default function QuotePage() {
           </div>
         </PageContainer>
       </section>
-      <section className="ui-page-section"><PageContainer><div className="ui-detail-grid"><article className="ui-card"><h2>What the estimate considers</h2><ul><li>Address and location context across Calgary, Airdrie, Chestermere, and Cochrane.</li><li>Roof size, pitch, and complexity rather than flat-rate guesswork.</li><li>Different scope logic for roofing, siding, and eavestrough work.</li><li>Real project and quote data used to shape realistic price ranges before inspection.</li></ul></article><article className="ui-card"><h2>Why Calgary context matters</h2><p>Hail exposure, freeze-thaw movement, wind-driven rain, and attic ventilation problems all affect roofing and exterior work here. A realistic estimate has to account for those local conditions. That is why this tool is location-aware and why the final review still matters.</p><p>If you are comparing products before requesting a final scope, start with <a href="https://www.gaf.ca/residential-roofing/shingles/timberline-hd" target="_blank" rel="noreferrer">GAF Timberline HD</a> or <a href="https://www.euroshieldroofing.com/" target="_blank" rel="noreferrer">Euroshield</a> for roofing, then use the quote range to understand where those choices sit inside the budget.</p></article></div></PageContainer></section>
-      <section className="ui-page-section ui-page-section--soft"><PageContainer><article className="ui-card"><h2>Frequently asked questions</h2>{/* Schema note: apply FAQ schema to this section only. Do not duplicate FAQ markup inside the form component. */}<div className="ui-list-links" style={{ display: "grid", gap: 20 }}>{faqs.map((item) => <div key={item.question}><h3>{item.question}</h3><p>{item.answer}</p></div>)}</div></article></PageContainer></section>
-      <CtaBand title="Need to talk through the range you received?" body="Send the quote through and we can help you sort the right scope, material tier, and next step." />
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="quote-support-stack">
+            <article className="ui-card quote-support-card">
+              <p className="ui-page-hero__eyebrow">How it works</p>
+              <h2>Everything after the tool stays below the estimator</h2>
+              <p>
+                The instant quote stays front-and-center. Supporting guidance, expectations, and FAQs are placed
+                underneath it so the estimator remains fully visible and usable.
+              </p>
+              <div className="ui-grid ui-grid--services quote-support-grid">
+                {quoteBenefits.map((benefit) => (
+                  <article key={benefit.title} className="ui-card">
+                    <h3>{benefit.title}</h3>
+                    <p>{benefit.body}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            <article className="ui-card quote-support-card">
+              <p className="ui-page-hero__eyebrow">FAQ</p>
+              <h2>Instant quote questions</h2>
+              <div className="quote-faq-list">
+                {quoteFaqItems.map((item) => (
+                  <details key={item.question} className="quote-faq-item">
+                    <summary>{item.question}</summary>
+                    <p>{item.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </article>
+          </div>
+        </PageContainer>
+      </section>
+      <CtaBand
+        title="Need to talk through options?"
+        body="Submit your quote and we can refine material choices and timing with you."
+      />
     </>
   );
 }
