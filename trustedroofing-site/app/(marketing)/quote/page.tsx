@@ -1,3 +1,4 @@
+import FaqAccordion from "@/components/FaqAccordion";
 import QuoteApplicationSchema, { quoteFaqItems } from "@/components/QuoteApplicationSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
@@ -80,6 +81,34 @@ export default function QuotePage() {
                   </details>
                 ))}
               </div>
+            </article>
+          </div>
+        </PageContainer>
+      </section>
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="quote-support-stack">
+            <article className="ui-card quote-support-card">
+              <p className="ui-page-hero__eyebrow">How it works</p>
+              <h2>Everything after the tool stays below the estimator</h2>
+              <p>
+                The instant quote stays front-and-center. Supporting guidance, expectations, and FAQs are placed
+                underneath it so the estimator remains fully visible and usable.
+              </p>
+              <div className="ui-grid ui-grid--services quote-support-grid">
+                {quoteBenefits.map((benefit) => (
+                  <article key={benefit.title} className="ui-card">
+                    <h3>{benefit.title}</h3>
+                    <p>{benefit.body}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            <article className="ui-card quote-support-card">
+              <p className="ui-page-hero__eyebrow">FAQ</p>
+              <h2>Instant quote questions</h2>
+              <FaqAccordion items={quoteFaqItems} />
             </article>
           </div>
         </PageContainer>

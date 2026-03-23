@@ -49,7 +49,7 @@ export default function SiteFooter() {
         </div>
       </div>
       <div className="site-shell site-footer__bottom">
-        <p>© {new Date().getFullYear()} Trusted Exteriors Ltd. Calgary, AB. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Trusted Roofing and Exteriors Inc. Calgary, AB. All rights reserved.</p>
         <div className="site-footer__legal">
           <a href="#">Privacy Policy</a>
           <a href="#">Terms of Service</a>

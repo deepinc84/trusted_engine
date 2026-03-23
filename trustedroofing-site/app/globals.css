@@ -629,21 +629,39 @@ main {
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 12px;
   background: #fff;
-  padding: 14px 16px;
+  padding: 0;
 }
 
-.quote-faq-item summary {
+.quote-faq-item__toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
   cursor: pointer;
   font-weight: 700;
-  list-style: none;
+  text-align: left;
 }
 
-.quote-faq-item summary::-webkit-details-marker {
-  display: none;
+.quote-faq-item__icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #1e3a8a;
+  flex: 0 0 auto;
 }
 
 .quote-faq-item p {
-  margin-top: 10px;
+  margin: 0;
+  padding: 0 16px 16px;
+}
+
+.quote-faq-item.is-open {
+  border-color: rgba(30, 58, 138, 0.24);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
 @media (max-width: 860px) {
