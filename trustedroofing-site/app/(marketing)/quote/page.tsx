@@ -26,6 +26,8 @@ export const metadata = buildMetadata({
   path: "/quote"
 });
 
+export const dynamic = "force-dynamic";
+
 export default function QuotePage() {
   return (
     <>
