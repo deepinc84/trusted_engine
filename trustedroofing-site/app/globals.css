@@ -310,6 +310,24 @@ main {
   gap: 22px;
 }
 
+.quote-page-stack {
+  display: grid;
+  gap: 28px;
+}
+
+.quote-page-media {
+  max-width: 860px;
+  margin: 0 auto;
+  overflow: hidden;
+  padding: 0;
+}
+
+.quote-page-media__image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .instant-quote {
   margin-top: 2px;
   border-top: 4px solid var(--color-primary);
@@ -614,10 +632,6 @@ main {
 
 .quote-support-card {
   gap: 16px;
-}
-
-.quote-support-grid {
-  margin-top: 4px;
 }
 
 .quote-faq-list {
