@@ -31,11 +31,6 @@ export default function QuotePage() {
   return (
     <>
       <QuoteApplicationSchema />
-      <PageHero
-        eyebrow="Instant quote"
-        title="A real estimate tool, not a generic calculator"
-        description="Get a practical price range for roofing, siding, or eavestrough work in under a minute, then use that range to decide what happens next."
-      />
       <section className="ui-page-section ui-page-section--soft">
         <PageContainer>
           <div className="ui-detail-grid">
@@ -85,6 +80,39 @@ export default function QuotePage() {
           </div>
         </PageContainer>
       </section>
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="quote-support-stack">
+            <article className="ui-card quote-support-card">
+              <p className="ui-page-hero__eyebrow">How it works</p>
+              <h2>Everything after the tool stays below the estimator</h2>
+              <p>
+                The instant quote stays front-and-center. Supporting guidance, expectations, and FAQs are placed
+                underneath it so the estimator remains fully visible and usable.
+              </p>
+              <div className="ui-grid ui-grid--services quote-support-grid">
+                {quoteBenefits.map((benefit) => (
+                  <article key={benefit.title} className="ui-card">
+                    <h3>{benefit.title}</h3>
+                    <p>{benefit.body}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            <article className="ui-card quote-support-card">
+              <p className="ui-page-hero__eyebrow">FAQ</p>
+              <h2>Instant quote questions</h2>
+              <FaqAccordion items={quoteFaqItems} />
+            </article>
+          </div>
+        </PageContainer>
+      </section>
+      <PageHero
+        eyebrow="Instant quote"
+        title="Get your estimate in minutes"
+        description="Address autocomplete, roof-data pricing, and nearby project proof in one flow."
+      />
       <section className="ui-page-section">
         <PageContainer>
           <div className="quote-support-stack">
