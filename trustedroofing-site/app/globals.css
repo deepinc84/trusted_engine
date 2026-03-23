@@ -610,6 +610,14 @@ main {
   font-size: 0.92rem;
 }
 
+.ui-page-hero--quote {
+  padding: 84px 0 22px;
+}
+
+.ui-page-section--quote {
+  padding-top: 22px;
+}
+
 .quote-flow-overview {
   display: grid;
   gap: 18px;
