@@ -2,9 +2,23 @@ import FaqAccordion from "@/components/FaqAccordion";
 import QuoteApplicationSchema, { quoteFaqItems } from "@/components/QuoteApplicationSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
-import PageHero from "@/components/ui/PageHero";
 import QuoteFlow from "@/components/QuoteFlow";
 import { buildMetadata } from "@/lib/seo";
+
+const quoteBenefits = [
+  {
+    title: "Start with the estimate first",
+    body: "Use the address lookup and scope selector to see a planning range before you commit to a call."
+  },
+  {
+    title: "Compare scope options quickly",
+    body: "Switch between roofing, siding, eavestrough, or whole-exterior work without leaving the quote flow."
+  },
+  {
+    title: "Get follow-up only when you want it",
+    body: "Detailed quote follow-up happens after the instant estimate, not before, so the tool stays usable and fast."
+  }
+] as const;
 
 export const metadata = buildMetadata({
   title: "Instant quote",
