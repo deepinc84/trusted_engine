@@ -56,13 +56,11 @@ export default function QuotePage() {
           </p>
         </PageContainer>
       </section>
-
       <section className="ui-page-section ui-page-section--soft ui-page-section--quote">
         <PageContainer>
           <div className="quote-page-stack">
             <section className="quote-flow-overview" aria-labelledby="quote-flow-overview-title">
               <div className="quote-flow-overview__header">
-                <p className="ui-page-hero__eyebrow">How it works</p>
                 <h2 id="quote-flow-overview-title">Get the estimate first, then decide what happens next</h2>
               </div>
               <div className="quote-flow-overview__grid">
