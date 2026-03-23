@@ -1,4 +1,3 @@
-import Image from "next/image";
 import FaqAccordion from "@/components/FaqAccordion";
 import QuoteApplicationSchema, { quoteFaqItems } from "@/components/QuoteApplicationSchema";
 import CtaBand from "@/components/ui/CtaBand";
@@ -31,20 +30,14 @@ export default function QuotePage() {
   return (
     <>
       <QuoteApplicationSchema />
+      <PageHero
+        eyebrow="Instant quote"
+        title="Get your estimate in minutes"
+        description="Address autocomplete, roof-data pricing, and nearby project proof in one flow."
+      />
       <section className="ui-page-section ui-page-section--soft">
         <PageContainer>
           <div className="quote-page-stack">
-            <article className="ui-card quote-page-media">
-              <Image
-                src="/IMG_0326.jpeg"
-                alt="Trusted Roofing project preview"
-                width={1600}
-                height={900}
-                className="quote-page-media__image"
-                priority
-              />
-            </article>
-
             <div className="quote-shell">
               <div className="quote-shell__form">
                 <QuoteFlow />
