@@ -32,11 +32,15 @@ export default function QuotePage() {
   return (
     <>
       <QuoteApplicationSchema />
-      <PageHero
-        eyebrow="Instant quote"
-        title="Get your estimate in minutes"
-        description="Address autocomplete, roof-data pricing, and nearby project proof in one flow."
-      />
+      <section className="ui-page-hero">
+        <PageContainer>
+          <p className="homev3-eyebrow homev3-eyebrow--dark">Instant quote</p>
+          <h1 className="homev3-title">Get your estimate in minutes</h1>
+          <p className="homev3-copy">
+            Address autocomplete, roof-data pricing, and nearby project proof in one flow.
+          </p>
+        </PageContainer>
+      </section>
       <section className="ui-page-section ui-page-section--soft">
         <PageContainer>
           <div className="quote-page-stack">
