@@ -5,6 +5,21 @@ import PageContainer from "@/components/ui/PageContainer";
 import QuoteFlow from "@/components/QuoteFlow";
 import { buildMetadata } from "@/lib/seo";
 
+const quoteBenefits = [
+  {
+    title: "Start with the estimate first",
+    body: "Use the address lookup and scope selector to see a planning range before you commit to a call."
+  },
+  {
+    title: "Compare scope options quickly",
+    body: "Switch between roofing, siding, eavestrough, or whole-exterior work without leaving the quote flow."
+  },
+  {
+    title: "Get follow-up only when you want it",
+    body: "Detailed quote follow-up happens after the instant estimate, not before, so the tool stays usable and fast."
+  }
+] as const;
+
 export const metadata = buildMetadata({
   title: "Instant quote",
   description: "Anonymous instant roofing, siding, and eavestrough estimates for Calgary homeowners.",
@@ -32,20 +47,35 @@ export default function QuotePage() {
   return (
     <>
       <QuoteApplicationSchema />
+<<<<<<< codex/fix-image-issue-in-header-he3w1x
       <section className="ui-page-hero ui-page-hero--quote">
         <PageContainer>
           <p className="homev3-eyebrow homev3-eyebrow--dark">Instant quote</p>
           <h1 className="homev3-title">Get your estimate in seconds</h1>
+=======
+      <section className="ui-page-hero">
+        <PageContainer>
+          <p className="homev3-eyebrow homev3-eyebrow--dark">Instant quote</p>
+          <h1 className="homev3-title">Get your estimate in minutes</h1>
+>>>>>>> main
           <p className="homev3-copy">
             Address autocomplete, roof-data pricing, and nearby project proof in one flow.
           </p>
         </PageContainer>
       </section>
+<<<<<<< codex/fix-image-issue-in-header-he3w1x
       <section className="ui-page-section ui-page-section--soft ui-page-section--quote">
+=======
+      <section className="ui-page-section ui-page-section--soft">
+>>>>>>> main
         <PageContainer>
           <div className="quote-page-stack">
             <section className="quote-flow-overview" aria-labelledby="quote-flow-overview-title">
               <div className="quote-flow-overview__header">
+<<<<<<< codex/fix-image-issue-in-header-he3w1x
+=======
+                <p className="ui-page-hero__eyebrow">How it works</p>
+>>>>>>> main
                 <h2 id="quote-flow-overview-title">Get the estimate first, then decide what happens next</h2>
               </div>
               <div className="quote-flow-overview__grid">
