@@ -115,6 +115,7 @@ create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc
 create table if not exists instaquote_address_queries (
   id uuid primary key default gen_random_uuid(),
   address text not null,
+  neighborhood text,
   service_type text,
   requested_scopes text[],
   place_id text,

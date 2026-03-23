@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { createProject, listProjects } from "@/lib/db";
+import { buildProjectIndexNowUrls, getSiteUrl } from "@/lib/indexnow";
 
-async function triggerIndexing(url: string) {
+async function triggerIndexing(urls: string[]) {
   if (!process.env.INDEXING_TOKEN) return;
 
   try {
-    await fetch(new URL("/api/index-project", process.env.NEXT_PUBLIC_SITE_URL ?? "https://trustedroofingcalgary.com"), {
+    await fetch(new URL("/api/index-project", getSiteUrl()), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-indexing-token": process.env.INDEXING_TOKEN
       },
-      body: JSON.stringify({ url, type: "URL_UPDATED" }),
+      body: JSON.stringify({ urlList: urls, type: "URL_UPDATED" }),
       cache: "no-store"
     });
   } catch {
@@ -47,8 +48,9 @@ export async function POST(request: Request) {
       is_published: body.is_published ?? true
     });
 
-    const targetUrl = `https://trustedroofingcalgary.com/projects/${project.slug}`;
-    await triggerIndexing(targetUrl);
+    if (project.is_published) {
+      await triggerIndexing(buildProjectIndexNowUrls(project.slug));
+    }
 
     return NextResponse.json({ project }, { status: 201 });
   } catch (error) {
