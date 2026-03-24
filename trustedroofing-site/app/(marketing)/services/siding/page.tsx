@@ -137,9 +137,9 @@ export default function VinylSidingPage() {
                 keeping the scope and cost under control.
               </p>
               <p>
-                For homeowners considering a heavier system or a more architectural finish, it is worth reviewing options
-                like <Link href="/services/james-hardie-siding">James Hardie siding Calgary</Link> to understand how the
-                materials compare before making a final decision.
+                Homeowners usually end up comparing budget, wall condition, and the finished look. If you want the heavier
+                fiber cement option, review <Link href="/services/james-hardie-siding">James Hardie siding Calgary</Link>.
+                If budget control matters more, the vinyl siding page breaks down where that system usually makes more sense.
               </p>
             </article>
           </div>
