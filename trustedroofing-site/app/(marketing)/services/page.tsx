@@ -63,6 +63,24 @@ export const metadata = buildMetadata({
 
 export default async function ServicesPage() {
   const services = await listServices();
+  const serviceCards = services.flatMap((service) => {
+    if (service.slug !== "siding") return [service];
+
+    return [
+      {
+        ...service,
+        title: "Vinyl Siding Service",
+        base_sales_copy: "Vinyl siding replacement focused on trim, flashing, and clean finish details."
+      },
+      {
+        ...service,
+        id: `${service.id}-hardie`,
+        slug: "james-hardie-siding",
+        title: "James Hardie siding Calgary",
+        base_sales_copy: "Fiber cement siding for homeowners who want a heavier finish and a more architectural exterior."
+      }
+    ];
+  });
 
   return (
     <>
@@ -80,38 +98,8 @@ export default async function ServicesPage() {
 
       <section className="ui-page-section">
         <PageContainer>
-          <div className="ui-detail-grid">
-            <article className="ui-card">
-              <h2>What this hub is for</h2>
-              <p>
-                Homeowners usually know the symptom before they know the proper scope. Maybe the shingles are shedding granules.
-                Maybe the siding is wavy after a storm. Maybe the eavestroughs overflow every spring. This page is meant to help
-                you sort that out quickly, without burying you in generic sales copy.
-              </p>
-              <p>
-                Every core page explains what the service includes, when it makes sense, what material options are worth comparing,
-                and what Calgary weather does to that part of the home. Use it to narrow the problem, build a budget range, and
-                decide what should happen first.
-              </p>
-            </article>
-
-            <article className="ui-card">
-              <h2>How the process works</h2>
-              <ol>
-                {processSteps.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
-            </article>
-          </div>
-        </PageContainer>
-      </section>
-
-      <section className="ui-page-section ui-page-section--soft">
-        <PageContainer>
-          <h2 className="homev3-title">Core services at a glance</h2>
-          <div className="ui-grid ui-grid--services" style={{ marginTop: 20 }}>
-            {services.map((service) => (
+          <div className="ui-grid ui-grid--services">
+            {serviceCards.map((service) => (
               <ServiceCard
                 key={service.slug}
                 slug={service.slug}
@@ -120,6 +108,15 @@ export default async function ServicesPage() {
               />
             ))}
           </div>
+
+          <article className="ui-card" style={{ marginTop: 24 }}>
+            <h2>Compare siding directions</h2>
+            <p className="homev3-copy">
+              Homeowners usually end up comparing budget, wall condition, and the finished look. If you want the heavier
+              fiber cement option, review <Link href="/services/james-hardie-siding">James Hardie siding Calgary</Link>.
+              If budget control matters more, the vinyl siding page breaks down where that system usually makes more sense.
+            </p>
+          </article>
         </PageContainer>
       </section>
 

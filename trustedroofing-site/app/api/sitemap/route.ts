@@ -19,6 +19,7 @@ export async function GET() {
     canonicalUrl("/"),
     canonicalUrl("/services"),
     ...services.map((service) => canonicalUrl(`/services/${service.slug}`)),
+    canonicalUrl("/services/james-hardie-siding"),
     canonicalUrl("/projects"),
     ...projects.map((project) => canonicalUrl(`/projects/${project.slug}`)),
     canonicalUrl("/quote"),
