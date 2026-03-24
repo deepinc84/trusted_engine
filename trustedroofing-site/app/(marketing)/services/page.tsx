@@ -14,6 +14,24 @@ export const metadata = buildMetadata({
 
 export default async function ServicesPage() {
   const services = await listServices();
+  const serviceCards = services.flatMap((service) => {
+    if (service.slug !== "siding") return [service];
+
+    return [
+      {
+        ...service,
+        title: "Vinyl Siding Service",
+        base_sales_copy: "Vinyl siding replacement focused on trim, flashing, and clean finish details."
+      },
+      {
+        ...service,
+        id: `${service.id}-hardie`,
+        slug: "james-hardie-siding",
+        title: "James Hardie siding Calgary",
+        base_sales_copy: "Fiber cement siding for homeowners who want a heavier finish and a more architectural exterior."
+      }
+    ];
+  });
 
   return (
     <>
@@ -32,7 +50,7 @@ export default async function ServicesPage() {
       <section className="ui-page-section">
         <PageContainer>
           <div className="ui-grid ui-grid--services">
-            {services.map((service) => (
+            {serviceCards.map((service) => (
               <ServiceCard
                 key={service.slug}
                 slug={service.slug}
@@ -41,6 +59,15 @@ export default async function ServicesPage() {
               />
             ))}
           </div>
+
+          <article className="ui-card" style={{ marginTop: 24 }}>
+            <h2>Compare siding directions</h2>
+            <p className="homev3-copy">
+              Homeowners usually end up comparing budget, wall condition, and the finished look. If you want the heavier
+              fiber cement option, review <Link href="/services/james-hardie-siding">James Hardie siding Calgary</Link>.
+              If budget control matters more, the vinyl siding page breaks down where that system usually makes more sense.
+            </p>
+          </article>
         </PageContainer>
       </section>
 
