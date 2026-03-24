@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
 import { createInstaquoteAddressQuery } from "@/lib/db";
+import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
 type EstimateBody = {
@@ -36,6 +37,28 @@ type SolarEstimateResult = {
   };
 };
 
+
+type GoogleAddressComponent = { long_name: string; short_name: string; types: string[] };
+
+function getComponent(components: GoogleAddressComponent[] | undefined, type: string) {
+  const component = components?.find((entry) => entry.types.includes(type));
+  return component?.long_name ?? component?.short_name ?? null;
+}
+
+function getGoogleNeighborhood(components: GoogleAddressComponent[] | undefined) {
+  return (
+    getComponent(components, "neighborhood")
+    ?? getComponent(components, "sublocality_level_1")
+    ?? getComponent(components, "sublocality_level_2")
+    ?? getComponent(components, "sublocality")
+    ?? null
+  );
+}
+
+function normalizeNeighborhood(value: string | null | undefined) {
+  return normalizeLocalityCandidate(value) ?? null;
+}
+
 async function geocodeAddress(address: string) {
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
@@ -54,7 +77,7 @@ async function geocodeAddress(address: string) {
 
   const payload = (await response.json()) as {
     status?: string;
-    results?: Array<{ formatted_address?: string; place_id?: string; geometry?: { location?: { lat?: number; lng?: number } } }>;
+    results?: Array<{ formatted_address?: string; place_id?: string; geometry?: { location?: { lat?: number; lng?: number } }; address_components?: GoogleAddressComponent[] }>;
   };
 
   const top = payload.results?.[0];
@@ -64,7 +87,8 @@ async function geocodeAddress(address: string) {
     address: top.formatted_address,
     placeId: top.place_id ?? null,
     lat: top.geometry?.location?.lat ?? null,
-    lng: top.geometry?.location?.lng ?? null
+    lng: top.geometry?.location?.lng ?? null,
+    neighborhood: normalizeNeighborhood(getGoogleNeighborhood(top.address_components))
   };
 }
 
@@ -90,6 +114,11 @@ async function geocodeAddressNominatim(address: string) {
     lat?: string;
     lon?: string;
     display_name?: string;
+    address?: {
+      neighbourhood?: string;
+      suburb?: string;
+      city_district?: string;
+    };
   }>;
 
   const top = payload[0];
@@ -103,7 +132,8 @@ async function geocodeAddressNominatim(address: string) {
     address: top.display_name ?? address,
     placeId: null,
     lat,
-    lng
+    lng,
+    neighborhood: normalizeNeighborhood(top.address?.neighbourhood ?? top.address?.suburb ?? top.address?.city_district ?? null)
   };
 }
 
@@ -275,6 +305,7 @@ export async function POST(request: Request) {
 
   let geocodeSource: "input" | "google_geocode" | "nominatim" | "none" = lat !== null && lng !== null ? "input" : "none";
   let geocodeDebug: string | null = null;
+  let neighborhood = normalizeNeighborhood(extractNeighborhood(normalizedAddress));
 
   if (normalizedAddress) {
     const googleGeocoded = await geocodeAddress(normalizedAddress);
@@ -284,6 +315,7 @@ export async function POST(request: Request) {
       lat = googleGeocoded.lat;
       lng = googleGeocoded.lng;
       geocodeSource = "google_geocode";
+      neighborhood = googleGeocoded.neighborhood ?? neighborhood ?? normalizeNeighborhood(extractNeighborhood(googleGeocoded.address));
     } else {
       const nominatimGeocoded = await geocodeAddressNominatim(normalizedAddress);
       if (nominatimGeocoded) {
@@ -293,6 +325,7 @@ export async function POST(request: Request) {
         lng = nominatimGeocoded.lng;
         geocodeSource = "nominatim";
         geocodeDebug = "google geocode failed; used nominatim coordinates";
+        neighborhood = nominatimGeocoded.neighborhood ?? neighborhood ?? normalizeNeighborhood(extractNeighborhood(nominatimGeocoded.address));
       } else if (inputLat !== null && inputLng !== null) {
         geocodeSource = "input";
         geocodeDebug = "address geocode failed; using provided coordinates";
@@ -302,6 +335,8 @@ export async function POST(request: Request) {
       }
     }
   }
+
+  neighborhood = neighborhood ?? normalizeNeighborhood(extractNeighborhood(normalizedAddress));
 
   let estimateResult:
     | {
@@ -403,6 +438,7 @@ export async function POST(request: Request) {
   try {
     addressQueryId = await createInstaquoteAddressQuery({
       address: normalizedAddress || "Calgary, AB",
+      neighborhood,
       service_type: serviceType,
       requested_scopes: requestedScopes,
       place_id: placeId,
