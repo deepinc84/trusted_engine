@@ -120,66 +120,6 @@ export default async function ServicesPage() {
         </PageContainer>
       </section>
 
-      <section className="ui-page-section">
-        <PageContainer>
-          <div className="ui-grid ui-grid--services">
-            {serviceHighlights.map((item) => (
-              <article className="ui-card" key={item.title}>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </article>
-            ))}
-          </div>
-        </PageContainer>
-      </section>
-
-      <section className="ui-page-section ui-page-section--soft">
-        <PageContainer>
-          <article className="ui-card">
-            <h2>Calgary factors that change the scope</h2>
-            <p>
-              A house in Calgary takes a different kind of abuse than a house in a mild coastal market. Hail can shorten the life
-              of shingles and dent metal accessories. Freeze-thaw cycles expose weak flashing and low-slope drainage problems.
-              Chinook swings can move moisture where it should not go, especially when attic ventilation is unbalanced. Wind-driven
-              rain tests siding laps, trim, and window detailing. That is why the right service decision is not just about what looks worn.
-              It is about how the full assembly is handling water, air, and temperature shifts.
-            </p>
-          </article>
-        </PageContainer>
-      </section>
-
-      <section className="ui-page-section">
-        <PageContainer>
-          <article className="ui-card">
-            <h2>Material references</h2>
-            <p>
-              If you want to review the manufacturer systems we commonly discuss, start with
-              {" "}<a href="https://www.gaf.ca/residential-roofing/shingles/timberline-hd" target="_blank" rel="noreferrer">GAF Timberline HD shingles</a>,
-              {" "}<a href="https://www.royalbuildingproducts.com/products/siding" target="_blank" rel="noreferrer">Royal Building Products siding</a>, and
-              {" "}<a href="https://www.euroshieldroofing.com/" target="_blank" rel="noreferrer">Euroshield rubber roofing systems</a>.
-              Those references help when you are comparing appearance, impact resistance, and warranty language.
-            </p>
-          </article>
-        </PageContainer>
-      </section>
-
-      <section className="ui-page-section ui-page-section--soft">
-        <PageContainer>
-          <article className="ui-card">
-            <h2>Frequently asked questions</h2>
-            {/* Schema note: apply FAQ schema to this section only. Keep one clear primary page type and avoid duplicate FAQ markup elsewhere. */}
-            <div className="ui-list-links" style={{ display: "grid", gap: 20 }}>
-              {faqs.map((item) => (
-                <div key={item.question}>
-                  <h3>{item.question}</h3>
-                  <p>{item.answer}</p>
-                </div>
-              ))}
-            </div>
-          </article>
-        </PageContainer>
-      </section>
-
       <CtaBand
         title="Need pricing before you book a visit?"
         body="Start with the instant quote. It gives a realistic range first, then we narrow scope and materials with you."
