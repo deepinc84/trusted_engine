@@ -29,10 +29,10 @@ function buildBlogSchema() {
     mainEntityOfPage: url,
     url,
     image: [
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1400&q=80&fit=crop&crop=center",
-      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&fit=crop&crop=top",
+      "https://images.unsplash.com/photo-1714587025377-4XMHsy4Rvi8?auto=format&fit=crop&w=1400&q=80",
+      "/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png",
       "https://images.unsplash.com/photo-1516156008625-3a9d6067fab5?w=1400&q=80&fit=crop",
-      "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=1400&q=80&fit=crop"
+      "https://images.unsplash.com/photo-1701906466353-TnhkSNZPXd8?auto=format&fit=crop&w=1400&q=80"
     ]
   };
 }
@@ -62,7 +62,7 @@ export default function RoofCostBlogPost() {
         <div className={styles.shell}>
           <div className={styles.heroImageWrap}>
             <img
-              src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1400&q=80&fit=crop&crop=center"
+              src="https://images.unsplash.com/photo-1714587025377-4XMHsy4Rvi8?auto=format&fit=crop&w=1400&q=80"
               alt="Roofers installing shingles on a residential Calgary home"
               className={styles.heroImage}
               loading="eager"
@@ -209,14 +209,11 @@ export default function RoofCostBlogPost() {
             <div style={{ display: "grid", gap: 16 }}>
               <img
                 className={styles.inlineImage}
-                src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&fit=crop&crop=top"
+                src="/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png"
                 alt="Steep residential roof showing pitch angle"
                 loading="lazy"
               />
-              <p className={styles.imgCap}>
-                Steep pitch adds significant labour time.
-                {" "}<a href="https://unsplash.com/license" target="_blank" rel="noopener">Unsplash License</a>
-              </p>
+              <p className={styles.imgCap}>Steep pitch adds significant labour time.</p>
 
               <article className="ui-card">
                 <p className={styles.eyebrow}>Quick note</p>
@@ -240,9 +237,6 @@ export default function RoofCostBlogPost() {
             loading="lazy"
             className={styles.bandImage}
           />
-          <div style={{ background: "var(--off)", padding: "10px 20px", fontSize: 11, color: "var(--muted)", borderTop: "1px solid var(--border-light)" }}>
-            Photo via <a href="https://unsplash.com/license" target="_blank" rel="noopener" style={{ color: "var(--blue)" }}>Unsplash</a> · Free for commercial use
-          </div>
         </div>
       </div>
 
@@ -352,14 +346,11 @@ export default function RoofCostBlogPost() {
       <div className={styles.shell}>
         <div style={{ borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid var(--border-light)" }}>
           <img
-            src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=1400&q=80&fit=crop"
+            src="https://images.unsplash.com/photo-1701906466353-TnhkSNZPXd8?auto=format&fit=crop&w=1400&q=80"
             alt="Aerial view of residential neighbourhood rooftops"
             loading="lazy"
             className={styles.aerialImage}
           />
-          <div style={{ background: "var(--off)", padding: "10px 20px", fontSize: 11, color: "var(--muted)", borderTop: "1px solid var(--border-light)" }}>
-            Photo via <a href="https://unsplash.com/license" target="_blank" rel="noopener" style={{ color: "var(--blue)" }}>Unsplash</a> · Free for commercial use
-          </div>
         </div>
       </div>
 
