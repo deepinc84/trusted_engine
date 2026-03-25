@@ -67,6 +67,9 @@ export default function RoofCostBlogPost() {
               className={styles.heroImage}
               loading="eager"
             />
+            <p className={styles.imgCap}>
+              Photo via <a href="https://unsplash.com/license" target="_blank" rel="noopener">Unsplash</a> · Free for commercial use
+            </p>
           </div>
 
           <div className={styles.detailGrid} style={{ alignItems: "start" }}>
