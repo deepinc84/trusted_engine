@@ -1,0 +1,540 @@
+.shell {
+  width: min(1240px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.hero {
+  background: var(--off);
+  padding: 64px 0 52px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.eyebrow::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 1.5px;
+  background: var(--gold);
+}
+
+.title {
+  font-size: clamp(30px, 3vw, 42px);
+  line-height: 1.16;
+  margin-top: 12px;
+}
+
+.copy {
+  color: #41546f;
+  line-height: 1.72;
+  font-size: 1.02rem;
+}
+
+.heroActions {
+  margin-top: 22px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.section {
+  padding: 70px 0;
+}
+
+.sectionSoft {
+  background: var(--off);
+}
+
+.heroImageWrap {
+  margin-bottom: 28px;
+}
+
+.heroImage {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  border-radius: var(--r-lg);
+}
+
+.inlineImage {
+  width: 100%;
+  border-radius: var(--r);
+  height: 220px;
+  object-fit: cover;
+}
+
+.bandImage {
+  width: 100%;
+  height: 340px;
+  object-fit: cover;
+  display: block;
+}
+
+.aerialImage {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  display: block;
+}
+
+.imgCap {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 6px;
+  text-align: right;
+}
+
+.imgCap a {
+  color: var(--blue);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+}
+
+.quoteCallout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.quoteCalloutItem {
+  background: var(--tint);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--blue);
+  border-radius: var(--r);
+  padding: 20px 18px;
+  text-align: center;
+}
+
+.quoteCalloutAmount {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 32px;
+  color: var(--navy);
+  display: block;
+  line-height: 1.1;
+}
+
+.quoteCalloutLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.quoteCalloutVs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  grid-column: 1/-1;
+  gap: 12px;
+}
+
+.quoteCalloutVs::before,
+.quoteCalloutVs::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.proofStrip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border-light);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.proofItem {
+  background: white;
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.proofValue {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 24px;
+  color: var(--navy);
+  display: block;
+}
+
+.proofLabel {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.tableWrap {
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+
+.costTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+
+.costTable thead {
+  background: var(--navy);
+  color: white;
+}
+
+.costTable th {
+  padding: 13px 18px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.costTable td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-light);
+  color: #41546f;
+}
+
+.costTable tr:last-child td {
+  border-bottom: none;
+}
+
+.price {
+  font-weight: 700;
+  color: var(--blue);
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 17px;
+}
+
+.costTable tbody tr:nth-child(even) td {
+  background: var(--off);
+}
+
+.pitchBars {
+  display: grid;
+  gap: 12px;
+}
+
+.pitchBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pitchLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mid);
+  width: 110px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.pitchLabel small {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pitchTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--border-light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.pitchFill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.low {
+  width: 28%;
+  background: #4ade80;
+}
+
+.mid {
+  width: 62%;
+  background: var(--gold);
+}
+
+.high {
+  width: 100%;
+  background: var(--blue);
+}
+
+.pitchNote {
+  font-size: 11px;
+  font-weight: 700;
+  width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.noteLow {
+  color: #22c55e;
+}
+
+.noteMid {
+  color: var(--gold);
+}
+
+.noteHigh {
+  color: var(--blue);
+}
+
+.matGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.matCard {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 20px 16px;
+  box-shadow: var(--shadow);
+}
+
+.matFeatured {
+  border-color: var(--blue);
+  background: var(--tint);
+}
+
+.matName {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 19px;
+  color: var(--navy);
+  margin: 8px 0 10px;
+}
+
+.matList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.matList li {
+  font-size: 13px;
+  color: #41546f;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.matList li:last-child {
+  border-bottom: none;
+}
+
+.matList li::before {
+  content: "→";
+  color: var(--blue);
+  font-size: 11px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.factorGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.factorCard {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 20px 18px;
+  box-shadow: var(--shadow);
+}
+
+.factorEyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.factorCard h3 {
+  font-size: 17px;
+  margin-bottom: 8px;
+  color: var(--navy);
+}
+
+.factorCard p {
+  font-size: 13.5px;
+  color: #41546f;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.checklist {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  margin-left: 0;
+}
+
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 15px;
+  color: #41546f;
+  line-height: 1.55;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+  border-bottom: none;
+}
+
+.checkBox {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--tint);
+  border: 1.5px solid var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tierList {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.tier {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.tierPremium {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: white;
+}
+
+.tierLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.tierPremium .tierLabel {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.tierDesc {
+  font-size: 13px;
+  color: #41546f;
+  margin: 0;
+}
+
+.tierPremium .tierDesc {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.tierPrice {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 22px;
+  color: var(--blue);
+  line-height: 1.1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tierPremium .tierPrice {
+  color: #f0c96a;
+}
+
+.ctaBand {
+  background: linear-gradient(130deg, #0f1e38, #16294d);
+  color: white;
+  padding: 70px 0;
+}
+
+.ctaBand .title {
+  color: white;
+  max-width: 600px;
+}
+
+.ctaBand .copy {
+  color: rgba(255, 255, 255, 0.68);
+  max-width: 520px;
+  margin-top: 12px;
+}
+
+.ctaActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+@media (max-width: 860px) {
+  .detailGrid,
+  .factorGrid,
+  .matGrid,
+  .quoteCallout,
+  .proofStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 48px 0;
+  }
+
+  .hero {
+    padding: 48px 0 36px;
+  }
+}
