@@ -574,7 +574,12 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
       <label>
         Title
-        <input className="input" value={title} onChange={(event) => setTitle(event.target.value)} />
+        <input
+          className="input"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="What was the main high-ticket item? (e.g., Full Hardie Siding Replacement, Class 4 Shingle Upgrade, 6-inch Continuous Eaves)."
+        />
       </label>
       <label>
         Slug
@@ -652,11 +657,23 @@ export default function ProjectForm({ services, mode, project }: Props) {
       </label>
       <label>
         Summary (2-6 sentences)
-        <textarea className="input input--multiline" value={summary} onChange={(event) => setSummary(event.target.value)} rows={5} />
+        <textarea
+          className="input input--multiline"
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
+          rows={5}
+          placeholder="Why did the homeowner call us and what did we do to fix their specific problem? (e.g., Old vinyl was melting/warping; we stripped it to the studs and upgraded to fiber cement for better fire and wind resistance)."
+        />
       </label>
       <label>
         Description
-        <textarea className="input input--multiline" value={description} onChange={(event) => setDescription(event.target.value)} rows={6} />
+        <textarea
+          className="input input--multiline"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          rows={6}
+          placeholder="List 4–6 literal steps taken on-site. Start with a verb. (e.g., Removed old cedar shakes, Inspected roof deck for rot, Installed synthetic underlayment, Hand-nailed shingles, Cleaned gutters)."
+        />
       </label>
       <label>
         Completed at

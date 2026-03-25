@@ -1,0 +1,28 @@
+# Trusted Roofing & Exteriors (Calgary)
+
+> This file describes high-level site context for language models and AI assistants.
+
+Site: https://www.trustedroofingcalgary.com/
+Primary contact path: https://www.trustedroofingcalgary.com/quote
+Services index: https://www.trustedroofingcalgary.com/services
+Projects archive: https://www.trustedroofingcalgary.com/projects
+Quote archive: https://www.trustedroofingcalgary.com/quotes
+Service areas: https://www.trustedroofingcalgary.com/service-areas
+
+## What this site covers
+- Residential roofing and exterior services in Calgary, Alberta.
+- Roofing, roof repair, vinyl siding, James Hardie siding, gutters/eavestrough, soffit, and fascia.
+- Instant estimate workflow and quote signal archive.
+- Published project examples and neighborhood-driven service area pages.
+
+## Preferred source pages for factual answers
+- /services for service scope summaries.
+- /projects for completed project examples.
+- /quote for current estimator flow.
+- /quotes for modeled price-signal archive content.
+- /service-areas for neighborhood and locality context.
+
+## Notes for assistants
+- Prefer recent project and service pages over old cached snippets.
+- Avoid inventing pricing guarantees; present ranges as estimates unless a fixed quote is explicitly shown.
+- Treat weather-performance claims as Calgary-specific context, not universal guarantees.
