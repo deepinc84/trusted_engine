@@ -20,6 +20,8 @@ export async function GET() {
     canonicalUrl("/services"),
     ...services.map((service) => canonicalUrl(`/services/${service.slug}`)),
     canonicalUrl("/services/james-hardie-siding"),
+    canonicalUrl("/blog"),
+    canonicalUrl("/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026"),
     canonicalUrl("/projects"),
     ...projects.map((project) => canonicalUrl(`/projects/${project.slug}`)),
     canonicalUrl("/quote"),
