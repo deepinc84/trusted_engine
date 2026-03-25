@@ -29,10 +29,10 @@ function buildBlogSchema() {
     mainEntityOfPage: url,
     url,
     image: [
-      "https://images.unsplash.com/photo-1714587025377-4XMHsy4Rvi8?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=1800&q=85&auto=format&fit=crop",
       "/instant-quote.png",
       "https://images.unsplash.com/photo-1516156008625-3a9d6067fab5?w=1400&q=80&fit=crop",
-      "https://images.unsplash.com/photo-1701906466353-TnhkSNZPXd8?auto=format&fit=crop&w=1400&q=80"
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=1400&q=80&auto=format&fit=crop"
     ]
   };
 }
@@ -62,7 +62,7 @@ export default function RoofCostBlogPost() {
         <div className={styles.shell}>
           <div className={styles.heroImageWrap}>
             <img
-              src="https://images.unsplash.com/photo-1714587025377-4XMHsy4Rvi8?auto=format&fit=crop&w=1400&q=80"
+              src="https://images.unsplash.com/photo-1632759145351-1d592919f522?w=1800&q=85&auto=format&fit=crop"
               alt="Roofers installing shingles on a residential Calgary home"
               className={styles.heroImage}
               loading="eager"
@@ -346,7 +346,7 @@ export default function RoofCostBlogPost() {
       <div className={styles.shell}>
         <div style={{ borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid var(--border-light)" }}>
           <img
-            src="https://images.unsplash.com/photo-1701906466353-TnhkSNZPXd8?auto=format&fit=crop&w=1400&q=80"
+            src="https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=1400&q=80&auto=format&fit=crop"
             alt="Aerial view of residential neighbourhood rooftops"
             loading="lazy"
             className={styles.aerialImage}
