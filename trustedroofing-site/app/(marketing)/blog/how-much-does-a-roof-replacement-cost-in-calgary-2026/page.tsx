@@ -30,7 +30,7 @@ function buildBlogSchema() {
     url,
     image: [
       "https://images.unsplash.com/photo-1714587025377-4XMHsy4Rvi8?auto=format&fit=crop&w=1400&q=80",
-      "/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png",
+      "/instant-quote.png",
       "https://images.unsplash.com/photo-1516156008625-3a9d6067fab5?w=1400&q=80&fit=crop",
       "https://images.unsplash.com/photo-1701906466353-TnhkSNZPXd8?auto=format&fit=crop&w=1400&q=80"
     ]
@@ -209,11 +209,11 @@ export default function RoofCostBlogPost() {
             <div style={{ display: "grid", gap: 16 }}>
               <img
                 className={styles.inlineImage}
-                src="/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png"
-                alt="Steep residential roof showing pitch angle"
+                src="/instant-quote.png"
+                alt="Instant roof calculator"
                 loading="lazy"
               />
-              <p className={styles.imgCap}>Steep pitch adds significant labour time.</p>
+              <p className={styles.imgCap}>Instant Estimator App.</p>
 
               <article className="ui-card">
                 <p className={styles.eyebrow}>Quick note</p>
