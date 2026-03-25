@@ -98,8 +98,9 @@ Open:
 7. **Primary image**: admin can choose a main image at upload time and re-assign later.
 8. **Alt-text intelligence**: upload route auto-generates geo-context captions when explicit caption is generic/filename-based.
 9. **GBP queue**: create/update enqueues payload in `gbp_post_queue` (queue-first behavior).
-10. **Index-on-commit trigger**: create/update performs best-effort ping to `/api/index-project` using `INDEXING_TOKEN` (placeholder until Google auth is fully wired).
-11. **Schema graph linkage**: service hub exposes `#serviceHub` + `#service`; project pages link via `about` and `isPartOf`.
+10. **Index-on-commit trigger**: create/update and geo-post publish perform a best-effort ping to `/api/index-project` using `INDEXING_TOKEN`, and submit the detail URL plus related collection pages (`/` and `/projects`) as a bulk IndexNow update.
+11. **IndexNow live submission**: `/api/index-project` submits same-host URLs to IndexNow and hosts the verification key at `/a83cd4eb25104c578ab3ebff033216a6.txt`.
+12. **Schema graph linkage**: service hub exposes `#serviceHub` + `#service`; project pages link via `about` and `isPartOf`.
 
 ## GBP queue worker
 
