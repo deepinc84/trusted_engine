@@ -68,7 +68,7 @@ export default function RoofCostBlogPost() {
               loading="eager"
             />
             <p className={styles.imgCap}>
-              Photo via <a href="https://unsplash.com/license" target="_blank" rel="noopener">Unsplash</a> · Free for commercial use
+              Photo via <a href="https://unsplash.com/license" target="_blank" rel="noopener">Unsplash</a> · THIS ONE is the original CODE
             </p>
           </div>
 
