@@ -20,6 +20,7 @@ type NearbyItem = {
   estimate_low: number | null;
   estimate_high: number | null;
   queried_at: string;
+  area_source: "solar" | "regional" | null;
 };
 
 type Props = {
@@ -77,7 +78,7 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
         ? item.pitch_degrees
         : 25;
       const complexity = normalizeComplexity(item.complexity_band);
-      const ranges = buildEstimateRanges({ roofAreaSqft: area, pitchDegrees, complexityBand: complexity });
+      const ranges = buildEstimateRanges({ roofAreaSqft: area, pitchDegrees, complexityBand: complexity, areaSource: item.area_source ?? undefined });
       const estimateLow = typeof item.estimate_low === "number" && Number.isFinite(item.estimate_low)
         ? item.estimate_low
         : null;

@@ -17,6 +17,7 @@ type Row = {
   estimate_low: number | null;
   estimate_high: number | null;
   queried_at: string;
+  area_source: "solar" | "regional" | null;
 };
 
 function normalize(value: string | null | undefined) {
@@ -93,7 +94,8 @@ export async function GET(request: Request) {
       complexity_band: row.complexity_band,
       estimate_low: row.estimate_low,
       estimate_high: row.estimate_high,
-      queried_at: row.queried_at
+      queried_at: row.queried_at,
+      area_source: row.area_source === "solar" || row.area_source === "regional" ? row.area_source : null
     }));
 
   const withinRadius = hasCoords
@@ -127,7 +129,8 @@ export async function GET(request: Request) {
       complexity_band: row.complexity_band,
       estimate_low: row.estimate_low,
       estimate_high: row.estimate_high,
-      queried_at: row.queried_at
+      queried_at: row.queried_at,
+      area_source: row.area_source
     };
   });
 
