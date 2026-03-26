@@ -397,7 +397,8 @@ export async function POST(request: Request) {
   const ranges = buildEstimateRanges({
     roofAreaSqft: pricingRoofAreaSqft,
     pitchDegrees: estimateResult.pitchDegrees,
-    complexityBand: estimateResult.complexityBand
+    complexityBand: estimateResult.complexityBand,
+    areaSource: estimateResult.areaSource
   });
 
   const complexityMultiplier = eavesComplexityMultiplier(ranges.complexityBand);

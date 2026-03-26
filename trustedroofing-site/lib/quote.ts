@@ -91,10 +91,50 @@ function rangeFromBase(rateRange: readonly [number, number], base: number, multi
   };
 }
 
+function legacyRoofRange(input: {
+  roofAreaSqft: number;
+  pitchDegrees: number;
+  complexityBand: ComplexityBand;
+  areaSource?: "solar" | "regional";
+}) {
+  const tolerancePercent = 8;
+  const simpleLowPerSq = 550;
+  const complexHighPerSq = 1012;
+  const wastePercent = 8;
+  const solarAdjustmentPercent = 8;
+
+  const squares = input.roofAreaSqft / 100;
+  const wasteFactor = 1 + wastePercent / 100;
+  const solarFactor = input.areaSource === "solar" ? 1 + solarAdjustmentPercent / 100 : 1;
+  const adjustedSquares = squares * wasteFactor * solarFactor;
+
+  const complexityAdjustment = input.complexityBand === "complex"
+    ? 1.14
+    : input.complexityBand === "moderate"
+      ? 1.07
+      : 1;
+
+  const centerPerSqBase = input.complexityBand === "complex"
+    ? complexHighPerSq
+    : input.complexityBand === "moderate"
+      ? (simpleLowPerSq + complexHighPerSq) / 2
+      : simpleLowPerSq;
+
+  const centerPerSq = centerPerSqBase * complexityAdjustment;
+  const centerPrice = adjustedSquares * centerPerSq;
+  const tolerance = tolerancePercent / 100;
+
+  return {
+    low: Math.round((centerPrice * (1 - tolerance)) / 50) * 50,
+    high: Math.round((centerPrice * (1 + tolerance)) / 50) * 50
+  };
+}
+
 export function buildEstimateRanges(input: {
   roofAreaSqft: number;
   pitchDegrees: number;
   complexityBand: ComplexityBand;
+  areaSource?: "solar" | "regional";
 }) {
   const roofSquares = roofSquaresFromSqft(input.roofAreaSqft);
   const pitchBand = pitchBandFromDegrees(input.pitchDegrees);
@@ -102,7 +142,7 @@ export function buildEstimateRanges(input: {
   const complexityMultiplier = pricingConfig.complexityMultipliers[input.complexityBand];
   const combinedMultiplier = pitchMultiplier * complexityMultiplier;
 
-  const good = rangeFromBase(pricingConfig.roofPerSquareGood, roofSquares, combinedMultiplier);
+  const good = legacyRoofRange(input);
   const better = rangeFromBase(pricingConfig.roofPerSquareBetter, roofSquares, combinedMultiplier);
   const best = rangeFromBase(pricingConfig.roofPerSquareBest, roofSquares, combinedMultiplier);
 
