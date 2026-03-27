@@ -9,7 +9,10 @@ export default function SiteFooter() {
           <div className="site-footer__brand">
             <Image src="/white-transparent-t.png" alt="Trusted" width={56} height={56} className="site-footer__logo" />
             <div>
-              <strong className="site-footer__brand-name">Trusted Roofing & Exteriors</strong>
+              <strong className="site-footer__brand-name">
+                <span className="site-footer__brand-name-main">TRUSTED</span>{" "}
+                <span className="site-footer__brand-name-sub">Roofing & Exteriors</span>
+              </strong>
               <p className="site-footer__brand-location">Calgary, Alberta</p>
             </div>
           </div>
