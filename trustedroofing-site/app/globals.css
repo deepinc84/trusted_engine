@@ -1915,8 +1915,8 @@ body {
 }
 
 .site-header__inner {
-  height: 78px;
-  min-height: 78px;
+  height: 118px;
+  min-height: 118px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -1924,8 +1924,8 @@ body {
 }
 
 .site-header--v3 .brand-logo {
-  max-width: min(280px, 30vw);
-  height: 64px;
+  max-width: min(480px, 44vw);
+  height: 108px;
 }
 
 .nav--v3 {
@@ -2047,7 +2047,7 @@ body {
 }
 
 main {
-  padding-top: 92px;
+  padding-top: 132px;
 }
 
 .homev3-hero {
