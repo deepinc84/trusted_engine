@@ -1747,8 +1747,42 @@ main {
 
 .site-footer__brand {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 12px;
+}
+
+.site-footer__brand-name {
+  display: block;
+  font-family: "Montserrat", "Manrope", system-ui, -apple-system, sans-serif;
+  line-height: 1.15;
+  letter-spacing: 0;
+  color: #fff;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.site-footer__brand-name-main,
+.site-footer__brand-name-sub {
+  display: inline;
+}
+
+.site-footer__brand-name-main {
+  font-size: 1.42rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.site-footer__brand-name-sub {
+  font-size: 1.04rem;
+  font-weight: 500;
+}
+
+.site-footer__brand-location {
+  margin-top: 5px;
+  font-family: "Montserrat", "Manrope", system-ui, -apple-system, sans-serif;
+  font-size: 0.98rem;
+  font-weight: 500;
 }
 
 .site-footer__brand p,
@@ -1915,8 +1949,8 @@ body {
 }
 
 .site-header__inner {
-  height: 118px;
-  min-height: 118px;
+  height: 102px;
+  min-height: 102px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -1924,8 +1958,8 @@ body {
 }
 
 .site-header--v3 .brand-logo {
-  max-width: min(480px, 44vw);
-  height: 108px;
+  max-width: min(420px, 38vw);
+  height: 82px;
 }
 
 .nav--v3 {
@@ -2148,6 +2182,12 @@ main {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.site-footer__logo {
+  width: 56px;
+  height: auto;
+  display: block;
+}
+
 .site-footer__grid--expanded {
   grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr;
   gap: 40px;
@@ -2312,6 +2352,18 @@ main {
 
   .section {
     padding-top: 42px;
+  }
+
+  .site-footer__logo {
+    width: 48px;
+  }
+
+  .site-footer__brand-name-main {
+    font-size: 1.24rem;
+  }
+
+  .site-footer__brand-name-sub {
+    font-size: 0.94rem;
   }
 
   .site-footer__grid--expanded {
