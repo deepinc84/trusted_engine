@@ -21,7 +21,7 @@ export default async function SiteHeader() {
       <div className="site-shell site-header__inner">
         <Link href="/" className="brand" aria-label="Trusted Roofing home">
           <Image
-            src="/4CFA7BE7-4888-4966-AF0C-5E2AA6469E80.png"
+            src="/full_white_transparent.png"
             alt="Trusted Roofing & Exteriors"
             width={1536}
             height={1024}
