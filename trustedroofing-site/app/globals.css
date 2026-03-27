@@ -1747,8 +1747,9 @@ main {
 
 .site-footer__brand {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
 }
 
 .site-footer__brand p,
@@ -1915,8 +1916,8 @@ body {
 }
 
 .site-header__inner {
-  height: 118px;
-  min-height: 118px;
+  height: 102px;
+  min-height: 102px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -1924,8 +1925,8 @@ body {
 }
 
 .site-header--v3 .brand-logo {
-  max-width: min(480px, 44vw);
-  height: 108px;
+  max-width: min(420px, 38vw);
+  height: 82px;
 }
 
 .nav--v3 {
@@ -2148,7 +2149,13 @@ main {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.site-footer__grid--expanded {
+.site-footer__logo {
+  width: min(260px, 100%);
+  height: auto;
+  display: block;
+}
+
+  .site-footer__grid--expanded {
   grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr;
   gap: 40px;
   margin-bottom: 56px;
@@ -2314,7 +2321,11 @@ main {
     padding-top: 42px;
   }
 
-  .site-footer__grid--expanded {
+  .site-footer__logo {
+    width: min(220px, 100%);
+  }
+
+.site-footer__grid--expanded {
     grid-template-columns: 1fr;
     gap: 20px;
   }
