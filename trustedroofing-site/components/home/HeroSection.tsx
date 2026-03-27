@@ -28,7 +28,7 @@ export default function HeroSection({ metrics, activity }: Props) {
             siding, and eavestrough projects.
           </p>
           <div className="homev3-hero__actions">
-            <Link href="/quote" className="button">Start instant quote</Link>
+            <Link href="/online-estimate" className="button">Start instant quote</Link>
             <Link href="/projects" className="button button--ghost">View projects</Link>
           </div>
           <div className="homev3-hero__proof">

@@ -10,7 +10,7 @@ type Props = {
 export default function CtaBand({
   title,
   body,
-  primaryHref = "/quote",
+  primaryHref = "/online-estimate",
   primaryLabel = "Start instant quote"
 }: Props) {
   return (

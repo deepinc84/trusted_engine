@@ -73,7 +73,7 @@ export default function VinylSidingPage() {
         eyebrow="Vinyl siding service"
         title="Siding work that improves both protection and appearance"
         description="New siding should not just hide an old wall. It should improve water control, sharpen the finish around openings and trim, and stand up to Calgary wind, sun, and temperature swings."
-        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+        actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
 
       <section className="ui-page-section">
