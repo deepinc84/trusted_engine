@@ -1747,9 +1747,21 @@ main {
 
 .site-footer__brand {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
+  align-items: center;
+  gap: 12px;
+}
+
+.site-footer__brand-name {
+  display: block;
+  font-size: 1.22rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.site-footer__brand-location {
+  margin-top: 4px;
+  font-size: 1rem;
 }
 
 .site-footer__brand p,
@@ -2150,12 +2162,12 @@ main {
 }
 
 .site-footer__logo {
-  width: min(260px, 100%);
+  width: 56px;
   height: auto;
   display: block;
 }
 
-  .site-footer__grid--expanded {
+.site-footer__grid--expanded {
   grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr;
   gap: 40px;
   margin-bottom: 56px;
@@ -2322,10 +2334,10 @@ main {
   }
 
   .site-footer__logo {
-    width: min(220px, 100%);
+    width: 48px;
   }
 
-.site-footer__grid--expanded {
+  .site-footer__grid--expanded {
     grid-template-columns: 1fr;
     gap: 20px;
   }
