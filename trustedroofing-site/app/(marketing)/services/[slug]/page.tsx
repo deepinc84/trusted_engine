@@ -55,7 +55,7 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
         eyebrow="Service detail"
         title={service.title}
         description={service.base_sales_copy ?? `Trusted delivers ${service.title.toLowerCase()} services across Calgary.`}
-        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+        actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
 
       <section className="ui-page-section">

@@ -30,6 +30,15 @@ const nextConfig = {
   poweredByHeader: false,
   images: {
     remotePatterns
+  },
+  async redirects() {
+    return [
+      {
+        source: "/quote",
+        destination: "/online-estimate",
+        permanent: true
+      }
+    ];
   }
 };
 

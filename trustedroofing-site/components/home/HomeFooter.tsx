@@ -20,7 +20,7 @@ export default function HomeFooter() {
         <div>
           <h4>Explore</h4>
           <Link href="/projects">Projects</Link>
-          <Link href="/quote">Instant quote</Link>
+          <Link href="/online-estimate">Instant quote</Link>
           <Link href="/services">Service areas</Link>
         </div>
       </div>

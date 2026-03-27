@@ -48,7 +48,7 @@ export default function SiteFooter() {
           <h4>Contact</h4>
           <a href="tel:5872883351">587-288-3351</a>
           <a href="mailto:info@trustedexteriors.ca">info@trustedexteriors.ca</a>
-          <Link href="/quote">Get a quote</Link>
+          <Link href="/online-estimate">Get a quote</Link>
         </div>
       </div>
       <div className="site-shell site-footer__bottom">
