@@ -7,9 +7,14 @@ export default function SiteFooter() {
       <div className="site-shell site-footer__grid site-footer__grid--expanded">
         <div className="site-footer__brand-block">
           <div className="site-footer__brand">
-            <Image src="/white-transparent-t.png" alt="Trusted" width={36} height={36} />
+            <Image
+              src="/full_white_new.png"
+              alt="Trusted Roofing & Exteriors"
+              width={1536}
+              height={617}
+              className="site-footer__logo"
+            />
             <div>
-              <strong>Trusted Roofing & Exteriors</strong>
               <p>Calgary, Alberta</p>
             </div>
           </div>
