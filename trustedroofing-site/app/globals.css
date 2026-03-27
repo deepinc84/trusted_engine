@@ -1915,12 +1915,17 @@ body {
 }
 
 .site-header__inner {
-  height: 68px;
-  min-height: 68px;
+  height: 118px;
+  min-height: 118px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 28px;
+}
+
+.site-header--v3 .brand-logo {
+  max-width: min(480px, 44vw);
+  height: 108px;
 }
 
 .nav--v3 {
@@ -2035,13 +2040,14 @@ body {
   padding: 12px 22px;
   font-size: 13.5px;
   font-weight: 700;
+  color: #fff;
   background: var(--blue);
   box-shadow: 0 10px 24px rgba(47, 78, 140, 0.28);
   white-space: nowrap;
 }
 
 main {
-  padding-top: 92px;
+  padding-top: 132px;
 }
 
 .homev3-hero {
