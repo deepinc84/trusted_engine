@@ -42,7 +42,7 @@ export default function RoofingPage() {
         eyebrow="Roofing service"
         title="Roof replacement planning built for Calgary conditions"
         description="A roof system has to do more than look clean from the street. It has to handle hail, wind-driven moisture, freeze-thaw cycles, and attic ventilation pressure without turning small weak points into expensive interior damage."
-        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+        actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
 
       <section className="ui-page-section">
