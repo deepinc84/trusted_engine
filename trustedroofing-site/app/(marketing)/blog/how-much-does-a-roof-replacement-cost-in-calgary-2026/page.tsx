@@ -52,7 +52,7 @@ export default function RoofCostBlogPost() {
             Real ranges from real Calgary projects - not numbers pulled from a generic online estimator.
           </p>
           <div className={styles.heroActions}>
-            <Link href="/quote" className="button">Get instant quote →</Link>
+            <Link href="/online-estimate" className="button">Get instant quote →</Link>
             <Link href="/services/roofing" className="button button--ghost">Roofing services</Link>
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function RoofCostBlogPost() {
                 </div>
               </div>
               <p>Standard asphalt shingles. Based on real Calgary projects - not generic online averages.</p>
-              <Link href="/quote" className="button" style={{ justifyContent: "center" }}>Get your real number →</Link>
+              <Link href="/online-estimate" className="button" style={{ justifyContent: "center" }}>Get your real number →</Link>
             </article>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function RoofCostBlogPost() {
 
             <p>
               I&apos;ve seen two houses side by side come in thousands apart just because one was walkable and the other wasn&apos;t.
-              Use the <Link href="/quote">instant quote tool</Link> for a real number based on your actual house - it uses
+              Use the <Link href="/online-estimate">instant quote tool</Link> for a real number based on your actual house - it uses
               real Calgary project data, not formulas.
             </p>
           </article>
@@ -222,7 +222,7 @@ export default function RoofCostBlogPost() {
                   Pitch, complexity, access, ventilation corrections, and material choice all layer on top of size. That&apos;s
                   why two houses of the same size can quote thousands apart.
                 </p>
-                <Link href="/quote" className="button" style={{ justifyContent: "center", marginTop: 4 }}>Use the quote tool</Link>
+                <Link href="/online-estimate" className="button" style={{ justifyContent: "center", marginTop: 4 }}>Use the quote tool</Link>
               </article>
             </div>
           </div>
@@ -434,7 +434,7 @@ export default function RoofCostBlogPost() {
             minute and gives you something real to work with, not just a range pulled from the internet.
           </p>
           <div className={styles.ctaActions}>
-            <Link href="/quote" className="button">Get an instant roof quote →</Link>
+            <Link href="/online-estimate" className="button">Get an instant roof quote →</Link>
             <Link href="/services/roofing" className="button button--ghost">Roof replacement services</Link>
           </div>
         </div>

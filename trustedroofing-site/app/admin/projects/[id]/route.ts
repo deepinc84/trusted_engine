@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProjectById, updateProject } from "@/lib/db";
+import { getProjectById, linkInstantQuotesToProject, listProjectInstantQuotes, updateProject } from "@/lib/db";
 import { buildProjectIndexNowUrls, getSiteUrl } from "@/lib/indexnow";
 
 async function triggerIndexing(urls: string[]) {
@@ -28,6 +28,7 @@ export async function GET(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+  const instantQuotes = await listProjectInstantQuotes(project.id);
 
   // Temporary debug logging for project photo display issues.
   console.info("[admin/projects/:id GET] project photo query", {
@@ -36,7 +37,7 @@ export async function GET(
     firstPhotoUrl: project.photos?.[0]?.public_url ?? null
   });
 
-  return NextResponse.json({ project });
+  return NextResponse.json({ project, instant_quotes: instantQuotes });
 }
 
 export async function PATCH(
@@ -62,8 +63,31 @@ export async function PATCH(
       lat_private: body.lat_private,
       lng_private: body.lng_private,
       completed_at: body.completed_at,
-      is_published: body.is_published
+      is_published: body.is_published,
+      quoted_material_cost: body.quoted_material_cost ?? null,
+      quoted_subcontractor_cost: body.quoted_subcontractor_cost ?? null,
+      quoted_labor_cost: body.quoted_labor_cost ?? null,
+      quoted_equipment_cost: body.quoted_equipment_cost ?? null,
+      quoted_disposal_cost: body.quoted_disposal_cost ?? null,
+      quoted_permit_cost: body.quoted_permit_cost ?? null,
+      quoted_other_cost: body.quoted_other_cost ?? null,
+      quoted_sale_price: body.quoted_sale_price ?? null,
+      actual_material_cost: body.actual_material_cost ?? null,
+      actual_subcontractor_cost: body.actual_subcontractor_cost ?? null,
+      actual_labor_cost: body.actual_labor_cost ?? null,
+      actual_equipment_cost: body.actual_equipment_cost ?? null,
+      actual_disposal_cost: body.actual_disposal_cost ?? null,
+      actual_permit_cost: body.actual_permit_cost ?? null,
+      actual_other_cost: body.actual_other_cost ?? null,
+      actual_sale_price: body.actual_sale_price ?? null
     });
+
+    const quoteIds = Array.isArray(body.instant_quote_ids)
+      ? body.instant_quote_ids.filter((value: unknown): value is string => typeof value === "string" && value.length > 0)
+      : [];
+    if (quoteIds.length > 0) {
+      await linkInstantQuotesToProject(project.id, quoteIds);
+    }
 
     const hydrated = await getProjectById(project.id);
 

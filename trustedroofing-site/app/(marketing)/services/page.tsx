@@ -90,7 +90,7 @@ export default async function ServicesPage() {
         description="This is the starting point if you need a roof replacement, siding upgrade, or a better drainage plan. Each service page explains what we do, why it matters in Alberta, and how the work is handled in real conditions."
         actions={
           <>
-            <Link href="/quote" className="button">Get an instant quote</Link>
+            <Link href="/online-estimate" className="button">Get an instant quote</Link>
             <Link href="/projects" className="button button--ghost">Browse projects</Link>
           </>
         }
