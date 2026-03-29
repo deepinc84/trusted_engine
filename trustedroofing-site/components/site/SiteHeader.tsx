@@ -22,7 +22,7 @@ export default async function SiteHeader() {
         <Link href="/" className="brand" aria-label="Trusted Roofing home">
           {/* Keep original production brand asset per stakeholder request. */}
           <Image
-            src="/logo.svg"
+            src="/full_white_new2.png"
             alt="Trusted Roofing & Exteriors"
             width={160}
             height={52}
