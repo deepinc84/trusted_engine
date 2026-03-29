@@ -62,7 +62,7 @@ export default async function SiteHeader() {
           <a href="tel:5872883351" className="nav-tel">
             587-288-3351
           </a>
-          <Link href="/quote" className="cta">
+          <Link href="/online-estimate" className="cta">
             Get instant quote
           </Link>
         </div>

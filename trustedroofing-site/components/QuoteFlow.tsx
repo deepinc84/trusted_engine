@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import NearbyQuotesCarousel from "@/components/NearbyQuotesCarousel";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
+import dynamic from "next/dynamic";
+
+const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCarousel"), {
+  ssr: false,
+  loading: () => <p className="instant-quote__meta">Loading nearby quote activity…</p>
+});
 
 type BudgetResponse = "yes" | "financing" | "too_expensive";
 type SidingMaterial = "vinyl" | "hardie";

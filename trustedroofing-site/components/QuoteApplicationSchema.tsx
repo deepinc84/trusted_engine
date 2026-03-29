@@ -27,7 +27,7 @@ const quoteApplicationSchema = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
   name: "Trusted Roofing & Exterior Instant Estimator",
-  url: canonicalUrl("/quote"),
+  url: canonicalUrl("/online-estimate"),
   description:
     "An anonymous, instant estimation tool for Calgary homeowners. Get an immediate price range for roofing, vinyl or Hardie siding, and eavestrough projects without providing any personal contact information.",
   applicationCategory: ["BusinessApplication", "DesignApplication"],
