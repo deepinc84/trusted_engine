@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { createInstaquoteLead } from "@/lib/db";
+import {
+  createInstaquoteLead,
+  listAdminInstantQuotes,
+  upsertLifecycleLeadFromSubmission
+} from "@/lib/db";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
+import { processLeadSubmissionEmails } from "@/lib/email";
 
 export async function POST(request: Request) {
   const ip = requestIp(request);
@@ -23,6 +28,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const serviceType = typeof body.serviceScope === "string" ? body.serviceScope : null;
     await createInstaquoteLead({
       address_query_id: body.addressQueryId as string,
       address: String(body.address),
@@ -53,6 +59,28 @@ export async function POST(request: Request) {
       email_sent_at: null,
       raw_json: body
     });
+
+    const lifecycleLead = await upsertLifecycleLeadFromSubmission({
+      legacy_address_query_id: String(body.addressQueryId),
+      name: String(body.name),
+      email: String(body.email),
+      phone: String(body.phone),
+      budget_response: budget,
+      timeline: (body.timeline as string) || null,
+      service_type: serviceType,
+      quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
+      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null
+    });
+
+    const [instantQuote] = await listAdminInstantQuotes({ q: String(body.address), limit: 50 })
+      .then((rows) => rows.filter((row) => row.legacy_address_query_id === String(body.addressQueryId)).slice(0, 1));
+    if (instantQuote) {
+      void processLeadSubmissionEmails({
+        lead: lifecycleLead,
+        instantQuote,
+        submittedForm: body
+      });
+    }
   } catch (error) {
     console.error("instaquote lead insert failed", error);
   }

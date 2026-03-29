@@ -21,10 +21,10 @@ export default async function SiteHeader() {
       <div className="site-shell site-header__inner">
         <Link href="/" className="brand" aria-label="Trusted Roofing home">
           <Image
-            src="/full_white_new2.png"
+            src="/logo.svg"
             alt="Trusted Roofing & Exteriors"
-            width={1536}
-            height={617}
+            width={160}
+            height={52}
             className="brand-logo"
             priority
           />
@@ -62,7 +62,7 @@ export default async function SiteHeader() {
           <a href="tel:5872883351" className="nav-tel">
             587-288-3351
           </a>
-          <Link href="/quote" className="cta">
+          <Link href="/online-estimate" className="cta">
             Get instant quote
           </Link>
         </div>
