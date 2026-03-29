@@ -74,6 +74,28 @@ export type Project = {
   completed_at: string | null;
   created_at: string;
   is_published: boolean;
+  quoted_material_cost: number | null;
+  quoted_subcontractor_cost: number | null;
+  quoted_labor_cost: number | null;
+  quoted_equipment_cost: number | null;
+  quoted_disposal_cost: number | null;
+  quoted_permit_cost: number | null;
+  quoted_other_cost: number | null;
+  quoted_total_cost: number | null;
+  quoted_sale_price: number | null;
+  quoted_gross_profit: number | null;
+  quoted_gross_margin_percent: number | null;
+  actual_material_cost: number | null;
+  actual_subcontractor_cost: number | null;
+  actual_labor_cost: number | null;
+  actual_equipment_cost: number | null;
+  actual_disposal_cost: number | null;
+  actual_permit_cost: number | null;
+  actual_other_cost: number | null;
+  actual_total_cost: number | null;
+  actual_sale_price: number | null;
+  actual_gross_profit: number | null;
+  actual_gross_margin_percent: number | null;
   photos?: ProjectPhoto[];
 };
 
@@ -90,6 +112,10 @@ export type GeoPost = {
   lat_public: number | null;
   lng_public: number | null;
   primary_image_url: string | null;
+  content: string | null;
+  status: "draft" | "queued" | "published" | "failed";
+  published_at: string | null;
+  gbp_response: Record<string, unknown> | null;
   images?: string[] | null;
   created_at: string;
 };
@@ -163,6 +189,9 @@ const mockServices = [...defaultServices];
 const mockProjects: Project[] = [];
 const mockProjectPhotos: ProjectPhoto[] = [];
 const mockGeoPosts: GeoPost[] = [];
+const mockInstantQuotes: InstantQuoteRecord[] = [];
+const mockLeads: LeadRecord[] = [];
+const mockLeadEmailNotifications: LeadEmailNotification[] = [];
 const mockQuoteEvents: Array<{ id: string; created_at: string } & QuoteEventStep1> = [];
 const mockQuoteContacts: Array<{
   quote_id: string;
@@ -548,6 +577,20 @@ export async function getGeoPostBySlug(slug: string): Promise<ResolvedGeoPost | 
   return geoPosts.find((geoPost) => geoPost.slug === slug) ?? null;
 }
 
+export async function listAdminGeoPosts(limit = 200): Promise<GeoPost[]> {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) return [] as GeoPost[];
+    const { data } = await client
+      .from("geo_posts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    return (data ?? []) as GeoPost[];
+  }
+  return [...mockGeoPosts].slice(0, limit);
+}
+
 type ProjectInput = {
   slug: string;
   title: string;
@@ -565,10 +608,56 @@ type ProjectInput = {
   lng_private?: number | null;
   completed_at?: string | null;
   is_published?: boolean;
+  quoted_material_cost?: number | null;
+  quoted_subcontractor_cost?: number | null;
+  quoted_labor_cost?: number | null;
+  quoted_equipment_cost?: number | null;
+  quoted_disposal_cost?: number | null;
+  quoted_permit_cost?: number | null;
+  quoted_other_cost?: number | null;
+  quoted_sale_price?: number | null;
+  actual_material_cost?: number | null;
+  actual_subcontractor_cost?: number | null;
+  actual_labor_cost?: number | null;
+  actual_equipment_cost?: number | null;
+  actual_disposal_cost?: number | null;
+  actual_permit_cost?: number | null;
+  actual_other_cost?: number | null;
+  actual_sale_price?: number | null;
 };
 
 function toProjectPayload(data: ProjectInput) {
   const rounded = roundLatLng(data.lat_private ?? null, data.lng_private ?? null, 3);
+  const quotedTotalCost =
+    (data.quoted_material_cost ?? 0) +
+    (data.quoted_subcontractor_cost ?? 0) +
+    (data.quoted_labor_cost ?? 0) +
+    (data.quoted_equipment_cost ?? 0) +
+    (data.quoted_disposal_cost ?? 0) +
+    (data.quoted_permit_cost ?? 0) +
+    (data.quoted_other_cost ?? 0);
+  const actualTotalCost =
+    (data.actual_material_cost ?? 0) +
+    (data.actual_subcontractor_cost ?? 0) +
+    (data.actual_labor_cost ?? 0) +
+    (data.actual_equipment_cost ?? 0) +
+    (data.actual_disposal_cost ?? 0) +
+    (data.actual_permit_cost ?? 0) +
+    (data.actual_other_cost ?? 0);
+  const quotedGrossProfit = data.quoted_sale_price !== null && data.quoted_sale_price !== undefined
+    ? data.quoted_sale_price - quotedTotalCost
+    : null;
+  const actualGrossProfit = data.actual_sale_price !== null && data.actual_sale_price !== undefined
+    ? data.actual_sale_price - actualTotalCost
+    : null;
+  const quotedGrossMarginPercent =
+    quotedGrossProfit !== null && data.quoted_sale_price && data.quoted_sale_price !== 0
+      ? (quotedGrossProfit / data.quoted_sale_price) * 100
+      : null;
+  const actualGrossMarginPercent =
+    actualGrossProfit !== null && data.actual_sale_price && data.actual_sale_price !== 0
+      ? (actualGrossProfit / data.actual_sale_price) * 100
+      : null;
 
   return {
     slug: sanitizeText(data.slug),
@@ -588,7 +677,29 @@ function toProjectPayload(data: ProjectInput) {
     lat_public: rounded.lat,
     lng_public: rounded.lng,
     completed_at: data.completed_at ?? null,
-    is_published: data.is_published ?? true
+    is_published: data.is_published ?? true,
+    quoted_material_cost: data.quoted_material_cost ?? null,
+    quoted_subcontractor_cost: data.quoted_subcontractor_cost ?? null,
+    quoted_labor_cost: data.quoted_labor_cost ?? null,
+    quoted_equipment_cost: data.quoted_equipment_cost ?? null,
+    quoted_disposal_cost: data.quoted_disposal_cost ?? null,
+    quoted_permit_cost: data.quoted_permit_cost ?? null,
+    quoted_other_cost: data.quoted_other_cost ?? null,
+    quoted_total_cost: quotedTotalCost,
+    quoted_sale_price: data.quoted_sale_price ?? null,
+    quoted_gross_profit: quotedGrossProfit,
+    quoted_gross_margin_percent: quotedGrossMarginPercent,
+    actual_material_cost: data.actual_material_cost ?? null,
+    actual_subcontractor_cost: data.actual_subcontractor_cost ?? null,
+    actual_labor_cost: data.actual_labor_cost ?? null,
+    actual_equipment_cost: data.actual_equipment_cost ?? null,
+    actual_disposal_cost: data.actual_disposal_cost ?? null,
+    actual_permit_cost: data.actual_permit_cost ?? null,
+    actual_other_cost: data.actual_other_cost ?? null,
+    actual_total_cost: actualTotalCost,
+    actual_sale_price: data.actual_sale_price ?? null,
+    actual_gross_profit: actualGrossProfit,
+    actual_gross_margin_percent: actualGrossMarginPercent
   };
 }
 
@@ -621,23 +732,42 @@ export async function createProject(data: ProjectInput) {
 }
 
 export async function updateProject(id: string, data: Partial<ProjectInput>) {
+  const existingProject = await getProjectById(id);
+  if (!existingProject) throw new Error("Project not found");
+
   const partialPayload = toProjectPayload({
-    slug: data.slug ?? "",
-    title: data.title ?? "",
-    summary: data.summary ?? "",
-    description: data.description,
-    service_slug: data.service_slug ?? "roofing",
-    city: data.city,
-    province: data.province,
-    neighborhood: data.neighborhood,
-    quadrant: data.quadrant,
-    address_private: data.address_private,
-    place_id: data.place_id,
-    geocode_source: data.geocode_source,
-    lat_private: data.lat_private,
-    lng_private: data.lng_private,
-    completed_at: data.completed_at,
-    is_published: data.is_published
+    slug: data.slug ?? existingProject.slug,
+    title: data.title ?? existingProject.title,
+    summary: data.summary ?? existingProject.summary,
+    description: data.description ?? existingProject.description,
+    service_slug: data.service_slug ?? existingProject.service_slug,
+    city: data.city ?? existingProject.city,
+    province: data.province ?? existingProject.province,
+    neighborhood: data.neighborhood ?? existingProject.neighborhood,
+    quadrant: data.quadrant ?? existingProject.quadrant,
+    address_private: data.address_private ?? existingProject.address_private,
+    place_id: data.place_id ?? existingProject.place_id,
+    geocode_source: data.geocode_source ?? existingProject.geocode_source,
+    lat_private: data.lat_private ?? existingProject.lat_private,
+    lng_private: data.lng_private ?? existingProject.lng_private,
+    completed_at: data.completed_at ?? existingProject.completed_at,
+    is_published: data.is_published ?? existingProject.is_published,
+    quoted_material_cost: data.quoted_material_cost ?? existingProject.quoted_material_cost,
+    quoted_subcontractor_cost: data.quoted_subcontractor_cost ?? existingProject.quoted_subcontractor_cost,
+    quoted_labor_cost: data.quoted_labor_cost ?? existingProject.quoted_labor_cost,
+    quoted_equipment_cost: data.quoted_equipment_cost ?? existingProject.quoted_equipment_cost,
+    quoted_disposal_cost: data.quoted_disposal_cost ?? existingProject.quoted_disposal_cost,
+    quoted_permit_cost: data.quoted_permit_cost ?? existingProject.quoted_permit_cost,
+    quoted_other_cost: data.quoted_other_cost ?? existingProject.quoted_other_cost,
+    quoted_sale_price: data.quoted_sale_price ?? existingProject.quoted_sale_price,
+    actual_material_cost: data.actual_material_cost ?? existingProject.actual_material_cost,
+    actual_subcontractor_cost: data.actual_subcontractor_cost ?? existingProject.actual_subcontractor_cost,
+    actual_labor_cost: data.actual_labor_cost ?? existingProject.actual_labor_cost,
+    actual_equipment_cost: data.actual_equipment_cost ?? existingProject.actual_equipment_cost,
+    actual_disposal_cost: data.actual_disposal_cost ?? existingProject.actual_disposal_cost,
+    actual_permit_cost: data.actual_permit_cost ?? existingProject.actual_permit_cost,
+    actual_other_cost: data.actual_other_cost ?? existingProject.actual_other_cost,
+    actual_sale_price: data.actual_sale_price ?? existingProject.actual_sale_price
   });
 
   const payload = Object.fromEntries(
@@ -781,7 +911,11 @@ export async function syncGeoPostForProject(projectId: string) {
     neighborhood: project.neighborhood,
     lat_public: project.lat_public,
     lng_public: project.lng_public,
-    primary_image_url: primaryImage
+    primary_image_url: primaryImage,
+    content: null,
+    status: "draft" as const,
+    published_at: null,
+    gbp_response: null
   };
 
   const uniqueConstraintHint = "Run migration 0008_geo_posts_project_unique.sql.";
@@ -1044,6 +1178,45 @@ export type InstaquoteLead = {
   created_at: string;
 };
 
+export type InstantQuoteRecord = {
+  id: string;
+  legacy_address_query_id: string | null;
+  address: string;
+  service_type: string | null;
+  quote_low: number | null;
+  quote_high: number | null;
+  has_contact_submission: boolean;
+  project_id: string | null;
+  is_marketing: boolean;
+  created_at: string;
+};
+
+export type LeadRecord = {
+  id: string;
+  instant_quote_id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  budget_response: string | null;
+  timeline: string | null;
+  service_type: string | null;
+  quote_low: number | null;
+  quote_high: number | null;
+  submitted_at: string | null;
+  created_at: string;
+};
+
+export type LeadEmailNotification = {
+  id: string;
+  lead_id: string;
+  recipient_type: "internal" | "customer";
+  recipient_email: string;
+  status: "sent" | "failed";
+  provider_message_id: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
 export async function listHomepageMetrics(): Promise<HomepageMetric[]> {
   if (getDataMode() === "supabase") {
     const client = getAnonClient();
@@ -1231,6 +1404,49 @@ export async function createInstaquoteAddressQuery(
   return payload.id;
 }
 
+export async function upsertInstantQuoteFromAddressQuery(input: {
+  legacy_address_query_id: string;
+  address: string;
+  service_type: string | null;
+  quote_low: number | null;
+  quote_high: number | null;
+  created_at?: string;
+}) {
+  const payload: InstantQuoteRecord = {
+    id: crypto.randomUUID(),
+    legacy_address_query_id: input.legacy_address_query_id,
+    address: input.address || "Unknown address",
+    service_type: input.service_type,
+    quote_low: input.quote_low,
+    quote_high: input.quote_high,
+    has_contact_submission: false,
+    project_id: null,
+    is_marketing: false,
+    created_at: input.created_at ?? new Date().toISOString()
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+
+    const { data: existing } = await client
+      .from("instant_quotes")
+      .select("*")
+      .eq("legacy_address_query_id", input.legacy_address_query_id)
+      .maybeSingle();
+    if (existing) return existing as InstantQuoteRecord;
+
+    const { data, error } = await client.from("instant_quotes").insert(payload).select("*").single();
+    if (error) throw new Error(error.message);
+    return data as InstantQuoteRecord;
+  }
+
+  const existing = mockInstantQuotes.find((row) => row.legacy_address_query_id === input.legacy_address_query_id);
+  if (existing) return existing;
+  mockInstantQuotes.unshift(payload);
+  return payload;
+}
+
 export async function createInstaquoteLead(input: Omit<InstaquoteLead, "id" | "created_at" | "email_sent" | "source">) {
   const payload = {
     id: crypto.randomUUID(),
@@ -1250,7 +1466,17 @@ export async function createInstaquoteLead(input: Omit<InstaquoteLead, "id" | "c
       leadInsertError = error.message;
     }
 
+    let linkedInstantQuote: InstantQuoteRecord | null = null;
     if (payload.address_query_id) {
+      linkedInstantQuote = await upsertInstantQuoteFromAddressQuery({
+        legacy_address_query_id: payload.address_query_id,
+        address: payload.address,
+        service_type: payload.data_source ?? null,
+        quote_low: payload.good_low,
+        quote_high: payload.good_high,
+        created_at: payload.created_at
+      });
+
       const leadNotes = [
         `budget=${payload.budget_response}`,
         payload.timeline ? `timeline=${payload.timeline}` : null,
@@ -1270,12 +1496,62 @@ export async function createInstaquoteLead(input: Omit<InstaquoteLead, "id" | "c
         .eq("id", payload.address_query_id);
     }
 
+    if (linkedInstantQuote) {
+      await client.from("instant_quotes").update({ has_contact_submission: true }).eq("id", linkedInstantQuote.id);
+      const lifecycleLead: LeadRecord = {
+        id: crypto.randomUUID(),
+        instant_quote_id: linkedInstantQuote.id,
+        name: payload.name,
+        email: payload.email,
+        phone: payload.phone,
+        budget_response: payload.budget_response,
+        timeline: payload.timeline,
+        service_type: payload.data_source ?? null,
+        quote_low: payload.good_low,
+        quote_high: payload.good_high,
+        submitted_at: payload.created_at,
+        created_at: payload.created_at
+      };
+      const { error: lifecycleLeadError } = await client.from("leads").insert(lifecycleLead);
+      if (lifecycleLeadError) {
+        console.error("lead lifecycle insert failed", lifecycleLeadError.message);
+      }
+    }
+
     if (leadInsertError) {
       // Legacy schema compatibility: still report success to caller routes that degrade gracefully.
       throw new Error(leadInsertError);
     }
 
     return payload.id;
+  }
+
+  const linkedInstantQuote = payload.address_query_id
+    ? await upsertInstantQuoteFromAddressQuery({
+      legacy_address_query_id: payload.address_query_id,
+      address: payload.address,
+      service_type: payload.data_source ?? null,
+      quote_low: payload.good_low,
+      quote_high: payload.good_high,
+      created_at: payload.created_at
+    })
+    : null;
+  if (linkedInstantQuote) {
+    linkedInstantQuote.has_contact_submission = true;
+    mockLeads.unshift({
+      id: crypto.randomUUID(),
+      instant_quote_id: linkedInstantQuote.id,
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone,
+      budget_response: payload.budget_response,
+      timeline: payload.timeline,
+      service_type: payload.data_source ?? null,
+      quote_low: payload.good_low,
+      quote_high: payload.good_high,
+      submitted_at: payload.created_at,
+      created_at: payload.created_at
+    });
   }
 
   return payload.id;
@@ -1391,4 +1667,249 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
   }
 
   return [];
+}
+
+export async function listAdminInstantQuotes(filters?: {
+  status?: "all" | "quote_only" | "lead_submitted" | "linked_project";
+  is_marketing?: "all" | "marketing" | "internal";
+  from?: string | null;
+  to?: string | null;
+  q?: string | null;
+  limit?: number;
+}) {
+  const limit = filters?.limit ?? 300;
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) return [] as InstantQuoteRecord[];
+    let query = client.from("instant_quotes").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (filters?.q) query = query.ilike("address", `%${filters.q}%`);
+    if (filters?.from) query = query.gte("created_at", filters.from);
+    if (filters?.to) query = query.lte("created_at", filters.to);
+    if (filters?.is_marketing === "marketing") query = query.eq("is_marketing", true);
+    if (filters?.is_marketing === "internal") query = query.eq("is_marketing", false);
+    if (filters?.status === "quote_only") query = query.eq("has_contact_submission", false).is("project_id", null);
+    if (filters?.status === "lead_submitted") query = query.eq("has_contact_submission", true).is("project_id", null);
+    if (filters?.status === "linked_project") query = query.not("project_id", "is", null);
+    const { data } = await query;
+    return (data ?? []) as InstantQuoteRecord[];
+  }
+
+  return mockInstantQuotes
+    .filter((row) => !filters?.q || row.address.toLowerCase().includes(filters.q.toLowerCase()))
+    .filter((row) => filters?.is_marketing === "all" || !filters?.is_marketing
+      ? true
+      : filters.is_marketing === "marketing"
+        ? row.is_marketing
+        : !row.is_marketing)
+    .filter((row) => {
+      if (filters?.status === "quote_only") return !row.has_contact_submission && !row.project_id;
+      if (filters?.status === "lead_submitted") return row.has_contact_submission && !row.project_id;
+      if (filters?.status === "linked_project") return !!row.project_id;
+      return true;
+    })
+    .slice(0, limit);
+}
+
+export async function setInstantQuoteMarketingTag(id: string, is_marketing: boolean) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const { data, error } = await client.from("instant_quotes").update({ is_marketing }).eq("id", id).select("*").single();
+    if (error) throw new Error(error.message);
+    return data as InstantQuoteRecord;
+  }
+  const row = mockInstantQuotes.find((item) => item.id === id);
+  if (!row) throw new Error("Instant quote not found");
+  row.is_marketing = is_marketing;
+  return row;
+}
+
+export async function linkInstantQuotesToProject(projectId: string, quoteIds: string[]) {
+  if (quoteIds.length === 0) return;
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const { error } = await client.from("instant_quotes").update({ project_id: projectId }).in("id", quoteIds);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  mockInstantQuotes.forEach((row) => {
+    if (quoteIds.includes(row.id)) row.project_id = projectId;
+  });
+}
+
+export async function listProjectInstantQuotes(projectId: string) {
+  return listAdminInstantQuotes({ status: "all", limit: 500 }).then((rows) => rows.filter((row) => row.project_id === projectId));
+}
+
+export async function listLeadsByInstantQuoteIds(quoteIds: string[]) {
+  if (quoteIds.length === 0) return [] as LeadRecord[];
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) return [] as LeadRecord[];
+    const { data } = await client.from("leads").select("*").in("instant_quote_id", quoteIds).order("created_at", { ascending: false });
+    return (data ?? []) as LeadRecord[];
+  }
+  return mockLeads.filter((lead) => quoteIds.includes(lead.instant_quote_id));
+}
+
+export async function upsertLifecycleLeadFromSubmission(input: {
+  legacy_address_query_id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  budget_response: string | null;
+  timeline: string | null;
+  service_type: string | null;
+  quote_low: number | null;
+  quote_high: number | null;
+}) {
+  const instantQuote = await upsertInstantQuoteFromAddressQuery({
+    legacy_address_query_id: input.legacy_address_query_id,
+    address: "",
+    service_type: input.service_type,
+    quote_low: input.quote_low,
+    quote_high: input.quote_high
+  });
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    await client.from("instant_quotes").update({ has_contact_submission: true }).eq("id", instantQuote.id);
+
+    const { data: existing } = await client
+      .from("leads")
+      .select("*")
+      .eq("instant_quote_id", instantQuote.id)
+      .eq("email", input.email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing) return existing as LeadRecord;
+
+    const payload: LeadRecord = {
+      id: crypto.randomUUID(),
+      instant_quote_id: instantQuote.id,
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      budget_response: input.budget_response,
+      timeline: input.timeline,
+      service_type: input.service_type,
+      quote_low: input.quote_low,
+      quote_high: input.quote_high,
+      submitted_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
+    const { data, error } = await client.from("leads").insert(payload).select("*").single();
+    if (error) throw new Error(error.message);
+    return data as LeadRecord;
+  }
+
+  instantQuote.has_contact_submission = true;
+  const existing = mockLeads.find((lead) => lead.instant_quote_id === instantQuote.id && lead.email === input.email);
+  if (existing) return existing;
+  const created: LeadRecord = {
+    id: crypto.randomUUID(),
+    instant_quote_id: instantQuote.id,
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+    budget_response: input.budget_response,
+    timeline: input.timeline,
+    service_type: input.service_type,
+    quote_low: input.quote_low,
+    quote_high: input.quote_high,
+    submitted_at: new Date().toISOString(),
+    created_at: new Date().toISOString()
+  };
+  mockLeads.unshift(created);
+  return created;
+}
+
+export async function upsertLeadEmailNotification(input: Omit<LeadEmailNotification, "id" | "created_at">) {
+  const payload = { ...input, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const { error } = await client.from("lead_email_notifications").upsert(payload, { onConflict: "lead_id,recipient_type" });
+    if (error) throw new Error(error.message);
+    return payload;
+  }
+  const idx = mockLeadEmailNotifications.findIndex(
+    (row) => row.lead_id === input.lead_id && row.recipient_type === input.recipient_type
+  );
+  if (idx >= 0) mockLeadEmailNotifications[idx] = payload;
+  else mockLeadEmailNotifications.push(payload);
+  return payload;
+}
+
+export async function listLeadEmailNotifications(leadId: string) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) return [] as LeadEmailNotification[];
+    const { data } = await client.from("lead_email_notifications").select("*").eq("lead_id", leadId);
+    return (data ?? []) as LeadEmailNotification[];
+  }
+  return mockLeadEmailNotifications.filter((row) => row.lead_id === leadId);
+}
+
+export async function publishGeoPostById(id: string) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const { data: geoPost, error } = await client.from("geo_posts").select("*").eq("id", id).single();
+    if (error) throw new Error(error.message);
+    await enqueueGbpPost((geoPost as GeoPost).project_id, {
+      geo_post_id: id,
+      slug: (geoPost as GeoPost).slug,
+      title: (geoPost as GeoPost).title,
+      summary: (geoPost as GeoPost).summary
+    });
+    const publishedAt = new Date().toISOString();
+    const { data: updated, error: updateError } = await client
+      .from("geo_posts")
+      .update({
+        status: "published",
+        published_at: publishedAt,
+        gbp_response: { ok: true, published_at: publishedAt, queued: true }
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (updateError) throw new Error(updateError.message);
+    return updated as GeoPost;
+  }
+
+  const row = mockGeoPosts.find((geoPost) => geoPost.id === id);
+  if (!row) throw new Error("Geo post not found");
+  row.status = "published";
+  row.published_at = new Date().toISOString();
+  row.gbp_response = { ok: true, queued: true };
+  return row;
+}
+
+export async function updateGeoPostAdmin(
+  id: string,
+  input: {
+    content?: string | null;
+    status?: "draft" | "queued" | "published" | "failed";
+  }
+) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const payload: Record<string, unknown> = {};
+    if (input.content !== undefined) payload.content = input.content;
+    if (input.status !== undefined) payload.status = input.status;
+    const { data, error } = await client.from("geo_posts").update(payload).eq("id", id).select("*").single();
+    if (error) throw new Error(error.message);
+    return data as GeoPost;
+  }
+
+  const row = mockGeoPosts.find((geoPost) => geoPost.id === id);
+  if (!row) throw new Error("Geo post not found");
+  if (input.content !== undefined) row.content = input.content;
+  if (input.status !== undefined) row.status = input.status;
+  return row;
 }
