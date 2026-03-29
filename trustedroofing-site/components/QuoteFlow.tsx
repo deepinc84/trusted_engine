@@ -463,7 +463,8 @@ export default function QuoteFlow() {
       {status ? <p className="instant-quote__meta">{status}</p> : null}
       {error ? <p className="instant-quote__error">{error}</p> : null}
 
-      {step >= 2 ? <NearbyQuotesCarousel coords={estimateCoords} address={estimate?.address ?? address} /> : null}
+      {/* Keep nearby cards visible on first render (recent 6 quote signals). */}
+      <NearbyQuotesCarousel coords={estimateCoords} address={estimate?.address ?? address} />
     </div>
   );
 }

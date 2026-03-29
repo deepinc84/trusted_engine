@@ -20,6 +20,7 @@ export default async function SiteHeader() {
     <header className="site-header site-header--v3">
       <div className="site-shell site-header__inner">
         <Link href="/" className="brand" aria-label="Trusted Roofing home">
+          {/* Keep original production brand asset per stakeholder request. */}
           <Image
             src="/logo.svg"
             alt="Trusted Roofing & Exteriors"
