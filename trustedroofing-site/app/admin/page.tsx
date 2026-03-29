@@ -14,6 +14,18 @@ export default async function AdminDashboardPage() {
             <Link href="/admin/projects/new" className="button">
               Create project
             </Link>
+            <Link href="/admin/instant-quotes" className="button" style={{ marginLeft: 10 }}>
+              Instant quote dashboard
+            </Link>
+            <Link href="/admin/actuals" className="button" style={{ marginLeft: 10 }}>
+              Actuals tab
+            </Link>
+            <Link href="/admin/geo-posts" className="button" style={{ marginLeft: 10 }}>
+              Geo-post management
+            </Link>
+            <Link href="/admin/reports" className="button" style={{ marginLeft: 10 }}>
+              Reporting
+            </Link>
           </div>
         </div>
       </div>
