@@ -1,9 +1,14 @@
-import FaqAccordion from "@/components/FaqAccordion";
 import QuoteApplicationSchema, { quoteFaqItems } from "@/components/QuoteApplicationSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import QuoteFlow from "@/components/QuoteFlow";
 import { buildMetadata } from "@/lib/seo";
+import dynamicImport from "next/dynamic";
+
+const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
+  ssr: false,
+  loading: () => <p className="homev3-copy">Loading FAQ…</p>
+});
 
 const quoteBenefits = [
   {
