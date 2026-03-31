@@ -32,6 +32,8 @@ type InstantQuoteOption = {
   created_at: string;
 };
 
+type PhotoPhase = "before" | "after";
+
 const REQUIRED_SERVICE_OPTIONS: Array<{ slug: string; title: string }> = [
   { slug: "roofing", title: "Roof Replacement" },
   { slug: "hardie-siding", title: "Hardie Siding" },
@@ -197,6 +199,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [locating, setLocating] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
   const [primaryUploadIndex, setPrimaryUploadIndex] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<PhotoPhase>("before");
   const [uploadedPhotos, setUploadedPhotos] = useState<ProjectPhoto[]>(project?.photos ?? []);
   const [adminToken, setAdminToken] = useState<string>("");
 
@@ -207,6 +210,17 @@ export default function ProjectForm({ services, mode, project }: Props) {
   }, [title, neighborhood, completedAt]);
 
   const selectedFiles = useMemo(() => Array.from(files ?? []), [files]);
+  const groupedUploadedPhotos = useMemo(() => {
+    const grouped: Record<PhotoPhase, ProjectPhoto[]> = { before: [], after: [] };
+    for (const photo of uploadedPhotos) {
+      if (photo.storage_path.includes("/after/")) {
+        grouped.after.push(photo);
+      } else {
+        grouped.before.push(photo);
+      }
+    }
+    return grouped;
+  }, [uploadedPhotos]);
   const serviceOptions = useMemo(() => {
     const merged = [...services];
     for (const required of REQUIRED_SERVICE_OPTIONS) {
@@ -526,7 +540,8 @@ export default function ProjectForm({ services, mode, project }: Props) {
           body: JSON.stringify({
             project_id: effectiveProjectId,
             file_name: uploadFile.name,
-            content_type: uploadFile.type
+            content_type: uploadFile.type,
+            phase: uploadPhase
           })
         });
 
@@ -573,6 +588,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
             service_slug: serviceSlug,
             neighborhood: neighborhood || null,
             city: "Calgary",
+            phase: uploadPhase,
             sequence: nextSortStart + index + 1,
             sort_order: nextSortStart + index,
             is_primary: index === primaryUploadIndex,
@@ -848,6 +864,33 @@ export default function ProjectForm({ services, mode, project }: Props) {
         Upload project photos (up to {MAX_UPLOAD_FILES} files, {MAX_UPLOAD_MB}MB each)
         <input type="file" multiple accept="image/*" onChange={(event) => onSelectFiles(event.target.files)} />
       </label>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>Photo bucket:</span>
+        <button
+          type="button"
+          className="button"
+          onClick={() => setUploadPhase("before")}
+          style={{
+            background: uploadPhase === "before" ? "var(--color-primary)" : "white",
+            color: uploadPhase === "before" ? "white" : "var(--color-primary)",
+            border: "1px solid rgba(30,58,138,0.25)"
+          }}
+        >
+          Before
+        </button>
+        <button
+          type="button"
+          className="button"
+          onClick={() => setUploadPhase("after")}
+          style={{
+            background: uploadPhase === "after" ? "var(--color-primary)" : "white",
+            color: uploadPhase === "after" ? "white" : "var(--color-primary)",
+            border: "1px solid rgba(30,58,138,0.25)"
+          }}
+        >
+          After
+        </button>
+      </div>
 
       {selectedFiles.length ? (
         <div style={{ display: "grid", gap: 10 }}>
@@ -890,17 +933,26 @@ export default function ProjectForm({ services, mode, project }: Props) {
       {uploadedPhotos.length ? (
         <div style={{ display: "grid", gap: 10 }}>
           <p style={{ margin: 0, fontWeight: 600 }}>Uploaded photos</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-            {uploadedPhotos.map((photo) => (
-              <div key={photo.id} style={{ border: "1px solid #d5d9e2", borderRadius: 8, padding: 8 }}>
-                <img src={photo.public_url} alt={photo.caption ?? "Project photo"} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 6 }} />
-                <p style={{ margin: "8px 0 6px", fontSize: 12 }}>{photo.caption ?? "Untitled"}</p>
-                <button className="button" type="button" onClick={() => void setPrimary(photo.id)} style={{ width: "100%" }} disabled={settingPrimaryId === photo.id}>
-                  {settingPrimaryId === photo.id ? "Saving..." : (photo.is_primary ? "Primary image" : "Set as primary")}
-                </button>
-              </div>
-            ))}
-          </div>
+          {(["before", "after"] as const).map((phase) => (
+            <div key={phase} style={{ display: "grid", gap: 8 }}>
+              <h4 style={{ margin: 0, textTransform: "capitalize" }}>{phase} photos</h4>
+              {groupedUploadedPhotos[phase].length ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+                  {groupedUploadedPhotos[phase].map((photo) => (
+                    <div key={photo.id} style={{ border: "1px solid #d5d9e2", borderRadius: 8, padding: 8 }}>
+                      <img src={photo.public_url} alt={photo.caption ?? "Project photo"} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 6 }} />
+                      <p style={{ margin: "8px 0 6px", fontSize: 12 }}>{photo.caption ?? "Untitled"}</p>
+                      <button className="button" type="button" onClick={() => void setPrimary(photo.id)} style={{ width: "100%" }} disabled={settingPrimaryId === photo.id}>
+                        {settingPrimaryId === photo.id ? "Saving..." : (photo.is_primary ? "Primary image" : "Set as primary")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>No {phase} photos yet.</p>
+              )}
+            </div>
+          ))}
         </div>
       ) : null}
 

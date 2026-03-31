@@ -24,9 +24,10 @@ export function getProjectImageStorageProvider(): StorageProvider {
   throw new Error(`Unsupported PROJECT_IMAGE_STORAGE_PROVIDER: ${configured}`);
 }
 
-export function buildProjectPhotoPath(projectId: string, fileName: string) {
+export function buildProjectPhotoPath(projectId: string, fileName: string, phase?: "before" | "after") {
   const safeName = fileName.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
-  return `${projectId}/${Date.now()}-${safeName}`;
+  const safePhase = phase === "after" ? "after" : "before";
+  return `${projectId}/${safePhase}/${Date.now()}-${safeName}`;
 }
 
 function readPngDimensions(buffer: Buffer) {
