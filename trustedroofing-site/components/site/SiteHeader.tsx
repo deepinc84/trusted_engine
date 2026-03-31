@@ -24,8 +24,8 @@ export default async function SiteHeader() {
           <Image
             src="/full_white_new2.png"
             alt="Trusted Roofing & Exteriors"
-            width={1536}
-            height={617}
+            width={160}
+            height={52}
             className="brand-logo"
             priority
           />
