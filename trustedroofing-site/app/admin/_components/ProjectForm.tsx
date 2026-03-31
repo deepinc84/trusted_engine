@@ -23,6 +23,21 @@ type GeocodeResult = {
   source: string;
 };
 
+type InstantQuoteOption = {
+  id: string;
+  address: string;
+  service_type: string | null;
+  quote_low: number | null;
+  quote_high: number | null;
+  created_at: string;
+};
+
+const REQUIRED_SERVICE_OPTIONS: Array<{ slug: string; title: string }> = [
+  { slug: "roofing", title: "Roof Replacement" },
+  { slug: "hardie-siding", title: "Hardie Siding" },
+  { slug: "vinyl-siding", title: "Vinyl Siding" }
+];
+
 const MAX_UPLOAD_FILES = 30;
 const MAX_UPLOAD_MB = 15;
 const MAX_UPLOAD_MB_AFTER_COMPRESSION = 8;
@@ -148,6 +163,26 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [summary, setSummary] = useState(project?.summary ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const [completedAt, setCompletedAt] = useState(project?.completed_at ?? (mode === "create" ? new Date().toISOString().slice(0, 10) : ""));
+  const [linkedQuoteIds, setLinkedQuoteIds] = useState("");
+  const [quoteSearch, setQuoteSearch] = useState("");
+  const [instantQuoteOptions, setInstantQuoteOptions] = useState<InstantQuoteOption[]>([]);
+  const [loadingInstantQuotes, setLoadingInstantQuotes] = useState(false);
+  const [quotedMaterialCost, setQuotedMaterialCost] = useState(project?.quoted_material_cost?.toString() ?? "");
+  const [quotedSubcontractorCost, setQuotedSubcontractorCost] = useState(project?.quoted_subcontractor_cost?.toString() ?? "");
+  const [quotedLaborCost, setQuotedLaborCost] = useState(project?.quoted_labor_cost?.toString() ?? "");
+  const [quotedEquipmentCost, setQuotedEquipmentCost] = useState(project?.quoted_equipment_cost?.toString() ?? "");
+  const [quotedDisposalCost, setQuotedDisposalCost] = useState(project?.quoted_disposal_cost?.toString() ?? "");
+  const [quotedPermitCost, setQuotedPermitCost] = useState(project?.quoted_permit_cost?.toString() ?? "");
+  const [quotedOtherCost, setQuotedOtherCost] = useState(project?.quoted_other_cost?.toString() ?? "");
+  const [quotedSalePrice, setQuotedSalePrice] = useState(project?.quoted_sale_price?.toString() ?? "");
+  const [actualMaterialCost, setActualMaterialCost] = useState(project?.actual_material_cost?.toString() ?? "");
+  const [actualSubcontractorCost, setActualSubcontractorCost] = useState(project?.actual_subcontractor_cost?.toString() ?? "");
+  const [actualLaborCost, setActualLaborCost] = useState(project?.actual_labor_cost?.toString() ?? "");
+  const [actualEquipmentCost, setActualEquipmentCost] = useState(project?.actual_equipment_cost?.toString() ?? "");
+  const [actualDisposalCost, setActualDisposalCost] = useState(project?.actual_disposal_cost?.toString() ?? "");
+  const [actualPermitCost, setActualPermitCost] = useState(project?.actual_permit_cost?.toString() ?? "");
+  const [actualOtherCost, setActualOtherCost] = useState(project?.actual_other_cost?.toString() ?? "");
+  const [actualSalePrice, setActualSalePrice] = useState(project?.actual_sale_price?.toString() ?? "");
   const [projectId, setProjectId] = useState(project?.id ?? "");
   const [geocodeSource, setGeocodeSource] = useState(project?.geocode_source ?? "manual");
   const [locationMode, setLocationMode] = useState<"current" | "manual">("current");
@@ -172,6 +207,27 @@ export default function ProjectForm({ services, mode, project }: Props) {
   }, [title, neighborhood, completedAt]);
 
   const selectedFiles = useMemo(() => Array.from(files ?? []), [files]);
+  const serviceOptions = useMemo(() => {
+    const merged = [...services];
+    for (const required of REQUIRED_SERVICE_OPTIONS) {
+      if (!merged.some((service) => service.slug === required.slug)) {
+        merged.push({
+          id: `required-${required.slug}`,
+          slug: required.slug,
+          title: required.title,
+          base_sales_copy: "",
+          created_at: new Date().toISOString()
+        });
+      }
+    }
+
+    return merged.map((service) => {
+      if (service.slug === "roofing") {
+        return { ...service, title: "Roof Replacement" };
+      }
+      return service;
+    }).sort((a, b) => a.title.localeCompare(b.title));
+  }, [services]);
 
   const setFeedback = (message: string, tone: "info" | "success" | "error" = "info") => {
     setStatus(message);
@@ -261,6 +317,38 @@ export default function ProjectForm({ services, mode, project }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    params.set("service_slug", serviceSlug);
+    if (quoteSearch.trim()) params.set("q", quoteSearch.trim());
+    params.set("limit", "30");
+
+    const loadQuotes = async () => {
+      setLoadingInstantQuotes(true);
+      try {
+        const response = await adminFetch(`/admin/instant-quotes/search?${params.toString()}`, {
+          signal: controller.signal
+        });
+        const payload = await response.json() as { quotes?: InstantQuoteOption[] };
+        if (!controller.signal.aborted) {
+          setInstantQuoteOptions(Array.isArray(payload.quotes) ? payload.quotes : []);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setInstantQuoteOptions([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingInstantQuotes(false);
+        }
+      }
+    };
+
+    void loadQuotes();
+    return () => controller.abort();
+  }, [adminToken, quoteSearch, serviceSlug]);
+
 
   useEffect(() => {
     if (quadrant) return;
@@ -293,6 +381,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setIsSaving(true);
     setFeedback(mode === "create" ? "Creating project..." : "Updating project...");
 
+    const toNumber = (value: string) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
     try {
       const payload = {
       title,
@@ -307,6 +400,23 @@ export default function ProjectForm({ services, mode, project }: Props) {
       summary,
       description: description || null,
       completed_at: completedAt || null,
+      instant_quote_ids: linkedQuoteIds ? [linkedQuoteIds] : [],
+      quoted_material_cost: toNumber(quotedMaterialCost),
+      quoted_subcontractor_cost: toNumber(quotedSubcontractorCost),
+      quoted_labor_cost: toNumber(quotedLaborCost),
+      quoted_equipment_cost: toNumber(quotedEquipmentCost),
+      quoted_disposal_cost: toNumber(quotedDisposalCost),
+      quoted_permit_cost: toNumber(quotedPermitCost),
+      quoted_other_cost: toNumber(quotedOtherCost),
+      quoted_sale_price: toNumber(quotedSalePrice),
+      actual_material_cost: toNumber(actualMaterialCost),
+      actual_subcontractor_cost: toNumber(actualSubcontractorCost),
+      actual_labor_cost: toNumber(actualLaborCost),
+      actual_equipment_cost: toNumber(actualEquipmentCost),
+      actual_disposal_cost: toNumber(actualDisposalCost),
+      actual_permit_cost: toNumber(actualPermitCost),
+      actual_other_cost: toNumber(actualOtherCost),
+      actual_sale_price: toNumber(actualSalePrice),
       city: "Calgary",
       province: "AB",
       is_published: true
@@ -588,7 +698,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
       <label>
         Service
         <select className="input" value={serviceSlug} onChange={(event) => setServiceSlug(event.target.value)}>
-          {services.map((service) => (
+          {serviceOptions.map((service) => (
             <option key={service.slug} value={service.slug}>
               {service.title}
             </option>
@@ -679,6 +789,56 @@ export default function ProjectForm({ services, mode, project }: Props) {
         Completed at
         <input className="input" type="date" value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} />
       </label>
+      <div style={{ display: "grid", gap: 8 }}>
+        <label>
+          Find instant quote by address
+          <input
+            className="input"
+            value={quoteSearch}
+            onChange={(event) => setQuoteSearch(event.target.value)}
+            placeholder="Start typing the customer address"
+          />
+        </label>
+        <label>
+          Linked instant quote
+          <select
+            className="input"
+            value={linkedQuoteIds}
+            onChange={(event) => setLinkedQuoteIds(event.target.value)}
+          >
+            <option value="">No linked quote</option>
+            {instantQuoteOptions.map((quote) => (
+              <option key={quote.id} value={quote.id}>
+                {quote.address} · {quote.quote_low ?? "N/A"}-{quote.quote_high ?? "N/A"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>
+          {loadingInstantQuotes ? "Loading matching quotes..." : "Only unlinked quotes matching this project service are shown."}
+        </p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
+        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0 }}>Quote data</h3>
+          <label>Quoted sale price<input className="input" value={quotedSalePrice} onChange={(event) => setQuotedSalePrice(event.target.value)} /></label>
+          <label>Quoted material cost<input className="input" value={quotedMaterialCost} onChange={(event) => setQuotedMaterialCost(event.target.value)} /></label>
+          <label>Quoted subcontractor cost<input className="input" value={quotedSubcontractorCost} onChange={(event) => setQuotedSubcontractorCost(event.target.value)} /></label>
+          <label>Quoted disposal cost<input className="input" value={quotedDisposalCost} onChange={(event) => setQuotedDisposalCost(event.target.value)} /></label>
+          <label>Quoted other cost<input className="input" value={quotedOtherCost} onChange={(event) => setQuotedOtherCost(event.target.value)} /></label>
+        </section>
+
+        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0 }}>Actual data</h3>
+          <label>Actual sale price<input className="input" value={actualSalePrice} onChange={(event) => setActualSalePrice(event.target.value)} /></label>
+          <label>Actual material cost<input className="input" value={actualMaterialCost} onChange={(event) => setActualMaterialCost(event.target.value)} /></label>
+          <label>Actual subcontractor cost<input className="input" value={actualSubcontractorCost} onChange={(event) => setActualSubcontractorCost(event.target.value)} /></label>
+          <label>Actual disposal cost<input className="input" value={actualDisposalCost} onChange={(event) => setActualDisposalCost(event.target.value)} /></label>
+          <label>Actual other cost<input className="input" value={actualOtherCost} onChange={(event) => setActualOtherCost(event.target.value)} /></label>
+        </section>
+      </div>
+
       <button className="button" type="button" onClick={() => void submit()} disabled={isSaving}>
         {isSaving ? (mode === "create" ? "Creating project..." : "Updating project...") : (mode === "create" ? "Create project" : "Update project")}
       </button>
