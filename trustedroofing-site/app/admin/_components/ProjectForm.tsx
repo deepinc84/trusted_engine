@@ -728,25 +728,25 @@ export default function ProjectForm({ services, mode, project }: Props) {
         />
       </label>
 
-      <h3 style={{ marginBottom: 8 }}>Quote data</h3>
-      <label>Quoted sale price<input className="input" value={quotedSalePrice} onChange={(event) => setQuotedSalePrice(event.target.value)} /></label>
-      <label>Quoted material cost<input className="input" value={quotedMaterialCost} onChange={(event) => setQuotedMaterialCost(event.target.value)} /></label>
-      <label>Quoted subcontractor cost<input className="input" value={quotedSubcontractorCost} onChange={(event) => setQuotedSubcontractorCost(event.target.value)} /></label>
-      <label>Quoted labor cost<input className="input" value={quotedLaborCost} onChange={(event) => setQuotedLaborCost(event.target.value)} /></label>
-      <label>Quoted equipment cost<input className="input" value={quotedEquipmentCost} onChange={(event) => setQuotedEquipmentCost(event.target.value)} /></label>
-      <label>Quoted disposal cost<input className="input" value={quotedDisposalCost} onChange={(event) => setQuotedDisposalCost(event.target.value)} /></label>
-      <label>Quoted permit cost<input className="input" value={quotedPermitCost} onChange={(event) => setQuotedPermitCost(event.target.value)} /></label>
-      <label>Quoted other cost<input className="input" value={quotedOtherCost} onChange={(event) => setQuotedOtherCost(event.target.value)} /></label>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
+        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0 }}>Quote data</h3>
+          <label>Quoted sale price<input className="input" value={quotedSalePrice} onChange={(event) => setQuotedSalePrice(event.target.value)} /></label>
+          <label>Quoted material cost<input className="input" value={quotedMaterialCost} onChange={(event) => setQuotedMaterialCost(event.target.value)} /></label>
+          <label>Quoted subcontractor cost<input className="input" value={quotedSubcontractorCost} onChange={(event) => setQuotedSubcontractorCost(event.target.value)} /></label>
+          <label>Quoted disposal cost<input className="input" value={quotedDisposalCost} onChange={(event) => setQuotedDisposalCost(event.target.value)} /></label>
+          <label>Quoted other cost<input className="input" value={quotedOtherCost} onChange={(event) => setQuotedOtherCost(event.target.value)} /></label>
+        </section>
 
-      <h3 style={{ marginBottom: 8 }}>Actual data</h3>
-      <label>Actual sale price<input className="input" value={actualSalePrice} onChange={(event) => setActualSalePrice(event.target.value)} /></label>
-      <label>Actual material cost<input className="input" value={actualMaterialCost} onChange={(event) => setActualMaterialCost(event.target.value)} /></label>
-      <label>Actual subcontractor cost<input className="input" value={actualSubcontractorCost} onChange={(event) => setActualSubcontractorCost(event.target.value)} /></label>
-      <label>Actual labor cost<input className="input" value={actualLaborCost} onChange={(event) => setActualLaborCost(event.target.value)} /></label>
-      <label>Actual equipment cost<input className="input" value={actualEquipmentCost} onChange={(event) => setActualEquipmentCost(event.target.value)} /></label>
-      <label>Actual disposal cost<input className="input" value={actualDisposalCost} onChange={(event) => setActualDisposalCost(event.target.value)} /></label>
-      <label>Actual permit cost<input className="input" value={actualPermitCost} onChange={(event) => setActualPermitCost(event.target.value)} /></label>
-      <label>Actual other cost<input className="input" value={actualOtherCost} onChange={(event) => setActualOtherCost(event.target.value)} /></label>
+        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0 }}>Actual data</h3>
+          <label>Actual sale price<input className="input" value={actualSalePrice} onChange={(event) => setActualSalePrice(event.target.value)} /></label>
+          <label>Actual material cost<input className="input" value={actualMaterialCost} onChange={(event) => setActualMaterialCost(event.target.value)} /></label>
+          <label>Actual subcontractor cost<input className="input" value={actualSubcontractorCost} onChange={(event) => setActualSubcontractorCost(event.target.value)} /></label>
+          <label>Actual disposal cost<input className="input" value={actualDisposalCost} onChange={(event) => setActualDisposalCost(event.target.value)} /></label>
+          <label>Actual other cost<input className="input" value={actualOtherCost} onChange={(event) => setActualOtherCost(event.target.value)} /></label>
+        </section>
+      </div>
 
       <button className="button" type="button" onClick={() => void submit()} disabled={isSaving}>
         {isSaving ? (mode === "create" ? "Creating project..." : "Updating project...") : (mode === "create" ? "Create project" : "Update project")}
