@@ -151,7 +151,10 @@ async function geocodeWithNominatim(address: string): Promise<GeocodePayload | n
   });
 
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${query.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "trustedroofing-admin/1.0"
+    },
     cache: "no-store"
   });
 
@@ -196,7 +199,10 @@ async function reverseGeocodeWithNominatim(lat: number, lng: number): Promise<Ge
   });
 
   const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${query.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "trustedroofing-admin/1.0"
+    },
     cache: "no-store"
   });
 

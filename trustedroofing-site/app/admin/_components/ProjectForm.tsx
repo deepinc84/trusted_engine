@@ -33,6 +33,7 @@ type InstantQuoteOption = {
 };
 
 type PhotoPhase = "before" | "after";
+type AddressSuggestion = { label: string };
 
 const REQUIRED_SERVICE_OPTIONS: Array<{ slug: string; title: string }> = [
   { slug: "roofing", title: "Roof Replacement" },
@@ -202,6 +203,8 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [uploadPhase, setUploadPhase] = useState<PhotoPhase>("before");
   const [uploadedPhotos, setUploadedPhotos] = useState<ProjectPhoto[]>(project?.photos ?? []);
   const [adminToken, setAdminToken] = useState<string>("");
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [loadingAddressSuggestions, setLoadingAddressSuggestions] = useState(false);
 
   const generatedSlug = useMemo(() => {
     if (!title) return "";
@@ -248,8 +251,9 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setStatusTone(tone);
   };
 
-  const geocodeAddress = async () => {
-    if (!addressPrivate.trim()) {
+  const geocodeAddress = async (addressOverride?: string) => {
+    const targetAddress = (addressOverride ?? addressPrivate).trim();
+    if (!targetAddress) {
       setFeedback("Enter an address to geocode.", "error");
       return;
     }
@@ -257,7 +261,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setGeocoding(true);
     setStatus(null);
 
-    const query = new URLSearchParams({ address: addressPrivate });
+    const query = new URLSearchParams({ address: targetAddress });
     const response = await fetch(`/api/geocode?${query.toString()}`);
     const payload = (await response.json()) as { ok?: boolean; result?: GeocodeResult | null; error?: string };
 
@@ -332,6 +336,41 @@ export default function ProjectForm({ services, mode, project }: Props) {
   }, []);
 
   useEffect(() => {
+    if (locationMode !== "manual" || addressPrivate.trim().length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setLoadingAddressSuggestions(true);
+      try {
+        const query = new URLSearchParams({ q: addressPrivate.trim() });
+        const response = await fetch(`/api/geocode/autocomplete?${query.toString()}`, {
+          signal: controller.signal
+        });
+        const payload = await response.json() as { suggestions?: AddressSuggestion[] };
+        if (!controller.signal.aborted) {
+          setAddressSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setAddressSuggestions([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingAddressSuggestions(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [addressPrivate, locationMode]);
+
+  useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams();
     params.set("service_slug", serviceSlug);
@@ -388,6 +427,13 @@ export default function ProjectForm({ services, mode, project }: Props) {
     const headers = new Headers(init?.headers ?? {});
     if (adminToken) headers.set("x-admin-token", adminToken);
     return fetch(url, { ...init, headers });
+  };
+
+  const applyAddressSelection = async (selectedAddress: string) => {
+    if (!selectedAddress.trim()) return;
+    setAddressPrivate(selectedAddress);
+    setAddressSuggestions([]);
+    await geocodeAddress(selectedAddress);
   };
 
   const submit = async () => {
@@ -751,10 +797,39 @@ export default function ProjectForm({ services, mode, project }: Props) {
           className="input"
           value={addressPrivate}
           onChange={(event) => setAddressPrivate(event.target.value)}
+          onBlur={() => {
+            if (locationMode === "manual" && addressPrivate.trim()) {
+              void geocodeAddress();
+            }
+          }}
           placeholder="123 Main St SW, Calgary AB"
           disabled={locationMode === "current" && locating}
+          list="project-address-suggestions"
         />
       </label>
+      <datalist id="project-address-suggestions">
+        {addressSuggestions.map((suggestion) => (
+          <option key={suggestion.label} value={suggestion.label} />
+        ))}
+      </datalist>
+      {locationMode === "manual" ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          {loadingAddressSuggestions ? (
+            <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>Loading address suggestions...</p>
+          ) : null}
+          {addressSuggestions.slice(0, 5).map((suggestion) => (
+            <button
+              key={suggestion.label}
+              type="button"
+              className="button"
+              style={{ textAlign: "left", justifyContent: "flex-start", width: "100%" }}
+              onClick={() => void applyAddressSelection(suggestion.label)}
+            >
+              {suggestion.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <button className="button" type="button" onClick={() => void geocodeAddress()} disabled={geocoding}>
         {geocoding ? "Geocoding..." : "Auto-fill lat/lng from address"}
       </button>
