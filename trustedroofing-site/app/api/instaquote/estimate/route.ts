@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
-import { createInstaquoteAddressQuery } from "@/lib/db";
+import { createInstaquoteAddressQuery, upsertInstantQuoteFromAddressQuery } from "@/lib/db";
 import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
@@ -476,6 +476,13 @@ export async function POST(request: Request) {
       },
       requestedScopes,
       serviceType
+    });
+    await upsertInstantQuoteFromAddressQuery({
+      legacy_address_query_id: addressQueryId,
+      address: normalizedAddress || "Calgary, AB",
+      service_type: serviceType,
+      quote_low: selectedQuotedRange.low,
+      quote_high: selectedQuotedRange.high
     });
   } catch (error) {
     console.error("instaquote estimate query insert failed", error);

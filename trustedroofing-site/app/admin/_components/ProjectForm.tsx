@@ -148,6 +148,23 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [summary, setSummary] = useState(project?.summary ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const [completedAt, setCompletedAt] = useState(project?.completed_at ?? (mode === "create" ? new Date().toISOString().slice(0, 10) : ""));
+  const [linkedQuoteIds, setLinkedQuoteIds] = useState("");
+  const [quotedMaterialCost, setQuotedMaterialCost] = useState(project?.quoted_material_cost?.toString() ?? "");
+  const [quotedSubcontractorCost, setQuotedSubcontractorCost] = useState(project?.quoted_subcontractor_cost?.toString() ?? "");
+  const [quotedLaborCost, setQuotedLaborCost] = useState(project?.quoted_labor_cost?.toString() ?? "");
+  const [quotedEquipmentCost, setQuotedEquipmentCost] = useState(project?.quoted_equipment_cost?.toString() ?? "");
+  const [quotedDisposalCost, setQuotedDisposalCost] = useState(project?.quoted_disposal_cost?.toString() ?? "");
+  const [quotedPermitCost, setQuotedPermitCost] = useState(project?.quoted_permit_cost?.toString() ?? "");
+  const [quotedOtherCost, setQuotedOtherCost] = useState(project?.quoted_other_cost?.toString() ?? "");
+  const [quotedSalePrice, setQuotedSalePrice] = useState(project?.quoted_sale_price?.toString() ?? "");
+  const [actualMaterialCost, setActualMaterialCost] = useState(project?.actual_material_cost?.toString() ?? "");
+  const [actualSubcontractorCost, setActualSubcontractorCost] = useState(project?.actual_subcontractor_cost?.toString() ?? "");
+  const [actualLaborCost, setActualLaborCost] = useState(project?.actual_labor_cost?.toString() ?? "");
+  const [actualEquipmentCost, setActualEquipmentCost] = useState(project?.actual_equipment_cost?.toString() ?? "");
+  const [actualDisposalCost, setActualDisposalCost] = useState(project?.actual_disposal_cost?.toString() ?? "");
+  const [actualPermitCost, setActualPermitCost] = useState(project?.actual_permit_cost?.toString() ?? "");
+  const [actualOtherCost, setActualOtherCost] = useState(project?.actual_other_cost?.toString() ?? "");
+  const [actualSalePrice, setActualSalePrice] = useState(project?.actual_sale_price?.toString() ?? "");
   const [projectId, setProjectId] = useState(project?.id ?? "");
   const [geocodeSource, setGeocodeSource] = useState(project?.geocode_source ?? "manual");
   const [locationMode, setLocationMode] = useState<"current" | "manual">("current");
@@ -293,6 +310,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setIsSaving(true);
     setFeedback(mode === "create" ? "Creating project..." : "Updating project...");
 
+    const toNumber = (value: string) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
     try {
       const payload = {
       title,
@@ -307,6 +329,23 @@ export default function ProjectForm({ services, mode, project }: Props) {
       summary,
       description: description || null,
       completed_at: completedAt || null,
+      instant_quote_ids: linkedQuoteIds.split(",").map((value) => value.trim()).filter(Boolean),
+      quoted_material_cost: toNumber(quotedMaterialCost),
+      quoted_subcontractor_cost: toNumber(quotedSubcontractorCost),
+      quoted_labor_cost: toNumber(quotedLaborCost),
+      quoted_equipment_cost: toNumber(quotedEquipmentCost),
+      quoted_disposal_cost: toNumber(quotedDisposalCost),
+      quoted_permit_cost: toNumber(quotedPermitCost),
+      quoted_other_cost: toNumber(quotedOtherCost),
+      quoted_sale_price: toNumber(quotedSalePrice),
+      actual_material_cost: toNumber(actualMaterialCost),
+      actual_subcontractor_cost: toNumber(actualSubcontractorCost),
+      actual_labor_cost: toNumber(actualLaborCost),
+      actual_equipment_cost: toNumber(actualEquipmentCost),
+      actual_disposal_cost: toNumber(actualDisposalCost),
+      actual_permit_cost: toNumber(actualPermitCost),
+      actual_other_cost: toNumber(actualOtherCost),
+      actual_sale_price: toNumber(actualSalePrice),
       city: "Calgary",
       province: "AB",
       is_published: true
@@ -679,6 +718,36 @@ export default function ProjectForm({ services, mode, project }: Props) {
         Completed at
         <input className="input" type="date" value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} />
       </label>
+      <label>
+        Linked instant quote IDs (comma-separated)
+        <input
+          className="input"
+          value={linkedQuoteIds}
+          onChange={(event) => setLinkedQuoteIds(event.target.value)}
+          placeholder="uuid-1, uuid-2"
+        />
+      </label>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
+        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0 }}>Quote data</h3>
+          <label>Quoted sale price<input className="input" value={quotedSalePrice} onChange={(event) => setQuotedSalePrice(event.target.value)} /></label>
+          <label>Quoted material cost<input className="input" value={quotedMaterialCost} onChange={(event) => setQuotedMaterialCost(event.target.value)} /></label>
+          <label>Quoted subcontractor cost<input className="input" value={quotedSubcontractorCost} onChange={(event) => setQuotedSubcontractorCost(event.target.value)} /></label>
+          <label>Quoted disposal cost<input className="input" value={quotedDisposalCost} onChange={(event) => setQuotedDisposalCost(event.target.value)} /></label>
+          <label>Quoted other cost<input className="input" value={quotedOtherCost} onChange={(event) => setQuotedOtherCost(event.target.value)} /></label>
+        </section>
+
+        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0 }}>Actual data</h3>
+          <label>Actual sale price<input className="input" value={actualSalePrice} onChange={(event) => setActualSalePrice(event.target.value)} /></label>
+          <label>Actual material cost<input className="input" value={actualMaterialCost} onChange={(event) => setActualMaterialCost(event.target.value)} /></label>
+          <label>Actual subcontractor cost<input className="input" value={actualSubcontractorCost} onChange={(event) => setActualSubcontractorCost(event.target.value)} /></label>
+          <label>Actual disposal cost<input className="input" value={actualDisposalCost} onChange={(event) => setActualDisposalCost(event.target.value)} /></label>
+          <label>Actual other cost<input className="input" value={actualOtherCost} onChange={(event) => setActualOtherCost(event.target.value)} /></label>
+        </section>
+      </div>
+
       <button className="button" type="button" onClick={() => void submit()} disabled={isSaving}>
         {isSaving ? (mode === "create" ? "Creating project..." : "Updating project...") : (mode === "create" ? "Create project" : "Update project")}
       </button>

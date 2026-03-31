@@ -19,7 +19,7 @@ export default function RoofRepairPage() {
         eyebrow="Service detail"
         title="Roof repair"
         description="Fast diagnostics and repair scopes for leaks, storm issues, and maintenance fixes."
-        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+        actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
       <section className="ui-page-section">
         <PageContainer>

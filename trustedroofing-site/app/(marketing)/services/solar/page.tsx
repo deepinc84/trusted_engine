@@ -20,7 +20,7 @@ export default function SolarPage() {
         eyebrow="Service detail"
         title="Solar integration"
         description="Roof and exterior planning aligned with partner-led solar install pathways."
-        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+        actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
       <section className="ui-page-section">
         <PageContainer>

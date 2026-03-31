@@ -1,4 +1,4 @@
-import { listGeoPosts, listProjects, listServices } from "@/lib/db";
+import { listProjects, listServices } from "@/lib/db";
 import { getAllQuoteNeighborhoods } from "@/lib/seo-engine";
 import { canonicalUrl } from "@/lib/seo";
 
@@ -8,10 +8,9 @@ function buildUrlset(urls: string[]) {
 }
 
 export async function GET() {
-  const [services, projects, geoPosts, serviceAreas] = await Promise.all([
+  const [services, projects, serviceAreas] = await Promise.all([
     listServices(),
     listProjects({ include_unpublished: false, limit: 2000 }),
-    listGeoPosts(),
     getAllQuoteNeighborhoods()
   ]);
 
@@ -24,11 +23,10 @@ export async function GET() {
     canonicalUrl("/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026"),
     canonicalUrl("/projects"),
     ...projects.map((project) => canonicalUrl(`/projects/${project.slug}`)),
-    canonicalUrl("/quote"),
+    canonicalUrl("/online-estimate"),
     canonicalUrl("/quotes"),
     canonicalUrl("/service-areas"),
-    ...serviceAreas.map((area) => canonicalUrl(`/service-areas/${area.slug}`)),
-    ...geoPosts.flatMap((geoPost) => (geoPost.slug ? [canonicalUrl(`/geo-posts/${geoPost.slug}`)] : []))
+    ...serviceAreas.map((area) => canonicalUrl(`/service-areas/${area.slug}`))
   ];
 
   return new Response(buildUrlset(urls), {
