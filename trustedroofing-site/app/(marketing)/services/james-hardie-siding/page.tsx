@@ -73,7 +73,7 @@ export default function JamesHardieSidingPage() {
         eyebrow="James Hardie siding service"
         title="Fiber cement siding when the wall needs a heavier finish"
         description="James Hardie siding is usually chosen by homeowners who want a more substantial look, stronger visual lines, and a cladding system that feels more rigid on the wall."
-        actions={<Link href="/quote" className="button">Start instant quote</Link>}
+        actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
 
       <section className="ui-page-section">
