@@ -13,7 +13,7 @@ export default function ActivitySection({ activity }: { activity: HomeActivity[]
             Live Supabase-backed activity shows fresh estimate signals, newly completed projects, and newly published geo-posts in real time.
           </p>
           <div className="homev3-hero__actions">
-            <Link href="/quote" className="button">Get your quote</Link>
+            <Link href="/online-estimate" className="button">Get your quote</Link>
             <Link href="/quotes" className="button button--ghost">Browse quote archive</Link>
           </div>
         </div>

@@ -10,7 +10,7 @@ export default function CTABand() {
           See pricing ranges quickly, informed by real Calgary activity.
         </p>
         <div className="homev3-hero__actions">
-          <Link href="/quote" className="button">Start instant quote</Link>
+          <Link href="/online-estimate" className="button">Start instant quote</Link>
           <a href="tel:5872883351" className="button button--ghost">Call 587-288-3351</a>
         </div>
       </div>

@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     }
 
     const serviceSlug = String(body.service_slug ?? project.service_slug ?? "roofing");
+    const phase = String(body.phase ?? "before").toLowerCase() === "after" ? "after" : "before";
     const neighborhood = String(body.neighborhood ?? project.neighborhood ?? "");
     const city = String(body.city ?? project.city ?? "Calgary");
     const sequence = Number(body.sequence ?? 1);
@@ -67,6 +68,9 @@ export async function POST(request: Request) {
       neighborhood: neighborhood || null,
       city
     });
+    const phaseCaption = generatedCaption.startsWith("[Before]") || generatedCaption.startsWith("[After]")
+      ? generatedCaption
+      : `[${phase === "after" ? "After" : "Before"}] ${generatedCaption}`;
 
     const mode = getDataMode();
     const photo = await addProjectPhoto(projectId, {
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
       mime_type: body.mime_type ? String(body.mime_type) : null,
       width: body.width == null ? null : Number(body.width),
       height: body.height == null ? null : Number(body.height),
-      caption: generatedCaption,
+      caption: phaseCaption,
       sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
       is_primary: isPrimary,
       address_private: addressPrivate || null,

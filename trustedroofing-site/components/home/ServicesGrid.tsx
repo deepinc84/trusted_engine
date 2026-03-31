@@ -12,7 +12,7 @@ export default function ServicesGrid({ services }: { services: HomeService[] }) 
             <article key={service.slug} className="homev3-service-card">
               <h3>{service.title}</h3>
               <p>{service.copy}</p>
-              <Link href={`/services/${service.slug}`}>Learn more</Link>
+              <Link href={`/services/${service.slug}`}>Learn more about {service.title}</Link>
             </article>
           ))}
         </div>

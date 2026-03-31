@@ -11,7 +11,7 @@ export default function ServiceCard({ slug, title, description }: Props) {
     <article className="ui-card ui-card--service">
       <h3>{title}</h3>
       <p>{description}</p>
-      <Link href={`/services/${slug}`}>Learn more</Link>
+      <Link href={`/services/${slug}`}>Learn more about {title}</Link>
     </article>
   );
 }
