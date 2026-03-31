@@ -23,6 +23,21 @@ type GeocodeResult = {
   source: string;
 };
 
+type InstantQuoteOption = {
+  id: string;
+  address: string;
+  service_type: string | null;
+  quote_low: number | null;
+  quote_high: number | null;
+  created_at: string;
+};
+
+const REQUIRED_SERVICE_OPTIONS: Array<{ slug: string; title: string }> = [
+  { slug: "roofing", title: "Roof Replacement" },
+  { slug: "hardie-siding", title: "Hardie Siding" },
+  { slug: "vinyl-siding", title: "Vinyl Siding" }
+];
+
 const MAX_UPLOAD_FILES = 30;
 const MAX_UPLOAD_MB = 15;
 const MAX_UPLOAD_MB_AFTER_COMPRESSION = 8;
@@ -149,6 +164,9 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [description, setDescription] = useState(project?.description ?? "");
   const [completedAt, setCompletedAt] = useState(project?.completed_at ?? (mode === "create" ? new Date().toISOString().slice(0, 10) : ""));
   const [linkedQuoteIds, setLinkedQuoteIds] = useState("");
+  const [quoteSearch, setQuoteSearch] = useState("");
+  const [instantQuoteOptions, setInstantQuoteOptions] = useState<InstantQuoteOption[]>([]);
+  const [loadingInstantQuotes, setLoadingInstantQuotes] = useState(false);
   const [quotedMaterialCost, setQuotedMaterialCost] = useState(project?.quoted_material_cost?.toString() ?? "");
   const [quotedSubcontractorCost, setQuotedSubcontractorCost] = useState(project?.quoted_subcontractor_cost?.toString() ?? "");
   const [quotedLaborCost, setQuotedLaborCost] = useState(project?.quoted_labor_cost?.toString() ?? "");
@@ -189,6 +207,27 @@ export default function ProjectForm({ services, mode, project }: Props) {
   }, [title, neighborhood, completedAt]);
 
   const selectedFiles = useMemo(() => Array.from(files ?? []), [files]);
+  const serviceOptions = useMemo(() => {
+    const merged = [...services];
+    for (const required of REQUIRED_SERVICE_OPTIONS) {
+      if (!merged.some((service) => service.slug === required.slug)) {
+        merged.push({
+          id: `required-${required.slug}`,
+          slug: required.slug,
+          title: required.title,
+          base_sales_copy: "",
+          created_at: new Date().toISOString()
+        });
+      }
+    }
+
+    return merged.map((service) => {
+      if (service.slug === "roofing") {
+        return { ...service, title: "Roof Replacement" };
+      }
+      return service;
+    }).sort((a, b) => a.title.localeCompare(b.title));
+  }, [services]);
 
   const setFeedback = (message: string, tone: "info" | "success" | "error" = "info") => {
     setStatus(message);
@@ -278,6 +317,38 @@ export default function ProjectForm({ services, mode, project }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    params.set("service_slug", serviceSlug);
+    if (quoteSearch.trim()) params.set("q", quoteSearch.trim());
+    params.set("limit", "30");
+
+    const loadQuotes = async () => {
+      setLoadingInstantQuotes(true);
+      try {
+        const response = await adminFetch(`/admin/instant-quotes/search?${params.toString()}`, {
+          signal: controller.signal
+        });
+        const payload = await response.json() as { quotes?: InstantQuoteOption[] };
+        if (!controller.signal.aborted) {
+          setInstantQuoteOptions(Array.isArray(payload.quotes) ? payload.quotes : []);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setInstantQuoteOptions([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingInstantQuotes(false);
+        }
+      }
+    };
+
+    void loadQuotes();
+    return () => controller.abort();
+  }, [adminToken, quoteSearch, serviceSlug]);
+
 
   useEffect(() => {
     if (quadrant) return;
@@ -329,7 +400,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
       summary,
       description: description || null,
       completed_at: completedAt || null,
-      instant_quote_ids: linkedQuoteIds.split(",").map((value) => value.trim()).filter(Boolean),
+      instant_quote_ids: linkedQuoteIds ? [linkedQuoteIds] : [],
       quoted_material_cost: toNumber(quotedMaterialCost),
       quoted_subcontractor_cost: toNumber(quotedSubcontractorCost),
       quoted_labor_cost: toNumber(quotedLaborCost),
@@ -627,7 +698,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
       <label>
         Service
         <select className="input" value={serviceSlug} onChange={(event) => setServiceSlug(event.target.value)}>
-          {services.map((service) => (
+          {serviceOptions.map((service) => (
             <option key={service.slug} value={service.slug}>
               {service.title}
             </option>
@@ -718,15 +789,35 @@ export default function ProjectForm({ services, mode, project }: Props) {
         Completed at
         <input className="input" type="date" value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} />
       </label>
-      <label>
-        Linked instant quote IDs (comma-separated)
-        <input
-          className="input"
-          value={linkedQuoteIds}
-          onChange={(event) => setLinkedQuoteIds(event.target.value)}
-          placeholder="uuid-1, uuid-2"
-        />
-      </label>
+      <div style={{ display: "grid", gap: 8 }}>
+        <label>
+          Find instant quote by address
+          <input
+            className="input"
+            value={quoteSearch}
+            onChange={(event) => setQuoteSearch(event.target.value)}
+            placeholder="Start typing the customer address"
+          />
+        </label>
+        <label>
+          Linked instant quote
+          <select
+            className="input"
+            value={linkedQuoteIds}
+            onChange={(event) => setLinkedQuoteIds(event.target.value)}
+          >
+            <option value="">No linked quote</option>
+            {instantQuoteOptions.map((quote) => (
+              <option key={quote.id} value={quote.id}>
+                {quote.address} · {quote.quote_low ?? "N/A"}-{quote.quote_high ?? "N/A"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>
+          {loadingInstantQuotes ? "Loading matching quotes..." : "Only unlinked quotes matching this project service are shown."}
+        </p>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
         <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
