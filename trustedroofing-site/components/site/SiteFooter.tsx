@@ -7,6 +7,7 @@ export default function SiteFooter() {
       <div className="site-shell site-footer__grid site-footer__grid--expanded">
         <div className="site-footer__brand-block">
           <div className="site-footer__brand">
+            {/* Keep original footer logo mark per stakeholder request. */}
             <Image src="/white-transparent-t.png" alt="Trusted" width={56} height={56} className="site-footer__logo" />
             <div>
               <strong className="site-footer__brand-name">
@@ -48,7 +49,7 @@ export default function SiteFooter() {
           <h4>Contact</h4>
           <a href="tel:5872883351">587-288-3351</a>
           <a href="mailto:info@trustedexteriors.ca">info@trustedexteriors.ca</a>
-          <Link href="/quote">Get a quote</Link>
+          <Link href="/online-estimate">Get a quote</Link>
         </div>
       </div>
       <div className="site-shell site-footer__bottom">

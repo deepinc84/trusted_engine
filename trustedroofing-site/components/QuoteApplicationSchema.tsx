@@ -25,13 +25,16 @@ export const quoteFaqItems = [
 
 const quoteApplicationSchema = {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
+  "@type": "Service",
   name: "Trusted Roofing & Exterior Instant Estimator",
-  url: canonicalUrl("/quote"),
+  url: canonicalUrl("/online-estimate"),
   description:
     "An anonymous, instant estimation tool for Calgary homeowners. Get an immediate price range for roofing, vinyl or Hardie siding, and eavestrough projects without providing any personal contact information.",
-  applicationCategory: ["BusinessApplication", "DesignApplication"],
-  operatingSystem: "All",
+  serviceType: "Instant roofing and exterior estimate",
+  areaServed: {
+    "@type": "City",
+    name: "Calgary"
+  },
   featureList: [
     "Instant Roofing Cost Range",
     "Vinyl Siding Estimator",
@@ -44,24 +47,7 @@ const quoteApplicationSchema = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "CAD"
-  },
-  step: [
-    {
-      "@type": "HowToStep",
-      name: "Enter Calgary Address",
-      text: "Provide your property address to generate instant measurements for your roof and exterior walls."
-    },
-    {
-      "@type": "HowToStep",
-      name: "Select Siding and Gutter Options",
-      text: "Choose between roofing materials, vinyl or Hardie siding, and eavestrough configurations."
-    },
-    {
-      "@type": "HowToStep",
-      name: "View Instant Estimate",
-      text: "Receive your total exterior project range immediately. No contact details required to see your price."
-    }
-  ]
+  }
 };
 
 const quoteFaqSchema = {

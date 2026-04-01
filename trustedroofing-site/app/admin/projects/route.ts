@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createProject, listProjects } from "@/lib/db";
+import { createProject, linkInstantQuotesToProject, listProjects } from "@/lib/db";
 import { buildProjectIndexNowUrls, getSiteUrl } from "@/lib/indexnow";
 
 async function triggerIndexing(urls: string[]) {
@@ -45,8 +45,31 @@ export async function POST(request: Request) {
       lat_private: body.lat_private ?? null,
       lng_private: body.lng_private ?? null,
       completed_at: body.completed_at ?? null,
-      is_published: body.is_published ?? true
+      is_published: body.is_published ?? true,
+      quoted_material_cost: body.quoted_material_cost ?? null,
+      quoted_subcontractor_cost: body.quoted_subcontractor_cost ?? null,
+      quoted_labor_cost: body.quoted_labor_cost ?? null,
+      quoted_equipment_cost: body.quoted_equipment_cost ?? null,
+      quoted_disposal_cost: body.quoted_disposal_cost ?? null,
+      quoted_permit_cost: body.quoted_permit_cost ?? null,
+      quoted_other_cost: body.quoted_other_cost ?? null,
+      quoted_sale_price: body.quoted_sale_price ?? null,
+      actual_material_cost: body.actual_material_cost ?? null,
+      actual_subcontractor_cost: body.actual_subcontractor_cost ?? null,
+      actual_labor_cost: body.actual_labor_cost ?? null,
+      actual_equipment_cost: body.actual_equipment_cost ?? null,
+      actual_disposal_cost: body.actual_disposal_cost ?? null,
+      actual_permit_cost: body.actual_permit_cost ?? null,
+      actual_other_cost: body.actual_other_cost ?? null,
+      actual_sale_price: body.actual_sale_price ?? null
     });
+
+    const quoteIds = Array.isArray(body.instant_quote_ids)
+      ? body.instant_quote_ids.filter((value: unknown): value is string => typeof value === "string" && value.length > 0)
+      : [];
+    if (quoteIds.length > 0) {
+      await linkInstantQuotesToProject(project.id, quoteIds);
+    }
 
     if (project.is_published) {
       await triggerIndexing(buildProjectIndexNowUrls(project.slug));

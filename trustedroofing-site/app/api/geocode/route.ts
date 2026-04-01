@@ -151,7 +151,10 @@ async function geocodeWithNominatim(address: string): Promise<GeocodePayload | n
   });
 
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${query.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "trustedroofing-admin/1.0"
+    },
     cache: "no-store"
   });
 
@@ -196,7 +199,10 @@ async function reverseGeocodeWithNominatim(lat: number, lng: number): Promise<Ge
   });
 
   const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${query.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "trustedroofing-admin/1.0"
+    },
     cache: "no-store"
   });
 
@@ -246,9 +252,6 @@ export async function GET(request: Request) {
       const googleReverse = await reverseGeocodeWithGoogle(lat, lng);
       if (googleReverse) return NextResponse.json({ ok: true, result: googleReverse });
 
-      const fallbackReverse = await reverseGeocodeWithNominatim(lat, lng);
-      if (fallbackReverse) return NextResponse.json({ ok: true, result: fallbackReverse });
-
       return NextResponse.json({ error: "No reverse geocode result found" }, { status: 404 });
     }
 
@@ -258,9 +261,6 @@ export async function GET(request: Request) {
 
     const googleResult = await geocodeWithGoogle(address);
     if (googleResult) return NextResponse.json({ ok: true, result: googleResult });
-
-    const fallback = await geocodeWithNominatim(address);
-    if (fallback) return NextResponse.json({ ok: true, result: fallback });
 
     return NextResponse.json({ error: "No geocode result found" }, { status: 404 });
   } catch (error) {
