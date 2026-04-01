@@ -7,7 +7,7 @@ const staticPaths = [
   "/services/roof-repair",
   "/services/solar",
   "/projects",
-  "/quote"
+  "/online-estimate"
 ];
 
 const knownProjectSlugs = [

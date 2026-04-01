@@ -65,6 +65,22 @@ function normalizeResult(base: {
   };
 }
 
+function buildCoordinateFallback(lat: number, lng: number): GeocodePayload {
+  const roundedLat = lat.toFixed(6);
+  const roundedLng = lng.toFixed(6);
+  const fallbackAddress = `${roundedLat}, ${roundedLng} (approximate)`;
+  return normalizeResult({
+    fullAddress: fallbackAddress,
+    city: "Calgary",
+    province: "AB",
+    postal: "",
+    neighborhood: "",
+    lat,
+    lng,
+    source: "nominatim"
+  });
+}
+
 async function geocodeWithGoogle(address: string): Promise<GeocodePayload | null> {
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
@@ -151,7 +167,10 @@ async function geocodeWithNominatim(address: string): Promise<GeocodePayload | n
   });
 
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${query.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "trustedroofing-admin/1.0"
+    },
     cache: "no-store"
   });
 
@@ -196,7 +215,10 @@ async function reverseGeocodeWithNominatim(lat: number, lng: number): Promise<Ge
   });
 
   const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${query.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "trustedroofing-admin/1.0"
+    },
     cache: "no-store"
   });
 
@@ -249,7 +271,11 @@ export async function GET(request: Request) {
       const fallbackReverse = await reverseGeocodeWithNominatim(lat, lng);
       if (fallbackReverse) return NextResponse.json({ ok: true, result: fallbackReverse });
 
-      return NextResponse.json({ error: "No reverse geocode result found" }, { status: 404 });
+      return NextResponse.json({
+        ok: true,
+        result: buildCoordinateFallback(lat, lng),
+        warning: "Reverse geocode provider unavailable; using coordinate fallback."
+      });
     }
 
     if (!address) {
