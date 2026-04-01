@@ -20,6 +20,7 @@ export default async function SiteHeader() {
     <header className="site-header site-header--v3">
       <div className="site-shell site-header__inner">
         <Link href="/" className="brand" aria-label="Trusted Roofing home">
+          {/* Keep original production brand asset per stakeholder request. */}
           <Image
             src="/full_white_new2.png"
             alt="Trusted Roofing & Exteriors"
@@ -62,7 +63,7 @@ export default async function SiteHeader() {
           <a href="tel:5872883351" className="nav-tel">
             587-288-3351
           </a>
-          <Link href="/quote" className="cta">
+          <Link href="/online-estimate" className="cta">
             Get instant quote
           </Link>
         </div>

@@ -220,7 +220,7 @@ export default async function QuotesArchivePage() {
 
           <div style={{ marginTop: 28 }}>
             <p className="homev3-copy">
-              This archive keeps every quote card in one crawlable location while the instant estimator continues to live at <Link href="/quote">/quote</Link>.
+              This archive keeps every quote card in one crawlable location while the instant estimator continues to live at <Link href="/online-estimate">/online-estimate</Link>.
             </p>
           </div>
         </PageContainer>
