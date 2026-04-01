@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const SITE_URL = "https://trustedroofingcalgary.com";
+export const SITE_URL = "https://www.trustedroofingcalgary.com";
 
 export function canonicalUrl(path = "") {
   return `${SITE_URL}${path}`;

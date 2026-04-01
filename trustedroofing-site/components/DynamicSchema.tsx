@@ -74,6 +74,12 @@ function buildQuoteSchema(quote: QuoteNeighborhoodSummary, relatedNeighborhoods:
     "@type": "LocalBusiness",
     name: "Trusted Roofing & Exteriors",
     url: canonicalUrl(""),
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: quote.city,
+      addressRegion: "AB",
+      addressCountry: "CA"
+    },
     areaServed: {
       "@type": "Place",
       name: `${quote.neighborhood}, ${quote.city}`

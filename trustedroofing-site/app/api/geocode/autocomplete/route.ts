@@ -39,36 +39,6 @@ async function googleAutocomplete(input: string): Promise<Suggestion[]> {
     .slice(0, 6);
 }
 
-async function nominatimAutocomplete(input: string): Promise<Suggestion[]> {
-  const params = new URLSearchParams({
-    q: input,
-    format: "jsonv2",
-    addressdetails: "1",
-    limit: "6",
-    countrycodes: "ca"
-  });
-
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "trustedroofing-admin/1.0"
-    }
-  });
-
-  if (!response.ok) return [];
-
-  const payload = (await response.json()) as Array<{ display_name?: string; place_id?: string | number }>;
-
-  return payload
-    .map((row) => ({
-      label: row.display_name ?? "",
-      place_id: row.place_id != null ? String(row.place_id) : null
-    }))
-    .filter((row) => row.label.length > 0)
-    .slice(0, 6);
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
@@ -78,12 +48,7 @@ export async function GET(request: Request) {
 
   try {
     const google = await googleAutocomplete(q);
-    if (google.length > 0) {
-      return NextResponse.json({ suggestions: google, source: "google" });
-    }
-
-    const fallback = await nominatimAutocomplete(q);
-    return NextResponse.json({ suggestions: fallback, source: "nominatim" });
+    return NextResponse.json({ suggestions: google, source: "google" });
   } catch {
     return NextResponse.json({ suggestions: [] });
   }

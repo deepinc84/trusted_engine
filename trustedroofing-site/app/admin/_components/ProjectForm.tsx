@@ -167,7 +167,6 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [description, setDescription] = useState(project?.description ?? "");
   const [completedAt, setCompletedAt] = useState(project?.completed_at ?? (mode === "create" ? new Date().toISOString().slice(0, 10) : ""));
   const [linkedQuoteIds, setLinkedQuoteIds] = useState("");
-  const [quoteSearch, setQuoteSearch] = useState("");
   const [instantQuoteOptions, setInstantQuoteOptions] = useState<InstantQuoteOption[]>([]);
   const [loadingInstantQuotes, setLoadingInstantQuotes] = useState(false);
   const [quotedMaterialCost, setQuotedMaterialCost] = useState(project?.quoted_material_cost?.toString() ?? "");
@@ -374,7 +373,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     const controller = new AbortController();
     const params = new URLSearchParams();
     params.set("service_slug", serviceSlug);
-    if (quoteSearch.trim()) params.set("q", quoteSearch.trim());
+    if (addressPrivate.trim()) params.set("q", addressPrivate.trim());
     params.set("limit", "30");
 
     const loadQuotes = async () => {
@@ -400,7 +399,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
     void loadQuotes();
     return () => controller.abort();
-  }, [adminToken, quoteSearch, serviceSlug]);
+  }, [addressPrivate, adminToken, serviceSlug]);
 
 
   useEffect(() => {
@@ -882,15 +881,6 @@ export default function ProjectForm({ services, mode, project }: Props) {
       </label>
       <div style={{ display: "grid", gap: 8 }}>
         <label>
-          Find instant quote by address
-          <input
-            className="input"
-            value={quoteSearch}
-            onChange={(event) => setQuoteSearch(event.target.value)}
-            placeholder="Start typing the customer address"
-          />
-        </label>
-        <label>
           Linked instant quote
           <select
             className="input"
@@ -906,7 +896,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
           </select>
         </label>
         <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>
-          {loadingInstantQuotes ? "Loading matching quotes..." : "Only unlinked quotes matching this project service are shown."}
+          {loadingInstantQuotes ? "Loading matching quotes..." : "Quotes are auto-matched from the geocoded project address and service."}
         </p>
       </div>
 

@@ -268,14 +268,7 @@ export async function GET(request: Request) {
       const googleReverse = await reverseGeocodeWithGoogle(lat, lng);
       if (googleReverse) return NextResponse.json({ ok: true, result: googleReverse });
 
-      const fallbackReverse = await reverseGeocodeWithNominatim(lat, lng);
-      if (fallbackReverse) return NextResponse.json({ ok: true, result: fallbackReverse });
-
-      return NextResponse.json({
-        ok: true,
-        result: buildCoordinateFallback(lat, lng),
-        warning: "Reverse geocode provider unavailable; using coordinate fallback."
-      });
+      return NextResponse.json({ error: "No reverse geocode result found" }, { status: 404 });
     }
 
     if (!address) {
@@ -284,9 +277,6 @@ export async function GET(request: Request) {
 
     const googleResult = await geocodeWithGoogle(address);
     if (googleResult) return NextResponse.json({ ok: true, result: googleResult });
-
-    const fallback = await geocodeWithNominatim(address);
-    if (fallback) return NextResponse.json({ ok: true, result: fallback });
 
     return NextResponse.json({ error: "No geocode result found" }, { status: 404 });
   } catch (error) {
