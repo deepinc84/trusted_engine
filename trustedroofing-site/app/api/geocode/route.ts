@@ -65,6 +65,22 @@ function normalizeResult(base: {
   };
 }
 
+function buildCoordinateFallback(lat: number, lng: number): GeocodePayload {
+  const roundedLat = lat.toFixed(6);
+  const roundedLng = lng.toFixed(6);
+  const fallbackAddress = `${roundedLat}, ${roundedLng} (approximate)`;
+  return normalizeResult({
+    fullAddress: fallbackAddress,
+    city: "Calgary",
+    province: "AB",
+    postal: "",
+    neighborhood: "",
+    lat,
+    lng,
+    source: "nominatim"
+  });
+}
+
 async function geocodeWithGoogle(address: string): Promise<GeocodePayload | null> {
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
