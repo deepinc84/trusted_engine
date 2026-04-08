@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listProjects } from "@/lib/db";
+import ProjectCard from "@/components/ProjectCard";
 
 export default async function AdminDashboardPage() {
   const projects = await listProjects({ include_unpublished: true, limit: 100 });
@@ -29,16 +30,14 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
       </div>
-      <div className="card-grid" style={{ marginTop: 24 }}>
+      <div className="ui-grid ui-grid--projects" style={{ marginTop: 24 }}>
         {projects.map((project) => (
-          <article key={project.id} className="card">
-            <h3>{project.title}</h3>
-            <p style={{ color: "var(--color-muted)", marginTop: 8 }}>{project.slug}</p>
-            <p style={{ marginTop: 8 }}>{project.summary}</p>
-            <Link href={`/admin/projects/${project.id}/edit`} style={{ marginTop: 12, display: "inline-block", fontWeight: 600 }}>
-              Edit →
+          <div key={project.id} style={{ display: "grid", gap: 10 }}>
+            <ProjectCard project={project} />
+            <Link href={`/admin/projects/${project.id}/edit`} className="button button--ghost">
+              Edit in admin
             </Link>
-          </article>
+          </div>
         ))}
       </div>
     </section>
