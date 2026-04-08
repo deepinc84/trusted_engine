@@ -213,6 +213,10 @@ export default function ProjectForm({ services, mode, project }: Props) {
   }, [title, neighborhood, completedAt]);
 
   const selectedFiles = useMemo(() => Array.from(files ?? []), [files]);
+  const hasExistingPrimaryPhoto = useMemo(
+    () => uploadedPhotos.some((photo) => photo.is_primary),
+    [uploadedPhotos]
+  );
   const groupedUploadedPhotos = useMemo(() => {
     const grouped: Record<PhotoPhase, ProjectPhoto[]> = { before: [], after: [] };
     for (const photo of uploadedPhotos) {
@@ -544,6 +548,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     }
 
     setFiles(list);
+    setPrimaryUploadIndex(hasExistingPrimaryPhoto ? -1 : 0);
     setFeedback(`${asArray.length} image(s) selected. Large photos will be resized before upload.`, "info");
   };
 
@@ -559,6 +564,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     try {
       const created: ProjectPhoto[] = [];
       const nextSortStart = uploadedPhotos.length;
+      const shouldAssignPrimaryInThisBatch = !uploadedPhotos.some((photo) => photo.is_primary);
       for (let index = 0; index < selectedFiles.length; index += 1) {
         setUploadProgress({ current: index + 1, total: selectedFiles.length });
 
@@ -636,7 +642,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
             phase: uploadPhase,
             sequence: nextSortStart + index + 1,
             sort_order: nextSortStart + index,
-            is_primary: index === primaryUploadIndex,
+            is_primary: shouldAssignPrimaryInThisBatch && index === primaryUploadIndex,
             address_private: addressPrivate || "",
             geocode_source: geocodeSource || "manual",
             lat_private: latPrivate || null,
@@ -979,6 +985,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
       {selectedFiles.length ? (
         <div style={{ display: "grid", gap: 10 }}>
           <p style={{ margin: 0, fontWeight: 600 }}>Preview + choose main post image</p>
+          {hasExistingPrimaryPhoto ? (
+            <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>
+              Existing project already has a primary image. New uploads will not be marked primary automatically.
+            </p>
+          ) : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
             {selectedFiles.map((file, index) => {
               const localUrl = URL.createObjectURL(file);
@@ -991,6 +1002,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
                       name="primary_upload_photo"
                       checked={primaryUploadIndex === index}
                       onChange={() => setPrimaryUploadIndex(index)}
+                      disabled={hasExistingPrimaryPhoto}
                     />
                     <span style={{ fontSize: 13 }}>Main image</span>
                   </div>
