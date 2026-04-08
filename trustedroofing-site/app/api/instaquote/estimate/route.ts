@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
-import { createInstaquoteAddressQuery, upsertInstantQuoteFromAddressQuery } from "@/lib/db";
+import { createInstaquoteAddressQuery, findHistoricalRoofProfile, upsertInstantQuoteFromAddressQuery } from "@/lib/db";
 import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
@@ -365,14 +365,34 @@ export async function POST(request: Request) {
   }
 
   if (!estimateResult) {
-    const regional = regionalRoofEstimate({ address: normalizedAddress, lat, lng });
-    estimateResult = {
-      roofAreaSqft: regional.roofAreaSqft,
-      pitchDegrees: 25,
-      complexityBand: "moderate",
-      dataSource: "regional_fallback",
-      areaSource: "regional"
-    };
+    const historical = await findHistoricalRoofProfile({
+      placeId,
+      address: normalizedAddress,
+      lat,
+      lng
+    });
+
+    if (historical) {
+      estimateResult = {
+        roofAreaSqft: historical.roofAreaSqft,
+        pitchDegrees: historical.pitchDegrees,
+        complexityBand: historical.complexityBand,
+        dataSource: `historical_profile_${historical.areaSource}`,
+        areaSource: historical.areaSource
+      };
+      solarDebug = [solarDebug, `using historical profile matched by ${historical.matchedBy} (${historical.queriedAt})`]
+        .filter(Boolean)
+        .join(" | ");
+    } else {
+      const regional = regionalRoofEstimate({ address: normalizedAddress, lat, lng });
+      estimateResult = {
+        roofAreaSqft: regional.roofAreaSqft,
+        pitchDegrees: 25,
+        complexityBand: "moderate",
+        dataSource: "regional_fallback",
+        areaSource: "regional"
+      };
+    }
   }
 
   const shouldApplyMinimumPricingFloor = estimateResult.areaSource !== "solar";
