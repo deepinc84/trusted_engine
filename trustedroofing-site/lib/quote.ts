@@ -61,8 +61,11 @@ export function pitchBandFromDegrees(pitchDegrees: number) {
 }
 
 export function complexityBandFromSegments(segmentCount: number): ComplexityBand {
-  if (segmentCount <= 3) return "simple";
-  if (segmentCount <= 6) return "moderate";
+  // Keep parity with legacy Mega Roofing logic:
+  // low <= 5, medium <= 12, high > 12.
+  // Mapped to simple / moderate / complex here.
+  if (segmentCount <= 5) return "simple";
+  if (segmentCount <= 12) return "moderate";
   return "complex";
 }
 
