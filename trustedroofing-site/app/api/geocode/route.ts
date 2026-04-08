@@ -164,8 +164,14 @@ async function reverseGeocodeWithGoogle(lat: number, lng: number): Promise<Geoco
 }
 
 async function geocodeWithNominatim(address: string): Promise<GeocodePayload | null> {
+  const normalizedAddress = address.trim();
+  const source = normalizedAddress.toLowerCase();
+  const withCity = source.includes("calgary") ? normalizedAddress : `${normalizedAddress}, Calgary`;
+  const withProvince = /\b(ab|alberta)\b/.test(source) ? withCity : `${withCity}, AB`;
+  const withCountry = source.includes("canada") ? withProvince : `${withProvince}, Canada`;
+
   const query = new URLSearchParams({
-    q: `${address}, Calgary, AB, Canada`,
+    q: withCountry,
     format: "jsonv2",
     limit: "1",
     addressdetails: "1"
