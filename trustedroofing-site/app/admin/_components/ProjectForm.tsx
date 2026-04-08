@@ -187,7 +187,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [actualSalePrice, setActualSalePrice] = useState(project?.actual_sale_price?.toString() ?? "");
   const [projectId, setProjectId] = useState(project?.id ?? "");
   const [geocodeSource, setGeocodeSource] = useState(project?.geocode_source ?? "manual");
-  const [locationMode, setLocationMode] = useState<"current" | "manual">("current");
+  const [locationMode, setLocationMode] = useState<"current" | "manual">("manual");
   const [status, setStatus] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"info" | "success" | "error">("info");
   const [uploading, setUploading] = useState(false);
