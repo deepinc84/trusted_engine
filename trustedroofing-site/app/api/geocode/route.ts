@@ -266,9 +266,14 @@ async function reverseGeocodeWithNominatim(lat: number, lng: number): Promise<Ge
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const address = searchParams.get("address")?.trim();
-  const lat = Number(searchParams.get("lat"));
-  const lng = Number(searchParams.get("lng"));
-  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
+
+  const latParam = searchParams.get("lat");
+  const lngParam = searchParams.get("lng");
+
+  const hasCoordinates = latParam !== null && lngParam !== null;
+
+  const lat = hasCoordinates ? Number(latParam) : null;
+  const lng = hasCoordinates ? Number(lngParam) : null;
 
   if (!address && !hasCoordinates) {
     return NextResponse.json({ error: "address or lat/lng is required" }, { status: 400 });
@@ -276,10 +281,19 @@ export async function GET(request: Request) {
 
   try {
     if (hasCoordinates) {
-      const googleReverse = await reverseGeocodeWithGoogle(lat, lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return NextResponse.json(
+          { error: "valid lat/lng is required" },
+          { status: 400 }
+        );
+      }
+      const parsedLat = lat as number;
+      const parsedLng = lng as number;
+
+      const googleReverse = await reverseGeocodeWithGoogle(parsedLat, parsedLng);
       if (googleReverse) return NextResponse.json({ ok: true, result: googleReverse });
 
-      const nominatimReverse = await reverseGeocodeWithNominatim(lat, lng);
+      const nominatimReverse = await reverseGeocodeWithNominatim(parsedLat, parsedLng);
       if (nominatimReverse) return NextResponse.json({ ok: true, result: nominatimReverse });
 
       return NextResponse.json(
@@ -287,8 +301,8 @@ export async function GET(request: Request) {
           error: "No reverse geocode result found",
           detail: {
             attempted: ["google", "nominatim"],
-            lat,
-            lng
+            lat: parsedLat,
+            lng: parsedLng
           }
         },
         { status: 404 }
