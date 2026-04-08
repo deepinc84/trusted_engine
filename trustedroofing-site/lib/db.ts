@@ -1144,6 +1144,7 @@ export type InstaquoteAddressQuery = {
 };
 
 export type HistoricalRoofProfile = {
+  queryId: string;
   roofAreaSqft: number;
   pitchDegrees: number;
   complexityBand: "simple" | "moderate" | "complex";
@@ -1411,6 +1412,72 @@ export async function createInstaquoteAddressQuery(
   });
 
   return payload.id;
+}
+
+export async function refreshInstaquoteAddressQuery(
+  id: string,
+  input: Omit<InstaquoteAddressQuery, "id" | "queried_at">,
+  options?: {
+    notesExtras?: Record<string, unknown>;
+    requestedScopes?: string[];
+    serviceType?: string;
+  }
+) {
+  const queriedAt = new Date().toISOString();
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+
+    const { error: queryError } = await client
+      .from("instaquote_address_queries")
+      .update({
+        ...input,
+        queried_at: queriedAt
+      })
+      .eq("id", id);
+    if (queryError) throw new Error(queryError.message);
+
+    const { city, province, postal } = parseAddressParts(input.address);
+    const { error: eventError } = await client
+      .from("quote_events")
+      .update({
+        updated_at: queriedAt,
+        status: "instaquote_estimated",
+        service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+        requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
+        address: input.address,
+        city,
+        province,
+        postal,
+        lat: input.lat,
+        lng: input.lng,
+        estimate_low: input.estimate_low,
+        estimate_high: input.estimate_high,
+        notes: JSON.stringify({
+          source: input.data_source,
+          neighborhood: input.neighborhood,
+          service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+          requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
+          estimate_low: input.estimate_low,
+          estimate_high: input.estimate_high,
+          area_source: input.area_source,
+          solar_status: input.solar_status,
+          solar_debug: input.solar_debug,
+          complexity_band: input.complexity_band,
+          roof_area_sqft: input.roof_area_sqft,
+          pitch_degrees: input.pitch_degrees,
+          place_id: input.place_id,
+          ...(options?.notesExtras ? { extras: options.notesExtras } : {})
+        })
+      })
+      .eq("id", id);
+    if (eventError) throw new Error(eventError.message);
+
+    return id;
+  }
+
+  return id;
 }
 
 export async function upsertInstantQuoteFromAddressQuery(input: {
@@ -1699,13 +1766,15 @@ export async function findHistoricalRoofProfile(input: {
 
   const { data } = await client
     .from("instaquote_address_queries")
-    .select("place_id,address,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,queried_at")
+    .select("id,place_id,address,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,queried_at")
     .in("area_source", ["solar", "regional"])
     .not("roof_area_sqft", "is", null)
     .order("queried_at", { ascending: false })
     .limit(200);
 
-  const rows = (data ?? []) as Array<{
+  const currentYear = new Date().getUTCFullYear();
+  const rows = ((data ?? []) as Array<{
+    id: string;
     place_id: string | null;
     address: string;
     lat: number | null;
@@ -1715,7 +1784,7 @@ export async function findHistoricalRoofProfile(input: {
     complexity_band: string | null;
     area_source: string | null;
     queried_at: string;
-  }>;
+  }>).filter((row) => new Date(row.queried_at).getUTCFullYear() === currentYear);
 
   const targetPlaceId = (input.placeId ?? "").trim();
   const targetAddress = normalizeAddressMatch(input.address);
@@ -1754,6 +1823,7 @@ export async function findHistoricalRoofProfile(input: {
       : "address";
 
   return {
+    queryId: matched.id,
     roofAreaSqft: Math.round(matched.roof_area_sqft),
     pitchDegrees: pitch,
     complexityBand: complexity,

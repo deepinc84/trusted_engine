@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
-import { createInstaquoteAddressQuery, findHistoricalRoofProfile, upsertInstantQuoteFromAddressQuery } from "@/lib/db";
+import {
+  createInstaquoteAddressQuery,
+  findHistoricalRoofProfile,
+  refreshInstaquoteAddressQuery,
+  upsertInstantQuoteFromAddressQuery
+} from "@/lib/db";
 import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
@@ -347,6 +352,7 @@ export async function POST(request: Request) {
         areaSource: "solar" | "regional";
       }
     | null = null;
+  let historicalProfileMatch: Awaited<ReturnType<typeof findHistoricalRoofProfile>> = null;
 
   let solarDebug: string | null = null;
   let solarDiagnostics: SolarEstimateResult["diagnostics"] = {
@@ -365,22 +371,22 @@ export async function POST(request: Request) {
   }
 
   if (!estimateResult) {
-    const historical = await findHistoricalRoofProfile({
+    historicalProfileMatch = await findHistoricalRoofProfile({
       placeId,
       address: normalizedAddress,
       lat,
       lng
     });
 
-    if (historical) {
+    if (historicalProfileMatch) {
       estimateResult = {
-        roofAreaSqft: historical.roofAreaSqft,
-        pitchDegrees: historical.pitchDegrees,
-        complexityBand: historical.complexityBand,
-        dataSource: `historical_profile_${historical.areaSource}`,
-        areaSource: historical.areaSource
+        roofAreaSqft: historicalProfileMatch.roofAreaSqft,
+        pitchDegrees: historicalProfileMatch.pitchDegrees,
+        complexityBand: historicalProfileMatch.complexityBand,
+        dataSource: `historical_profile_${historicalProfileMatch.areaSource}`,
+        areaSource: historicalProfileMatch.areaSource
       };
-      solarDebug = [solarDebug, `using historical profile matched by ${historical.matchedBy} (${historical.queriedAt})`]
+      solarDebug = [solarDebug, `using historical profile matched by ${historicalProfileMatch.matchedBy} (${historicalProfileMatch.queriedAt})`]
         .filter(Boolean)
         .join(" | ");
     } else {
@@ -457,7 +463,7 @@ export async function POST(request: Request) {
 
   let addressQueryId = crypto.randomUUID();
   try {
-    addressQueryId = await createInstaquoteAddressQuery({
+    const queryPayload = {
       address: normalizedAddress || "Calgary, AB",
       neighborhood,
       service_type: serviceType,
@@ -486,7 +492,8 @@ export async function POST(request: Request) {
         pricingRoofAreaSqft,
         shouldApplyMinimumPricingFloor
       }
-    }, {
+    };
+    const queryOptions = {
       notesExtras: {
         ...extras,
         serviceScope,
@@ -496,7 +503,19 @@ export async function POST(request: Request) {
       },
       requestedScopes,
       serviceType
-    });
+    };
+
+    if (historicalProfileMatch) {
+      if (estimateResult.dataSource.startsWith("historical_profile_")) {
+        addressQueryId = historicalProfileMatch.queryId;
+        await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, queryOptions);
+      } else {
+        addressQueryId = await createInstaquoteAddressQuery(queryPayload, queryOptions);
+      }
+    } else {
+      addressQueryId = await createInstaquoteAddressQuery(queryPayload, queryOptions);
+    }
+
     await upsertInstantQuoteFromAddressQuery({
       legacy_address_query_id: addressQueryId,
       address: normalizedAddress || "Calgary, AB",
