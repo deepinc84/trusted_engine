@@ -417,7 +417,9 @@ export async function listProjects(filters?: {
   const includeUnpublished = !!filters?.include_unpublished;
 
   if (getDataMode() === "supabase") {
-    const client = getAnonClient();
+    const client = includeUnpublished
+      ? (getServiceClient() ?? getAnonClient())
+      : getAnonClient();
     if (client) {
       let query = client.from("projects").select("*");
       if (!includeUnpublished) query = query.eq("is_published", true);
