@@ -1143,6 +1143,16 @@ export type InstaquoteAddressQuery = {
   queried_at: string;
 };
 
+export type HistoricalRoofProfile = {
+  queryId: string;
+  roofAreaSqft: number;
+  pitchDegrees: number;
+  complexityBand: "simple" | "moderate" | "complex";
+  areaSource: "solar" | "regional";
+  matchedBy: "place_id" | "coordinates" | "address";
+  queriedAt: string;
+};
+
 export type InstaquoteLead = {
   id: string;
   address_query_id: string | null;
@@ -1402,6 +1412,72 @@ export async function createInstaquoteAddressQuery(
   });
 
   return payload.id;
+}
+
+export async function refreshInstaquoteAddressQuery(
+  id: string,
+  input: Omit<InstaquoteAddressQuery, "id" | "queried_at">,
+  options?: {
+    notesExtras?: Record<string, unknown>;
+    requestedScopes?: string[];
+    serviceType?: string;
+  }
+) {
+  const queriedAt = new Date().toISOString();
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) throw new Error("Supabase client unavailable");
+
+    const { error: queryError } = await client
+      .from("instaquote_address_queries")
+      .update({
+        ...input,
+        queried_at: queriedAt
+      })
+      .eq("id", id);
+    if (queryError) throw new Error(queryError.message);
+
+    const { city, province, postal } = parseAddressParts(input.address);
+    const { error: eventError } = await client
+      .from("quote_events")
+      .update({
+        updated_at: queriedAt,
+        status: "instaquote_estimated",
+        service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+        requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
+        address: input.address,
+        city,
+        province,
+        postal,
+        lat: input.lat,
+        lng: input.lng,
+        estimate_low: input.estimate_low,
+        estimate_high: input.estimate_high,
+        notes: JSON.stringify({
+          source: input.data_source,
+          neighborhood: input.neighborhood,
+          service_type: options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+          requested_scopes: options?.requestedScopes ?? input.requested_scopes ?? ["roof"],
+          estimate_low: input.estimate_low,
+          estimate_high: input.estimate_high,
+          area_source: input.area_source,
+          solar_status: input.solar_status,
+          solar_debug: input.solar_debug,
+          complexity_band: input.complexity_band,
+          roof_area_sqft: input.roof_area_sqft,
+          pitch_degrees: input.pitch_degrees,
+          place_id: input.place_id,
+          ...(options?.notesExtras ? { extras: options.notesExtras } : {})
+        })
+      })
+      .eq("id", id);
+    if (eventError) throw new Error(eventError.message);
+
+    return id;
+  }
+
+  return id;
 }
 
 export async function upsertInstantQuoteFromAddressQuery(input: {
@@ -1667,6 +1743,94 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
   }
 
   return [];
+}
+
+function normalizeAddressMatch(value: string | null | undefined) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/, canada\b/g, "")
+    .trim();
+}
+
+export async function findHistoricalRoofProfile(input: {
+  placeId?: string | null;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<HistoricalRoofProfile | null> {
+  if (getDataMode() !== "supabase") return null;
+
+  const client = getServiceClient() ?? getAnonClient();
+  if (!client) return null;
+
+  const { data } = await client
+    .from("instaquote_address_queries")
+    .select("id,place_id,address,lat,lng,roof_area_sqft,pitch_degrees,complexity_band,area_source,queried_at")
+    .in("area_source", ["solar", "regional"])
+    .not("roof_area_sqft", "is", null)
+    .order("queried_at", { ascending: false })
+    .limit(200);
+
+  const currentYear = new Date().getUTCFullYear();
+  const rows = ((data ?? []) as Array<{
+    id: string;
+    place_id: string | null;
+    address: string;
+    lat: number | null;
+    lng: number | null;
+    roof_area_sqft: number | null;
+    pitch_degrees: number | null;
+    complexity_band: string | null;
+    area_source: string | null;
+    queried_at: string;
+  }>).filter((row) => new Date(row.queried_at).getUTCFullYear() === currentYear);
+
+  const targetPlaceId = (input.placeId ?? "").trim();
+  const targetAddress = normalizeAddressMatch(input.address);
+  const targetLat = typeof input.lat === "number" && Number.isFinite(input.lat) ? input.lat : null;
+  const targetLng = typeof input.lng === "number" && Number.isFinite(input.lng) ? input.lng : null;
+
+  const byPlace = targetPlaceId
+    ? rows.find((row) => row.place_id === targetPlaceId)
+    : undefined;
+  const byCoordinates = targetLat !== null && targetLng !== null
+    ? rows.find((row) => {
+      if (typeof row.lat !== "number" || typeof row.lng !== "number") return false;
+      return Math.abs(row.lat - targetLat) <= 0.0003 && Math.abs(row.lng - targetLng) <= 0.0003;
+    })
+    : undefined;
+  const byAddress = targetAddress
+    ? rows.find((row) => normalizeAddressMatch(row.address) === targetAddress)
+    : undefined;
+
+  const matched = byPlace ?? byCoordinates ?? byAddress;
+  if (!matched || typeof matched.roof_area_sqft !== "number" || !Number.isFinite(matched.roof_area_sqft)) {
+    return null;
+  }
+
+  const pitch = typeof matched.pitch_degrees === "number" && Number.isFinite(matched.pitch_degrees)
+    ? matched.pitch_degrees
+    : 25;
+  const complexity = matched.complexity_band === "simple" || matched.complexity_band === "complex"
+    ? matched.complexity_band
+    : "moderate";
+  const areaSource = matched.area_source === "solar" ? "solar" : "regional";
+  const matchedBy: HistoricalRoofProfile["matchedBy"] = byPlace
+    ? "place_id"
+    : byCoordinates
+      ? "coordinates"
+      : "address";
+
+  return {
+    queryId: matched.id,
+    roofAreaSqft: Math.round(matched.roof_area_sqft),
+    pitchDegrees: pitch,
+    complexityBand: complexity,
+    areaSource,
+    matchedBy,
+    queriedAt: matched.queried_at
+  };
 }
 
 export async function listAdminInstantQuotes(filters?: {
