@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QuoteCard from "@/components/QuoteCard";
 import { buildEstimateRanges, type ComplexityBand } from "@/lib/quote";
 import { buildQuoteAnchorSlug, buildQuoteSignalTitle, quoteComplexityLabel, quoteMaterialLabel, resolvePublicLocation } from "@/lib/serviceAreas";
@@ -36,40 +36,52 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<NearbyItem[]>([]);
+  const lastQueryRef = useRef<string>("");
 
   useEffect(() => {
-    const controller = new AbortController();
-    const run = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const query = new URLSearchParams({ radiusKm: "25" });
-        if (coords) {
-          query.set("lat", String(coords.lat));
-          query.set("lng", String(coords.lng));
-        }
-        if (address?.trim()) {
-          query.set("address", address.trim());
-        }
-        const res = await fetch(`/api/instaquote/nearby?${query.toString()}`, { signal: controller.signal });
-        const payload = (await res.json().catch(() => ({}))) as { items?: NearbyItem[]; error?: string };
-        if (!res.ok) {
-          setError(payload.error ?? "Unable to load nearby quotes.");
-          setLoading(false);
-          return;
-        }
-        setItems(payload.items ?? []);
-      } catch {
-        if (!controller.signal.aborted) {
-          setError("Unable to load nearby quotes right now.");
-        }
-      }
-      setLoading(false);
-    };
+    const normalizedAddress = address?.trim() ?? "";
+    const query = new URLSearchParams({ radiusKm: "25" });
+    if (coords) {
+      query.set("lat", String(coords.lat));
+      query.set("lng", String(coords.lng));
+    }
+    if (normalizedAddress.length >= 4) {
+      query.set("address", normalizedAddress);
+    }
+    const queryString = query.toString();
+    if (queryString === lastQueryRef.current) return;
 
-    void run();
-    return () => controller.abort();
-  }, [coords, address]);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const run = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const res = await fetch(`/api/instaquote/nearby?${queryString}`, { signal: controller.signal });
+          const payload = (await res.json().catch(() => ({}))) as { items?: NearbyItem[]; error?: string };
+          if (!res.ok) {
+            setError(payload.error ?? "Unable to load nearby quotes.");
+            setLoading(false);
+            return;
+          }
+          setItems(payload.items ?? []);
+          lastQueryRef.current = queryString;
+        } catch {
+          if (!controller.signal.aborted) {
+            setError("Unable to load nearby quotes right now.");
+          }
+        }
+        setLoading(false);
+      };
+
+      void run();
+    }, 200);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [coords?.lat, coords?.lng, address]);
 
   const cards = useMemo(() => {
     return items.slice(0, 6).map((item, index) => {

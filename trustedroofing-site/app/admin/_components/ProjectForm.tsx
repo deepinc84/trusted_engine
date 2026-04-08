@@ -187,7 +187,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [actualSalePrice, setActualSalePrice] = useState(project?.actual_sale_price?.toString() ?? "");
   const [projectId, setProjectId] = useState(project?.id ?? "");
   const [geocodeSource, setGeocodeSource] = useState(project?.geocode_source ?? "manual");
-  const [locationMode, setLocationMode] = useState<"current" | "manual">("current");
+  const [locationMode, setLocationMode] = useState<"current" | "manual">("manual");
   const [status, setStatus] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"info" | "success" | "error">("info");
   const [uploading, setUploading] = useState(false);
@@ -204,6 +204,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [adminToken, setAdminToken] = useState<string>("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [loadingAddressSuggestions, setLoadingAddressSuggestions] = useState(false);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
 
   const generatedSlug = useMemo(() => {
     if (!title) return "";
@@ -328,15 +329,10 @@ export default function ProjectForm({ services, mode, project }: Props) {
   };
 
   useEffect(() => {
-    if (mode === "create" && locationMode === "current" && !project?.lat_private) {
-      useCurrentLocation();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     if (locationMode !== "manual" || addressPrivate.trim().length < 3) {
       setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+      setLoadingAddressSuggestions(false);
       return;
     }
 
@@ -350,11 +346,14 @@ export default function ProjectForm({ services, mode, project }: Props) {
         });
         const payload = await response.json() as { suggestions?: AddressSuggestion[] };
         if (!controller.signal.aborted) {
-          setAddressSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
+          const next = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+          setAddressSuggestions(next);
+          setShowAddressSuggestions(next.length > 0);
         }
       } catch {
         if (!controller.signal.aborted) {
           setAddressSuggestions([]);
+          setShowAddressSuggestions(false);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -432,6 +431,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     if (!selectedAddress.trim()) return;
     setAddressPrivate(selectedAddress);
     setAddressSuggestions([]);
+    setShowAddressSuggestions(false);
     await geocodeAddress(selectedAddress);
   };
 
@@ -773,6 +773,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
           type="button"
           style={{ opacity: locationMode === "current" ? 1 : 0.8 }}
           onClick={() => {
+            setStatus(null);
             setLocationMode("current");
             useCurrentLocation();
           }}
@@ -784,7 +785,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
           className="button"
           type="button"
           style={{ background: locationMode === "manual" ? "var(--color-primary)" : "white", color: locationMode === "manual" ? "white" : "var(--color-primary)", border: "1px solid rgba(30,58,138,0.25)" }}
-          onClick={() => setLocationMode("manual")}
+          onClick={() => {
+            setStatus(null);
+            setLocationMode("manual");
+            setShowAddressSuggestions(false);
+          }}
         >
           Enter address manually
         </button>
@@ -792,43 +797,57 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
       <label>
         Address (private)
-        <input
-          className="input"
-          value={addressPrivate}
-          onChange={(event) => setAddressPrivate(event.target.value)}
-          onBlur={() => {
-            if (locationMode === "manual" && addressPrivate.trim()) {
-              void geocodeAddress();
-            }
-          }}
-          placeholder="123 Main St SW, Calgary AB"
-          disabled={locationMode === "current" && locating}
-          list="project-address-suggestions"
-        />
-      </label>
-      <datalist id="project-address-suggestions">
-        {addressSuggestions.map((suggestion) => (
-          <option key={suggestion.label} value={suggestion.label} />
-        ))}
-      </datalist>
-      {locationMode === "manual" ? (
-        <div style={{ display: "grid", gap: 6 }}>
-          {loadingAddressSuggestions ? (
-            <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>Loading address suggestions...</p>
+        <div style={{ position: "relative" }}>
+          <input
+            className="input"
+            value={addressPrivate}
+            onChange={(event) => {
+              setAddressPrivate(event.target.value);
+              if (locationMode === "manual") {
+                setShowAddressSuggestions(true);
+              }
+            }}
+            onFocus={() => {
+              if (locationMode === "manual" && addressSuggestions.length > 0) {
+                setShowAddressSuggestions(true);
+              }
+            }}
+            onBlur={() => {
+              window.setTimeout(() => setShowAddressSuggestions(false), 120);
+            }}
+            placeholder="123 Main St SW, Calgary AB"
+            disabled={locationMode === "current" && locating}
+            autoComplete="off"
+          />
+          {locationMode === "manual" && showAddressSuggestions && addressSuggestions.length > 0 ? (
+            <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
+              {addressSuggestions.slice(0, 5).map((suggestion) => (
+                <button
+                  key={suggestion.label}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => void applyAddressSelection(suggestion.label)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    background: "white",
+                    color: "var(--color-text)",
+                    border: "1px solid var(--color-border, #d1d5db)",
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                    cursor: "pointer"
+                  }}
+                >
+                  {suggestion.label}
+                </button>
+              ))}
+            </div>
           ) : null}
-          {addressSuggestions.slice(0, 5).map((suggestion) => (
-            <button
-              key={suggestion.label}
-              type="button"
-              className="button"
-              style={{ textAlign: "left", justifyContent: "flex-start", width: "100%" }}
-              onClick={() => void applyAddressSelection(suggestion.label)}
-            >
-              {suggestion.label}
-            </button>
-          ))}
+          {locationMode === "manual" && loadingAddressSuggestions ? (
+            <p style={{ margin: "6px 0 0", color: "var(--color-muted)", fontSize: 12 }}>Loading suggestions…</p>
+          ) : null}
         </div>
-      ) : null}
+      </label>
       <button className="button" type="button" onClick={() => void geocodeAddress()} disabled={geocoding}>
         {geocoding ? "Geocoding..." : "Auto-fill lat/lng from address"}
       </button>

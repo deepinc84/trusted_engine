@@ -85,7 +85,12 @@ async function geocodeWithGoogle(address: string): Promise<GeocodePayload | null
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
 
-  const params = new URLSearchParams({ address, key });
+  const params = new URLSearchParams({
+    address,
+    key,
+    region: "ca",
+    components: "country:CA"
+  });
   const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`, {
     headers: { Accept: "application/json" },
     cache: "no-store"
@@ -159,8 +164,14 @@ async function reverseGeocodeWithGoogle(lat: number, lng: number): Promise<Geoco
 }
 
 async function geocodeWithNominatim(address: string): Promise<GeocodePayload | null> {
+  const normalizedAddress = address.trim();
+  const source = normalizedAddress.toLowerCase();
+  const withCity = source.includes("calgary") ? normalizedAddress : `${normalizedAddress}, Calgary`;
+  const withProvince = /\b(ab|alberta)\b/.test(source) ? withCity : `${withCity}, AB`;
+  const withCountry = source.includes("canada") ? withProvince : `${withProvince}, Canada`;
+
   const query = new URLSearchParams({
-    q: address,
+    q: withCountry,
     format: "jsonv2",
     limit: "1",
     addressdetails: "1"
@@ -268,7 +279,20 @@ export async function GET(request: Request) {
       const googleReverse = await reverseGeocodeWithGoogle(lat, lng);
       if (googleReverse) return NextResponse.json({ ok: true, result: googleReverse });
 
-      return NextResponse.json({ error: "No reverse geocode result found" }, { status: 404 });
+      const nominatimReverse = await reverseGeocodeWithNominatim(lat, lng);
+      if (nominatimReverse) return NextResponse.json({ ok: true, result: nominatimReverse });
+
+      return NextResponse.json(
+        {
+          error: "No reverse geocode result found",
+          detail: {
+            attempted: ["google", "nominatim"],
+            lat,
+            lng
+          }
+        },
+        { status: 404 }
+      );
     }
 
     if (!address) {
@@ -278,11 +302,30 @@ export async function GET(request: Request) {
     const googleResult = await geocodeWithGoogle(address);
     if (googleResult) return NextResponse.json({ ok: true, result: googleResult });
 
-    return NextResponse.json({ error: "No geocode result found" }, { status: 404 });
-  } catch (error) {
+    const nominatimResult = await geocodeWithNominatim(address);
+    if (nominatimResult) return NextResponse.json({ ok: true, result: nominatimResult });
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Geocode lookup failed" },
-      { status: 500 }
+      {
+        error: "No geocode result found",
+        detail: {
+          attempted: ["google", "nominatim"],
+          address
+        }
+      },
+      { status: 404 }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Geocode lookup failed";
+    const isGoogleAuthError = message.toLowerCase().includes("request denied")
+      || message.toLowerCase().includes("api key")
+      || message.toLowerCase().includes("billing");
+    return NextResponse.json(
+      {
+        error: "Geocode lookup failed",
+        detail: message
+      },
+      { status: isGoogleAuthError ? 502 : 500 }
     );
   }
 }
