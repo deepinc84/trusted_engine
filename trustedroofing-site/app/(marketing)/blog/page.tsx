@@ -14,7 +14,8 @@ const posts = [
     slug: "how-much-does-a-roof-replacement-cost-in-calgary-2026",
     title: "How Much Does a Roof Replacement Cost in Calgary in 2026?",
     excerpt: "Real 2026 Calgary pricing ranges, what drives quote gaps, and what a proper roof quote should include.",
-    date: "2026-03-25"
+    date: "2026-03-25",
+    image: "/instant-quote.png"
   }
 ];
 
@@ -29,13 +30,20 @@ export default function BlogIndexPage() {
 
       <section className="ui-page-section">
         <PageContainer>
-          <div className="ui-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+          <div className="ui-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
             {posts.map((post) => (
               <article key={post.slug} className="ui-card">
+                <img
+                  src={post.image}
+                  alt={post.title}
+                  loading="lazy"
+                  style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 10 }}
+                />
                 <p className="ui-pill">{new Date(post.date).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}</p>
-                <h2>{post.title}</h2>
+                <h2>
+                  <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                </h2>
                 <p className="homev3-copy">{post.excerpt}</p>
-                <Link href={`/blog/${post.slug}`}>Read article</Link>
               </article>
             ))}
           </div>
