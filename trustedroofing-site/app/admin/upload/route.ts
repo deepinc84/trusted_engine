@@ -8,7 +8,11 @@ import {
 
 function streetFromAddress(address: string) {
   const firstPart = address.split(",")[0]?.trim() ?? "";
-  return firstPart.replace(/\b(CALGARY|AB|ALBERTA)\b/gi, "").trim();
+  return firstPart
+    .replace(/\b(CALGARY|AB|ALBERTA)\b/gi, "")
+    .replace(/^\s*\d+[A-Z]?\s*-\s*\d+[A-Z]?\s+/i, "")
+    .replace(/^\s*\d+[A-Z]?(?:-\d+[A-Z]?)?\s+/i, "")
+    .trim();
 }
 
 function buildGeoAltText(input: {

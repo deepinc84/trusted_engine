@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import HeatMap from "@/components/HeatMap";
 import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborhoods } from "@/lib/seo-engine";
 
@@ -10,6 +11,11 @@ const links = [
 ];
 
 export default async function SiteHeader() {
+  const cookieStore = cookies();
+  const adminCookie = cookieStore.get("admin_token")?.value;
+  const adminToken = process.env.ADMIN_TOKEN;
+  const isAdminSession = !!adminToken && adminCookie === adminToken;
+
   const [serviceAreas, heatmap, heatLinks] = await Promise.all([
     getTopProjectNeighborhoods(10),
     getProjectQuadrantHeat(),
@@ -60,6 +66,11 @@ export default async function SiteHeader() {
         </nav>
 
         <div className="nav-right">
+          {isAdminSession ? (
+            <Link href="/admin" className="cta" style={{ marginRight: 8 }}>
+              Admin
+            </Link>
+          ) : null}
           <a href="tel:5872883351" className="nav-tel">
             587-288-3351
           </a>
