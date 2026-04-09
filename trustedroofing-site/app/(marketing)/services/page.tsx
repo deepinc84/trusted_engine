@@ -5,55 +5,47 @@ import PageHero from "@/components/ui/PageHero";
 import ServiceCard from "@/components/ui/ServiceCard";
 import { listServices } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
+import dynamicImport from "next/dynamic";
 
-const serviceHighlights = [
-  {
-    title: "Roofing systems built for Calgary weather",
-    body: "We replace and upgrade asphalt shingle roofs with attention to ventilation, ice-dam risk, flashing details, and manufacturer-approved installation methods."
-  },
-  {
-    title: "Siding that manages wind, moisture, and curb appeal",
-    body: "Our siding work focuses on water management, trim details, and clean transitions around windows, doors, soffit, and fascia so the finished exterior performs as well as it looks."
-  },
-  {
-    title: "Eavestrough and drainage planning that protects the envelope",
-    body: "We install 5-inch and 6-inch gutter systems, slope runs correctly, and look at downspout placement so roof runoff leaves the house instead of soaking the foundation or icing the walks."
-  }
-];
-
-const processSteps = [
-  "Start with the service that matches your main concern, whether that is roofing, siding, or drainage.",
-  "Review scope, material options, and the local conditions that matter in Calgary before booking a site visit.",
-  "Use the instant quote tool for a realistic budget range based on real completed projects, roof size, pitch, and neighborhood-level pricing data.",
-  "Move into site review, final measurements, and written scope confirmation before production starts."
-];
+const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
+  ssr: false,
+  loading: () => <p className="homev3-copy">Loading FAQ…</p>
+});
 
 const faqs = [
   {
-    question: "What services does Trusted Roofing & Exteriors actually provide?",
-    answer: "The core service lines are roofing, siding, eavestrough and gutter replacement, roof repair, and related exterior work such as soffit and fascia. Each page explains what is included, where the scope starts, and when a repair makes more sense than a full replacement."
+    question: "What’s the difference between roof repair and roof replacement?",
+    answer: "Roof repair focuses on fixing a specific issue like a leak, damaged shingles, or a problem area. Roof replacement involves removing the existing system and installing a new one across the entire roof. The right option depends on the condition of the roof and how widespread the problem is."
   },
   {
-    question: "Do you work only in Calgary?",
-    answer: "Calgary is the main service area, with surrounding work in Airdrie, Chestermere, and Cochrane when scheduling and scope align. Local weather patterns still drive the way we plan materials and installation details."
+    question: "How do I know if I need new eavestrough or just a repair?",
+    answer: "If the system is leaking at joints, pulling away from the house, or overflowing due to poor sizing or slope, replacement is usually the better long-term fix. Smaller issues like a loose section or minor blockage can often be repaired."
   },
   {
-    question: "How do I know which service page fits my project?",
-    answer: "If the main issue is the roof covering, flashing, or ventilation, start with roofing. If the exterior cladding is faded, loose, or taking on moisture, start with siding. If runoff control or overflow is the concern, start with the eavestrough page."
+    question: "Can siding issues cause problems inside the house?",
+    answer: "Yes. Siding isn’t just for appearance. If it’s damaged or installed improperly, moisture can get behind the system and lead to long-term issues. That’s why siding, soffit, and fascia are tied closely to how the home manages airflow and moisture."
   },
   {
-    question: "Can I get pricing before booking an inspection?",
-    answer: "Yes. The instant quote page is designed to provide a realistic range first. It is not a generic estimator. It uses local project and quote data to set an informed starting point before an on-site review."
+    question: "Is it better to fix one issue or do everything at once?",
+    answer: "It depends on the condition of the home. Sometimes a targeted repair is the right move. Other times, multiple issues are connected, and handling them together prevents repeat problems. The goal is to avoid doing the same work twice."
   },
   {
-    question: "Why do material choices matter so much in Alberta?",
-    answer: "Calgary roofs and exteriors take hail, wind-driven rain, sharp temperature swings, UV exposure, and freeze-thaw cycles. Material durability, fastening patterns, ventilation, and drainage details all affect how long the assembly lasts."
+    question: "What usually causes roofing problems in Calgary?",
+    answer: "Wind, hail, temperature swings, and installation quality are the biggest factors. Some roofs fail because they’ve reached the end of their life, while others fail early due to how they were originally installed."
   },
   {
-    question: "Do you help compare standard and premium options?",
-    answer: "Yes. That is part of the planning process. We explain where a standard product is enough, where premium impact resistance or heavier profiles add value, and how those differences affect budget and long-term performance."
+    question: "Do I need an inspection before getting pricing?",
+    answer: "Not always. If you want a rough range first, the instant quote tool is the fastest way to get a baseline. From there, the exact scope can be confirmed once the home is looked at directly."
+  },
+  {
+    question: "How long does most exterior work take?",
+    answer: "Most roofing projects are completed in a day or two depending on size and complexity. Repairs can be shorter. Siding and full exterior work take longer because there are more components involved."
+  },
+  {
+    question: "What should I do if I’m not sure what service I need?",
+    answer: "Start with the problem you’re seeing. If that’s not clear, use the instant quote tool to get a starting point, then narrow it down from there. Most homeowners don’t know exactly what they need at the beginning, and that’s normal."
   }
-];
+] as const;
 
 export const metadata = buildMetadata({
   title: "Services",
@@ -63,6 +55,19 @@ export const metadata = buildMetadata({
 
 export default async function ServicesPage() {
   const services = await listServices();
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer
+      }
+    }))
+  };
+
   const serviceCards = services.flatMap((service) => {
     if (service.slug !== "siding") return [service];
 
@@ -86,8 +91,8 @@ export default async function ServicesPage() {
     <>
       <PageHero
         eyebrow="Services"
-        title="Roofing and exterior services for Calgary homes"
-        description="This is the starting point if you need a roof replacement, siding upgrade, or a better drainage plan. Each service page explains what we do, why it matters in Alberta, and how the work is handled in real conditions."
+        title="Roofing and Exterior Services in Calgary, Alberta"
+        description="This is where to start if you need roofing, siding, or eavestrough work on your home in Calgary.  Each service below breaks down what the work actually involves, when it’s needed, and how it’s handled on real homes. Whether you’re dealing with a leak, planning a full roof replacement, or trying to fix drainage or exterior issues, this page is meant to give you a clear direction before you move forward."
         actions={
           <>
             <Link href="/online-estimate" className="button">Get an instant quote</Link>
@@ -110,19 +115,55 @@ export default async function ServicesPage() {
           </div>
 
           <article className="ui-card" style={{ marginTop: 24 }}>
-            <h2>Compare siding directions</h2>
-            <p className="homev3-copy">
-              Homeowners usually end up comparing budget, wall condition, and the finished look. If you want the heavier
-              fiber cement option, review <Link href="/services/james-hardie-siding">James Hardie siding Calgary</Link>.
-              If budget control matters more, the vinyl siding page breaks down where that system usually makes more sense.
-            </p>
+            <h2>What Work Usually Looks Like on Calgary Homes</h2>
+            <p className="homev3-copy">Most exterior projects don’t start clean.</p>
+            <p className="homev3-copy">A homeowner might think it’s just a small repair, but once the roof is opened up or the siding is removed, it turns into a larger scope. That can be ventilation issues, improper installs, drainage problems, or materials that failed early.</p>
+            <p className="homev3-copy">Other times, it’s straightforward. A roof has reached the end of its life and needs to be replaced. Eavestrough is undersized or failing and needs to be redone. Siding has taken damage or just needs to be updated.</p>
+            <p className="homev3-copy">The goal isn’t to push everything into a full replacement. It’s to figure out what the house actually needs and handle it properly the first time.</p>
+          </article>
+
+          <article className="ui-card" style={{ marginTop: 24 }}>
+            <h2>Roofing, Siding, and Eavestrough Services Explained</h2>
+            <p className="homev3-copy">Each service on this page is separated for a reason.</p>
+            <p className="homev3-copy"><Link href="/services/roofing">Roofing</Link> covers full replacements and complete roof system installs. That includes everything from tear-off to new materials, ventilation adjustments, and tying the system together properly.</p>
+            <p className="homev3-copy"><Link href="/services/roof-repair">Roof repair</Link> is more targeted. It focuses on leaks, storm damage, and localized failures where the rest of the roof may still have life left.</p>
+            <p className="homev3-copy"><Link href="/services/gutters">Eavestrough and drainage work</Link> controls how water moves off the roof and away from the house. When that fails, it can cause ongoing problems even if the roof itself is still in decent condition.</p>
+            <p className="homev3-copy"><Link href="/services/siding">Siding</Link>, <Link href="/services/soffit-fascia">soffit, and fascia</Link> are tied into both protection and appearance. They affect how the home handles moisture, airflow, and long-term durability.</p>
+            <p className="homev3-copy">If you’re not sure which direction applies, that’s normal. Most homeowners aren’t. The service pages break it down further, but this page gives you the starting point.</p>
+          </article>
+
+          <article className="ui-card" style={{ marginTop: 24 }}>
+            <h2>Comparing Siding Options on Real Homes</h2>
+            <p className="homev3-copy">Siding decisions usually come down to budget, durability, and the look you want long term.</p>
+            <p className="homev3-copy">Vinyl siding is the more cost-controlled option. It works well for many homes and keeps projects within a tighter range, especially when the wall system underneath is still in good shape.</p>
+            <p className="homev3-copy"><Link href="/services/james-hardie-siding">James Hardie siding</Link> is heavier and more rigid. It’s typically chosen when homeowners want a more solid finish and longer-term durability, especially in areas that see more exposure.</p>
+            <p className="homev3-copy">Both systems can work. The right choice depends on the house, the condition underneath, and what you’re trying to achieve with the exterior.</p>
+            <p className="homev3-copy">On some homes, both options are used together depending on the elevation and budget.</p>
+          </article>
+
+          <article className="ui-card" style={{ marginTop: 24 }}>
+            <h2>How to Choose the Right Service</h2>
+            <p className="homev3-copy">If you’re not sure where to start, focus on the problem first.</p>
+            <p className="homev3-copy">Leaks, missing shingles, or visible damage usually point toward repair or replacement. Overflowing gutters or pooling water point toward drainage issues. Warped or aging siding points toward exterior cladding work.</p>
+            <p className="homev3-copy">If the issue isn’t obvious, that’s usually where most people get stuck.</p>
+            <p className="homev3-copy">The easiest starting point is to get a rough range first. The <Link href="/online-estimate">instant quote tool</Link> gives you a baseline, and from there the scope can be narrowed down based on what your house actually needs.</p>
+          </article>
+
+          <article className="ui-card" style={{ marginTop: 24 }}>
+            <h2>Service questions</h2>
+            <FaqAccordion items={faqs} />
           </article>
         </PageContainer>
       </section>
 
       <CtaBand
         title="Need pricing before you book a visit?"
-        body="Start with the instant quote. It gives a realistic range first, then we narrow scope and materials with you."
+        body="Start with the instant quote to get a realistic range for your home, then we can narrow the scope and materials based on your house."
+      />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
     </>
   );

@@ -2062,6 +2062,15 @@ body {
   color: var(--blue);
 }
 
+.nav-services__dropdown {
+  grid-template-columns: minmax(260px, 1fr);
+  min-width: 320px;
+}
+
+.nav-services__dropdown .nav-service-areas__list a {
+  justify-content: flex-start;
+}
+
 .nav-right {
   display: inline-flex;
   align-items: center;

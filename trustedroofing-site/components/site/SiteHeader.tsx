@@ -6,8 +6,15 @@ import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborh
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
   { href: "/projects", label: "Projects" }
+];
+const serviceLinks = [
+  { href: "/services/roofing", label: "Roofing" },
+  { href: "/services/roof-repair", label: "Roof repair" },
+  { href: "/services/gutters", label: "Eavestrough" },
+  { href: "/services/siding", label: "Siding" },
+  { href: "/services/james-hardie-siding", label: "James Hardie siding" },
+  { href: "/services/soffit-fascia", label: "Soffit & fascia" }
 ];
 
 export default async function SiteHeader() {
@@ -43,6 +50,21 @@ export default async function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          <div className="nav-service-areas">
+            <Link href="/services">Services</Link>
+            <div className="nav-service-areas__dropdown nav-services__dropdown">
+              <div>
+                <p className="nav-service-areas__eyebrow">Browse services</p>
+                <div className="nav-service-areas__list">
+                  {serviceLinks.map((service) => (
+                    <Link key={service.href} href={service.href}>
+                      <span>{service.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="nav-service-areas">
             <Link href="/service-areas">Service Areas</Link>
             <div className="nav-service-areas__dropdown">
