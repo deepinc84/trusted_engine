@@ -1434,9 +1434,14 @@ main {
 
 .ui-card--project__image {
   width: 100%;
-  height: auto;
+  height: 220px;
+  object-fit: cover;
   border-radius: 10px;
   display: block;
+}
+
+.seo-card__media {
+  position: relative;
 }
 
 .seo-card {
@@ -1604,7 +1609,7 @@ main {
   position: absolute;
   left: 18px;
   right: 18px;
-  bottom: 18px;
+  bottom: 12px;
   display: grid;
   gap: 6px;
   padding: 14px;
@@ -2055,6 +2060,15 @@ body {
 
 .nav-service-areas__list strong {
   color: var(--blue);
+}
+
+.nav-services__dropdown {
+  grid-template-columns: minmax(260px, 1fr);
+  min-width: 320px;
+}
+
+.nav-services__dropdown .nav-service-areas__list a {
+  justify-content: flex-start;
 }
 
 .nav-right {

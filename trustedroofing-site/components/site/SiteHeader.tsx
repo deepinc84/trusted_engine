@@ -1,15 +1,28 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import HeatMap from "@/components/HeatMap";
 import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborhoods } from "@/lib/seo-engine";
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
   { href: "/projects", label: "Projects" }
+];
+const serviceLinks = [
+  { href: "/services/roofing", label: "Roofing" },
+  { href: "/services/roof-repair", label: "Roof repair" },
+  { href: "/services/gutters", label: "Eavestrough" },
+  { href: "/services/siding", label: "Siding" },
+  { href: "/services/james-hardie-siding", label: "James Hardie siding" },
+  { href: "/services/soffit-fascia", label: "Soffit & fascia" }
 ];
 
 export default async function SiteHeader() {
+  const cookieStore = cookies();
+  const adminCookie = cookieStore.get("admin_token")?.value;
+  const adminToken = process.env.ADMIN_TOKEN;
+  const isAdminSession = !!adminToken && adminCookie === adminToken;
+
   const [serviceAreas, heatmap, heatLinks] = await Promise.all([
     getTopProjectNeighborhoods(10),
     getProjectQuadrantHeat(),
@@ -38,6 +51,21 @@ export default async function SiteHeader() {
             </Link>
           ))}
           <div className="nav-service-areas">
+            <Link href="/services">Services</Link>
+            <div className="nav-service-areas__dropdown nav-services__dropdown">
+              <div>
+                <p className="nav-service-areas__eyebrow">Browse services</p>
+                <div className="nav-service-areas__list">
+                  {serviceLinks.map((service) => (
+                    <Link key={service.href} href={service.href}>
+                      <span>{service.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="nav-service-areas">
             <Link href="/service-areas">Service Areas</Link>
             <div className="nav-service-areas__dropdown">
               <div>
@@ -60,6 +88,11 @@ export default async function SiteHeader() {
         </nav>
 
         <div className="nav-right">
+          {isAdminSession ? (
+            <Link href="/admin" className="cta" style={{ marginRight: 8 }}>
+              Admin
+            </Link>
+          ) : null}
           <a href="tel:5872883351" className="nav-tel">
             587-288-3351
           </a>

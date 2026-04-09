@@ -42,6 +42,7 @@ export default function SiteFooter() {
           <Link href="/">About Trusted</Link>
           <Link href="/services">How it works</Link>
           <Link href="/projects">Reviews</Link>
+          <Link href="/blog">Blog</Link>
           <Link href="/#areas">Service areas</Link>
         </div>
 
