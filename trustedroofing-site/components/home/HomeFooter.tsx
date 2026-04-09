@@ -21,6 +21,7 @@ export default function HomeFooter() {
           <h4>Explore</h4>
           <Link href="/projects">Projects</Link>
           <Link href="/online-estimate">Instant quote</Link>
+          <Link href="/blog">Blog</Link>
           <Link href="/services">Service areas</Link>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
 import dynamic from "next/dynamic";
 
@@ -89,6 +89,7 @@ export default function QuoteFlow() {
     () => quoteScopes.find((scope) => scope.value === selectedScope)?.label,
     [selectedScope]
   );
+  const lastSuggestQueryRef = useRef<string>("");
 
 
   useEffect(() => {
@@ -97,36 +98,56 @@ export default function QuoteFlow() {
   }, [selectedScope]);
 
   useEffect(() => {
-    if (address.trim().length < 2 || step !== 1) {
+    const queryValue = address.trim();
+    if (queryValue.length < 4 || step !== 1) {
       setAddressSuggestions([]);
       setSuggestionsOpen(false);
+      lastSuggestQueryRef.current = "";
       return;
     }
 
+    if (queryValue === lastSuggestQueryRef.current) {
+      return;
+    }
+
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      const query = new URLSearchParams({ q: address.trim() });
-      fetch(`/api/geocode/suggest?${query.toString()}`)
+      const query = new URLSearchParams({ q: queryValue });
+      fetch(`/api/geocode/suggest?${query.toString()}`, { signal: controller.signal })
         .then(async (res) => {
           if (!res.ok) return { suggestions: [] as string[] };
           return (await res.json()) as { suggestions?: string[] };
         })
         .then((data) => {
+          if (controller.signal.aborted) return;
           const next = data.suggestions ?? [];
           setAddressSuggestions(next);
           setSuggestionsOpen(next.length > 0);
+          lastSuggestQueryRef.current = queryValue;
         })
         .catch(() => {
+          if (controller.signal.aborted) return;
           setAddressSuggestions([]);
           setSuggestionsOpen(false);
         });
-    }, 220);
+    }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [address, step]);
 
-  const estimateCoords = estimate && estimate.lat !== null && estimate.lng !== null
-    ? { lat: estimate.lat, lng: estimate.lng }
-    : null;
+  const estimateCoords = useMemo(
+    () => (estimate && estimate.lat !== null && estimate.lng !== null
+      ? { lat: estimate.lat, lng: estimate.lng }
+      : null),
+    [estimate?.lat, estimate?.lng]
+  );
+  const nearbyAddress = useMemo(() => {
+    if (step !== 2 || !estimate) return null;
+    return estimate.address?.trim() || null;
+  }, [step, estimate]);
 
   const selectedSidingRange = estimate
     ? (sidingMaterial === "hardie" ? estimate.extras.sidingHardie : estimate.extras.sidingVinyl)
@@ -464,7 +485,7 @@ export default function QuoteFlow() {
       {error ? <p className="instant-quote__error">{error}</p> : null}
 
       {/* Keep nearby cards visible on first render (recent 6 quote signals). */}
-      <NearbyQuotesCarousel coords={estimateCoords} address={estimate?.address ?? address} />
+      <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} />
     </div>
   );
 }
