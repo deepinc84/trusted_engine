@@ -6,29 +6,15 @@ import {
   getProjectById
 } from "@/lib/db";
 
-function streetFromAddress(address: string) {
-  const firstPart = address.split(",")[0]?.trim() ?? "";
-  return firstPart
-    .replace(/\b(CALGARY|AB|ALBERTA)\b/gi, "")
-    .replace(/^\s*\d+[A-Z]?\s*-\s*\d+[A-Z]?\s+/i, "")
-    .replace(/^\s*\d+[A-Z]?(?:-\d+[A-Z]?)?\s+/i, "")
+function cleanFilenameToCaption(fileName: string) {
+  const withoutExtension = fileName.replace(/\.[^.]+$/, "");
+  const withoutBrackets = withoutExtension.replace(/[\[\](){}]/g, " ");
+  const normalized = withoutBrackets
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\d+\b/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
-}
-
-function buildGeoAltText(input: {
-  serviceSlug: string;
-  sequence: number;
-  street: string | null;
-  neighborhood: string | null;
-  city: string;
-}) {
-  const service = input.serviceSlug.replace(/-/g, " ").trim();
-  const locationParts = [input.street, input.neighborhood, input.city]
-    .map((part) => (part ?? "").trim())
-    .filter((part, idx, arr) => part.length > 0 && arr.indexOf(part) === idx);
-
-  const location = locationParts.length ? locationParts.join(", ") : input.city;
-  return `${service} project ${String(input.sequence).padStart(2, "0")} - ${location}`;
+  return normalized;
 }
 
 export async function POST(request: Request) {
@@ -58,23 +44,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Project not found." }, { status: 404 });
     }
 
-    const serviceSlug = String(body.service_slug ?? project.service_slug ?? "roofing");
-    const phase = String(body.phase ?? "before").toLowerCase() === "after" ? "after" : "before";
-    const neighborhood = String(body.neighborhood ?? project.neighborhood ?? "");
-    const city = String(body.city ?? project.city ?? "Calgary");
-    const sequence = Number(body.sequence ?? 1);
-    const street = streetFromAddress(addressPrivate || project.address_private || "");
-
-    const generatedCaption = caption.trim() || buildGeoAltText({
-      serviceSlug,
-      sequence: Number.isFinite(sequence) ? sequence : 1,
-      street: street || null,
-      neighborhood: neighborhood || null,
-      city
-    });
-    const phaseCaption = generatedCaption.startsWith("[Before]") || generatedCaption.startsWith("[After]")
-      ? generatedCaption
-      : `[${phase === "after" ? "After" : "Before"}] ${generatedCaption}`;
+    const fileName = String(body.file_name ?? "");
+    const stageInput = String(body.stage ?? body.phase ?? "before").toLowerCase();
+    const stage = stageInput === "after"
+      ? "after"
+      : stageInput === "tear_off_prep"
+        ? "tear_off_prep"
+        : stageInput === "installation"
+          ? "installation"
+          : stageInput === "detail_issue"
+            ? "detail_issue"
+            : "before";
+    const generatedCaption = caption.trim() || cleanFilenameToCaption(fileName);
 
     const mode = getDataMode();
     const photo = await addProjectPhoto(projectId, {
@@ -86,7 +67,10 @@ export async function POST(request: Request) {
       mime_type: body.mime_type ? String(body.mime_type) : null,
       width: body.width == null ? null : Number(body.width),
       height: body.height == null ? null : Number(body.height),
-      caption: phaseCaption,
+      file_name: fileName || null,
+      stage,
+      caption: generatedCaption || null,
+      description: null,
       sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
       is_primary: isPrimary,
       address_private: addressPrivate || null,

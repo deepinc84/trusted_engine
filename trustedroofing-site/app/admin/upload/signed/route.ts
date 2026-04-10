@@ -7,7 +7,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const projectId = String(body.project_id ?? "");
     const fileName = String(body.file_name ?? "project-photo");
-    const phase = body.phase === "after" ? "after" : "before";
+    const stageInput = String(body.stage ?? body.phase ?? "before").toLowerCase();
+    const phase = stageInput === "after" ? "after" : "before";
 
     if (!projectId) {
       return NextResponse.json({ error: "project_id is required." }, { status: 400 });
