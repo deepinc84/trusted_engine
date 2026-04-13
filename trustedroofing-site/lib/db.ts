@@ -21,7 +21,10 @@ export type ProjectPhoto = {
   mime_type: string | null;
   width: number | null;
   height: number | null;
+  file_name: string | null;
+  stage: "before" | "tear_off_prep" | "installation" | "after" | "detail_issue" | null;
   caption: string | null;
+  description: string | null;
   sort_order: number;
   is_primary: boolean;
   address_private: string | null;
@@ -811,7 +814,10 @@ export async function addProjectPhoto(
     mime_type?: string | null;
     width?: number | null;
     height?: number | null;
+    file_name?: string | null;
+    stage?: "before" | "tear_off_prep" | "installation" | "after" | "detail_issue" | null;
     caption?: string | null;
+    description?: string | null;
     sort_order?: number;
     is_primary?: boolean;
     address_private?: string | null;
@@ -833,7 +839,10 @@ export async function addProjectPhoto(
     mime_type: photo.mime_type ?? null,
     width: photo.width ?? null,
     height: photo.height ?? null,
+    file_name: photo.file_name ?? null,
+    stage: photo.stage ?? "before",
     caption: photo.caption ?? null,
+    description: photo.description ?? null,
     sort_order: photo.sort_order ?? 0,
     is_primary: photo.is_primary ?? false,
     address_private: photo.address_private ?? null,
@@ -865,6 +874,61 @@ export async function addProjectPhoto(
   };
   mockProjectPhotos.push(created);
   return created;
+}
+
+export async function updateProjectPhoto(
+  photoId: string,
+  updates: {
+    file_name?: string | null;
+    stage?: "before" | "tear_off_prep" | "installation" | "after" | "detail_issue" | null;
+    caption?: string | null;
+    description?: string | null;
+  }
+) {
+  const payload = {
+    ...(updates.file_name !== undefined ? { file_name: updates.file_name?.trim() || null } : {}),
+    ...(updates.stage !== undefined ? { stage: updates.stage } : {}),
+    ...(updates.caption !== undefined ? { caption: updates.caption?.trim() || null } : {}),
+    ...(updates.description !== undefined ? { description: updates.description?.trim() || null } : {})
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const { data, error } = await client
+      .from("project_photos")
+      .update(payload)
+      .eq("id", photoId)
+      .select("*")
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as ProjectPhoto;
+  }
+
+  const existing = mockProjectPhotos.find((photo) => photo.id === photoId);
+  if (!existing) throw new Error("Photo not found");
+  Object.assign(existing, payload);
+  return existing;
+}
+
+export async function deleteProjectPhoto(photoId: string) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const { error } = await client
+      .from("project_photos")
+      .delete()
+      .eq("id", photoId);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  const index = mockProjectPhotos.findIndex((photo) => photo.id === photoId);
+  if (index >= 0) {
+    mockProjectPhotos.splice(index, 1);
+  }
+  return true;
 }
 
 
