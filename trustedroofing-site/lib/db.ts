@@ -269,6 +269,13 @@ function sortProjectPhotos(photos: ProjectPhoto[]) {
   return [...photos].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order);
 }
 
+function normalizeSlug(value: string) {
+  return sanitizeText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 function buildProjectImageSet(photos: ProjectPhoto[]): ProjectImageSet {
   const gallery = sortProjectPhotos(photos);
   return {
@@ -504,6 +511,19 @@ export async function getProjectImageSet(projectId: string): Promise<ProjectImag
 }
 
 export async function getProjectBySlug(slug: string, includeUnpublished = false): Promise<Project | null> {
+  if (getDataMode() === "supabase") {
+    const client = includeUnpublished
+      ? (getServiceClient() ?? getAnonClient())
+      : getAnonClient();
+    if (client) {
+      const { data } = await client.from("projects").select("*").eq("slug", slug).maybeSingle();
+      if (!data) return null;
+      if (!includeUnpublished && !(data as Project).is_published) return null;
+      const imageSet = await getProjectImageSet((data as Project).id);
+      return { ...(data as Project), photos: imageSet.gallery };
+    }
+  }
+
   const list = await listProjects({ include_unpublished: includeUnpublished });
   return list.find((project) => project.slug === slug) ?? null;
 }
@@ -665,7 +685,7 @@ function toProjectPayload(data: ProjectInput) {
       : null;
 
   return {
-    slug: sanitizeText(data.slug),
+    slug: normalizeSlug(data.slug),
     title: sanitizeText(data.title),
     summary: sanitizeText(data.summary),
     description: data.description ? sanitizeText(data.description) : null,

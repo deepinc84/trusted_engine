@@ -162,6 +162,19 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function currentCalgaryDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
 export default function ProjectForm({ services, mode, project }: Props) {
   const [title, setTitle] = useState(project?.title ?? "");
   const [slug, setSlug] = useState(project?.slug ?? "");
@@ -173,7 +186,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [lngPrivate, setLngPrivate] = useState(project?.lng_private?.toString() ?? "");
   const [summary, setSummary] = useState(project?.summary ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
-  const [completedAt, setCompletedAt] = useState(project?.completed_at ?? (mode === "create" ? new Date().toISOString().slice(0, 10) : ""));
+  const [completedAt, setCompletedAt] = useState(project?.completed_at ?? (mode === "create" ? currentCalgaryDate() : ""));
   const [linkedQuoteIds, setLinkedQuoteIds] = useState("");
   const [instantQuoteOptions, setInstantQuoteOptions] = useState<InstantQuoteOption[]>([]);
   const [loadingInstantQuotes, setLoadingInstantQuotes] = useState(false);
@@ -216,7 +229,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
 
   const generatedSlug = useMemo(() => {
     if (!title) return "";
-    const datePart = completedAt || new Date().toISOString().slice(0, 10);
+    const datePart = completedAt || currentCalgaryDate();
     return slugify(`${title}-${neighborhood}-${datePart}`);
   }, [title, neighborhood, completedAt]);
 
