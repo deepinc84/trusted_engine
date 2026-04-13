@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Project, ProjectPhoto, Service } from "@/lib/db";
 
@@ -53,6 +53,7 @@ const MAX_UPLOAD_MB = 15;
 const MAX_UPLOAD_MB_AFTER_COMPRESSION = 8;
 const MAX_IMAGE_DIMENSION = 2000;
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const FINANCIAL_INPUT_STYLE: CSSProperties = { marginTop: 4, padding: "8px 12px", fontSize: 14 };
 
 let browserSupabaseClient: SupabaseClient | null = null;
 
@@ -771,6 +772,22 @@ export default function ProjectForm({ services, mode, project }: Props) {
     }
   };
 
+  const quotedFields: Array<{ label: string; value: string; setValue: (value: string) => void }> = [
+    { label: "Sale price", value: quotedSalePrice, setValue: setQuotedSalePrice },
+    { label: "Material", value: quotedMaterialCost, setValue: setQuotedMaterialCost },
+    { label: "Subcontractor", value: quotedSubcontractorCost, setValue: setQuotedSubcontractorCost },
+    { label: "Disposal", value: quotedDisposalCost, setValue: setQuotedDisposalCost },
+    { label: "Other", value: quotedOtherCost, setValue: setQuotedOtherCost }
+  ];
+
+  const actualFields: Array<{ label: string; value: string; setValue: (value: string) => void }> = [
+    { label: "Sale price", value: actualSalePrice, setValue: setActualSalePrice },
+    { label: "Material", value: actualMaterialCost, setValue: setActualMaterialCost },
+    { label: "Subcontractor", value: actualSubcontractorCost, setValue: setActualSubcontractorCost },
+    { label: "Disposal", value: actualDisposalCost, setValue: setActualDisposalCost },
+    { label: "Other", value: actualOtherCost, setValue: setActualOtherCost }
+  ];
+
   return (
     <div className="card" style={{ display: "grid", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -965,25 +982,29 @@ export default function ProjectForm({ services, mode, project }: Props) {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
-        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
-          <h3 style={{ margin: 0 }}>Quote data</h3>
-          <label>Quoted sale price<input className="input" value={quotedSalePrice} onChange={(event) => setQuotedSalePrice(event.target.value)} /></label>
-          <label>Quoted material cost<input className="input" value={quotedMaterialCost} onChange={(event) => setQuotedMaterialCost(event.target.value)} /></label>
-          <label>Quoted subcontractor cost<input className="input" value={quotedSubcontractorCost} onChange={(event) => setQuotedSubcontractorCost(event.target.value)} /></label>
-          <label>Quoted disposal cost<input className="input" value={quotedDisposalCost} onChange={(event) => setQuotedDisposalCost(event.target.value)} /></label>
-          <label>Quoted other cost<input className="input" value={quotedOtherCost} onChange={(event) => setQuotedOtherCost(event.target.value)} /></label>
-        </section>
-
-        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
-          <h3 style={{ margin: 0 }}>Actual data</h3>
-          <label>Actual sale price<input className="input" value={actualSalePrice} onChange={(event) => setActualSalePrice(event.target.value)} /></label>
-          <label>Actual material cost<input className="input" value={actualMaterialCost} onChange={(event) => setActualMaterialCost(event.target.value)} /></label>
-          <label>Actual subcontractor cost<input className="input" value={actualSubcontractorCost} onChange={(event) => setActualSubcontractorCost(event.target.value)} /></label>
-          <label>Actual disposal cost<input className="input" value={actualDisposalCost} onChange={(event) => setActualDisposalCost(event.target.value)} /></label>
-          <label>Actual other cost<input className="input" value={actualOtherCost} onChange={(event) => setActualOtherCost(event.target.value)} /></label>
-        </section>
-      </div>
+      <details className="ui-card" style={{ padding: 14 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>Financial data (optional)</summary>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginTop: 10, alignItems: "start" }}>
+          <section style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>Quote data</h3>
+            {quotedFields.map((field) => (
+              <label key={field.label} style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                {field.label}
+                <input className="input" style={FINANCIAL_INPUT_STYLE} value={field.value} onChange={(event) => field.setValue(event.target.value)} />
+              </label>
+            ))}
+          </section>
+          <section style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>Actual data</h3>
+            {actualFields.map((field) => (
+              <label key={field.label} style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                {field.label}
+                <input className="input" style={FINANCIAL_INPUT_STYLE} value={field.value} onChange={(event) => field.setValue(event.target.value)} />
+              </label>
+            ))}
+          </section>
+        </div>
+      </details>
 
       <button className="button" type="button" onClick={() => void submit()} disabled={isSaving}>
         {isSaving ? (mode === "create" ? "Creating project..." : "Updating project...") : (mode === "create" ? "Create project" : "Update project")}
