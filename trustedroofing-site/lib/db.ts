@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { haversineKm } from "./geo";
 import { roundLatLng, sanitizeText } from "./sanitize";
+import { getProjectPhotosBucketName } from "./storage";
 
 export type Service = {
   id: string;
@@ -316,6 +317,56 @@ async function fetchPhotosByProjectIds(projectIds: string[], clientOverride?: Su
   return (data ?? []) as ProjectPhoto[];
 }
 
+async function listStoragePhotosForProject(projectId: string, client: SupabaseClient) {
+  const bucket = getProjectPhotosBucketName();
+  const storageStages = ["before", "after", "installation", "tear-off-prep", "detail-issue", "tear_off_prep", "detail_issue"] as const;
+  const mapped: ProjectPhoto[] = [];
+  let sortOrder = 0;
+
+  for (const stageFolder of storageStages) {
+    const { data: files } = await client.storage.from(bucket).list(`${projectId}/${stageFolder}`, { limit: 200 });
+    for (const file of files ?? []) {
+      if (!file.name || file.name.endsWith("/")) continue;
+      const path = `${projectId}/${stageFolder}/${file.name}`;
+      const { data: publicData } = client.storage.from(bucket).getPublicUrl(path);
+      const normalizedStage = stageFolder === "tear-off-prep"
+        ? "tear_off_prep"
+        : stageFolder === "detail-issue"
+          ? "detail_issue"
+          : stageFolder;
+      mapped.push({
+        id: `storage-${projectId}-${path}`,
+        project_id: projectId,
+        storage_provider: "supabase",
+        storage_bucket: bucket,
+        storage_path: path,
+        public_url: publicData.publicUrl,
+        file_size: null,
+        mime_type: null,
+        width: null,
+        height: null,
+        file_name: file.name,
+        stage: normalizedStage as ProjectPhoto["stage"],
+        caption: null,
+        description: null,
+        sort_order: sortOrder,
+        is_primary: sortOrder === 0,
+        address_private: null,
+        lat_private: null,
+        lng_private: null,
+        lat_public: null,
+        lng_public: null,
+        geocode_source: null,
+        blurhash: null,
+        created_at: new Date().toISOString()
+      });
+      sortOrder += 1;
+    }
+  }
+
+  return mapped;
+}
+
 export async function probeDataRead(): Promise<{ ok: boolean; error: string | null }> {
   if (getDataMode() === "mock") return { ok: true, error: null };
 
@@ -447,6 +498,18 @@ export async function listProjects(filters?: {
         photos: imageSets.get(project.id)?.gallery ?? []
       }));
 
+      const missingPhotos = output.filter((project) => (project.photos?.length ?? 0) === 0);
+      if (missingPhotos.length > 0) {
+        const recoveredSets = await Promise.all(
+          missingPhotos.map(async (project) => ({ id: project.id, set: await getProjectImageSet(project.id) }))
+        );
+        const recoveredMap = new Map(recoveredSets.map((entry) => [entry.id, entry.set]));
+        output = output.map((project) => ({
+          ...project,
+          photos: (project.photos?.length ?? 0) > 0 ? project.photos : (recoveredMap.get(project.id)?.gallery ?? [])
+        }));
+      }
+
       if (filters?.near_lat !== null && filters?.near_lat !== undefined && filters?.near_lng !== null && filters?.near_lng !== undefined) {
         output = output
           .map((project) => ({
@@ -507,7 +570,19 @@ export async function getProjectImageSets(projectIds: string[]): Promise<Map<str
 
 export async function getProjectImageSet(projectId: string): Promise<ProjectImageSet> {
   const imageSets = await getProjectImageSets([projectId]);
-  return imageSets.get(projectId) ?? { primaryImage: null, gallery: [] };
+  const imageSet = imageSets.get(projectId) ?? { primaryImage: null, gallery: [] };
+
+  if (getDataMode() === "supabase" && imageSet.gallery.length === 0) {
+    const client = getServiceClient();
+    if (client) {
+      const storagePhotos = await listStoragePhotosForProject(projectId, client);
+      if (storagePhotos.length > 0) {
+        return buildProjectImageSet(storagePhotos);
+      }
+    }
+  }
+
+  return imageSet;
 }
 
 export async function getProjectBySlug(slug: string, includeUnpublished = false): Promise<Project | null> {

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     const bucket = getProjectPhotosBucketName();
     const service = slugPart(String(body.service_slug ?? project.service_slug ?? "roofing")) || "roofing";
-    const streetLevel = slugPart(String(body.street_level ?? locationFromAddress(project.address_private)));
+    const streetLevel = slugPart(locationFromAddress(String(body.street_level ?? project.address_private ?? "")));
     const near = streetLevel ? `near-${streetLevel}` : `near-${slugPart(project.neighborhood ?? project.city ?? "calgary")}`;
     const datePart = String(body.completed_at ?? project.completed_at ?? new Date().toISOString().slice(0, 10));
     const ext = extensionFromFileName(fileName);
