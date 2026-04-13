@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Project, ProjectPhoto, Service } from "@/lib/db";
 
@@ -32,8 +32,15 @@ type InstantQuoteOption = {
   created_at: string;
 };
 
-type PhotoPhase = "before" | "after";
+type PhotoStage = "before" | "tear_off_prep" | "installation" | "after" | "detail_issue";
 type AddressSuggestion = { label: string };
+const PHOTO_STAGE_OPTIONS: Array<{ value: PhotoStage; label: string }> = [
+  { value: "before", label: "Before" },
+  { value: "tear_off_prep", label: "Tear-off / Prep" },
+  { value: "installation", label: "Installation" },
+  { value: "after", label: "After" },
+  { value: "detail_issue", label: "Detail / Issue" }
+];
 
 const REQUIRED_SERVICE_OPTIONS: Array<{ slug: string; title: string }> = [
   { slug: "roofing", title: "Roof Replacement" },
@@ -46,6 +53,7 @@ const MAX_UPLOAD_MB = 15;
 const MAX_UPLOAD_MB_AFTER_COMPRESSION = 8;
 const MAX_IMAGE_DIMENSION = 2000;
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const FINANCIAL_INPUT_STYLE: CSSProperties = { marginTop: 4, padding: "8px 12px", fontSize: 14 };
 
 let browserSupabaseClient: SupabaseClient | null = null;
 
@@ -199,7 +207,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [locating, setLocating] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
   const [primaryUploadIndex, setPrimaryUploadIndex] = useState(0);
-  const [uploadPhase, setUploadPhase] = useState<PhotoPhase>("before");
+  const [uploadStage, setUploadStage] = useState<PhotoStage>("before");
   const [uploadedPhotos, setUploadedPhotos] = useState<ProjectPhoto[]>(project?.photos ?? []);
   const [adminToken, setAdminToken] = useState<string>("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -218,13 +226,10 @@ export default function ProjectForm({ services, mode, project }: Props) {
     [uploadedPhotos]
   );
   const groupedUploadedPhotos = useMemo(() => {
-    const grouped: Record<PhotoPhase, ProjectPhoto[]> = { before: [], after: [] };
+    const grouped: Record<PhotoStage, ProjectPhoto[]> = { before: [], tear_off_prep: [], installation: [], after: [], detail_issue: [] };
     for (const photo of uploadedPhotos) {
-      if (photo.storage_path.includes("/after/")) {
-        grouped.after.push(photo);
-      } else {
-        grouped.before.push(photo);
-      }
+      const stage = photo.stage ?? (photo.storage_path.includes("/after/") ? "after" : "before");
+      grouped[stage as PhotoStage]?.push(photo);
     }
     return grouped;
   }, [uploadedPhotos]);
@@ -592,13 +597,17 @@ export default function ProjectForm({ services, mode, project }: Props) {
             project_id: effectiveProjectId,
             file_name: uploadFile.name,
             content_type: uploadFile.type,
-            phase: uploadPhase
+            stage: uploadStage,
+            sequence: nextSortStart + index + 1,
+            service_slug: serviceSlug,
+            street_level: addressPrivate,
+            completed_at: completedAt || null
           })
         });
 
         const signText = await signRes.text();
-        const signData = signText ? parseJsonSafe<{ error?: string; bucket?: string; path?: string; token?: string; public_url?: string }>(signText) : {};
-        if (!signRes.ok || !signData.bucket || !signData.path || !signData.token || !signData.public_url) {
+        const signData = signText ? parseJsonSafe<{ error?: string; bucket?: string; path?: string; token?: string; public_url?: string; file_name?: string }>(signText) : {};
+        if (!signRes.ok || !signData.bucket || !signData.path || !signData.token || !signData.public_url || !signData.file_name) {
           setFeedback(signData.error ?? `Unable to initialize direct upload (HTTP ${signRes.status}).`, "error");
           setUploading(false);
           setUploadProgress(null);
@@ -626,7 +635,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             project_id: effectiveProjectId,
-            file_name: originalFile.name,
+            file_name: signData.file_name,
             storage_provider: "supabase",
             storage_bucket: signData.bucket,
             storage_path: signData.path,
@@ -639,7 +648,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
             service_slug: serviceSlug,
             neighborhood: neighborhood || null,
             city: "Calgary",
-            phase: uploadPhase,
+            stage: uploadStage,
             sequence: nextSortStart + index + 1,
             sort_order: nextSortStart + index,
             is_primary: shouldAssignPrimaryInThisBatch && index === primaryUploadIndex,
@@ -730,6 +739,58 @@ export default function ProjectForm({ services, mode, project }: Props) {
       setSettingPrimaryId(null);
     }
   };
+
+  const updatePhoto = async (photoId: string, updates: Partial<Pick<ProjectPhoto, "file_name" | "stage" | "caption" | "description">>) => {
+    try {
+      const res = await adminFetch(`/admin/photos/${photoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      });
+      const text = await res.text();
+      const data = text ? parseJsonSafe<{ error?: string; photo?: ProjectPhoto }>(text) : {};
+      if (!res.ok || !data.photo) {
+        setFeedback(data.error ?? `Unable to update photo (HTTP ${res.status}).`, "error");
+        return;
+      }
+      setUploadedPhotos((current) => current.map((photo) => (photo.id === photoId ? data.photo as ProjectPhoto : photo)));
+      setFeedback("Photo details updated.", "success");
+    } catch {
+      setFeedback("Unable to update photo right now.", "error");
+    }
+  };
+
+  const removePhoto = async (photoId: string) => {
+    try {
+      const res = await adminFetch(`/admin/photos/${photoId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const text = await res.text();
+        const data = text ? parseJsonSafe<{ error?: string }>(text) : {};
+        setFeedback(data.error ?? `Unable to delete photo (HTTP ${res.status}).`, "error");
+        return;
+      }
+      setUploadedPhotos((current) => current.filter((photo) => photo.id !== photoId));
+      setFeedback("Photo deleted.", "success");
+    } catch {
+      setFeedback("Unable to delete photo right now.", "error");
+    }
+  };
+
+  const quotedFields: Array<{ label: string; value: string; setValue: (value: string) => void }> = [
+    { label: "Sale price", value: quotedSalePrice, setValue: setQuotedSalePrice },
+    { label: "Material", value: quotedMaterialCost, setValue: setQuotedMaterialCost },
+    { label: "Subcontractor", value: quotedSubcontractorCost, setValue: setQuotedSubcontractorCost },
+    { label: "Disposal", value: quotedDisposalCost, setValue: setQuotedDisposalCost },
+    { label: "Other", value: quotedOtherCost, setValue: setQuotedOtherCost }
+  ];
+
+  const actualFields: Array<{ label: string; value: string; setValue: (value: string) => void }> = [
+    { label: "Sale price", value: actualSalePrice, setValue: setActualSalePrice },
+    { label: "Material", value: actualMaterialCost, setValue: setActualMaterialCost },
+    { label: "Subcontractor", value: actualSubcontractorCost, setValue: setActualSubcontractorCost },
+    { label: "Disposal", value: actualDisposalCost, setValue: setActualDisposalCost },
+    { label: "Other", value: actualOtherCost, setValue: setActualOtherCost }
+  ];
 
   return (
     <div className="card" style={{ display: "grid", gap: 14 }}>
@@ -925,25 +986,29 @@ export default function ProjectForm({ services, mode, project }: Props) {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
-        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
-          <h3 style={{ margin: 0 }}>Quote data</h3>
-          <label>Quoted sale price<input className="input" value={quotedSalePrice} onChange={(event) => setQuotedSalePrice(event.target.value)} /></label>
-          <label>Quoted material cost<input className="input" value={quotedMaterialCost} onChange={(event) => setQuotedMaterialCost(event.target.value)} /></label>
-          <label>Quoted subcontractor cost<input className="input" value={quotedSubcontractorCost} onChange={(event) => setQuotedSubcontractorCost(event.target.value)} /></label>
-          <label>Quoted disposal cost<input className="input" value={quotedDisposalCost} onChange={(event) => setQuotedDisposalCost(event.target.value)} /></label>
-          <label>Quoted other cost<input className="input" value={quotedOtherCost} onChange={(event) => setQuotedOtherCost(event.target.value)} /></label>
-        </section>
-
-        <section className="ui-card" style={{ padding: 16, display: "grid", gap: 10 }}>
-          <h3 style={{ margin: 0 }}>Actual data</h3>
-          <label>Actual sale price<input className="input" value={actualSalePrice} onChange={(event) => setActualSalePrice(event.target.value)} /></label>
-          <label>Actual material cost<input className="input" value={actualMaterialCost} onChange={(event) => setActualMaterialCost(event.target.value)} /></label>
-          <label>Actual subcontractor cost<input className="input" value={actualSubcontractorCost} onChange={(event) => setActualSubcontractorCost(event.target.value)} /></label>
-          <label>Actual disposal cost<input className="input" value={actualDisposalCost} onChange={(event) => setActualDisposalCost(event.target.value)} /></label>
-          <label>Actual other cost<input className="input" value={actualOtherCost} onChange={(event) => setActualOtherCost(event.target.value)} /></label>
-        </section>
-      </div>
+      <details className="ui-card" style={{ padding: 14 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>Financial data (optional)</summary>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginTop: 10, alignItems: "start" }}>
+          <section style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>Quote data</h3>
+            {quotedFields.map((field) => (
+              <label key={field.label} style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                {field.label}
+                <input className="input" style={FINANCIAL_INPUT_STYLE} value={field.value} onChange={(event) => field.setValue(event.target.value)} />
+              </label>
+            ))}
+          </section>
+          <section style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>Actual data</h3>
+            {actualFields.map((field) => (
+              <label key={field.label} style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                {field.label}
+                <input className="input" style={FINANCIAL_INPUT_STYLE} value={field.value} onChange={(event) => field.setValue(event.target.value)} />
+              </label>
+            ))}
+          </section>
+        </div>
+      </details>
 
       <button className="button" type="button" onClick={() => void submit()} disabled={isSaving}>
         {isSaving ? (mode === "create" ? "Creating project..." : "Updating project...") : (mode === "create" ? "Create project" : "Update project")}
@@ -956,30 +1021,11 @@ export default function ProjectForm({ services, mode, project }: Props) {
       </label>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <span style={{ fontWeight: 600, fontSize: 14 }}>Photo bucket:</span>
-        <button
-          type="button"
-          className="button"
-          onClick={() => setUploadPhase("before")}
-          style={{
-            background: uploadPhase === "before" ? "var(--color-primary)" : "white",
-            color: uploadPhase === "before" ? "white" : "var(--color-primary)",
-            border: "1px solid rgba(30,58,138,0.25)"
-          }}
-        >
-          Before
-        </button>
-        <button
-          type="button"
-          className="button"
-          onClick={() => setUploadPhase("after")}
-          style={{
-            background: uploadPhase === "after" ? "var(--color-primary)" : "white",
-            color: uploadPhase === "after" ? "white" : "var(--color-primary)",
-            border: "1px solid rgba(30,58,138,0.25)"
-          }}
-        >
-          After
-        </button>
+        <select className="input" style={{ maxWidth: 220 }} value={uploadStage} onChange={(event) => setUploadStage(event.target.value as PhotoStage)}>
+          {PHOTO_STAGE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
       </div>
 
       {selectedFiles.length ? (
@@ -1029,23 +1075,45 @@ export default function ProjectForm({ services, mode, project }: Props) {
       {uploadedPhotos.length ? (
         <div style={{ display: "grid", gap: 10 }}>
           <p style={{ margin: 0, fontWeight: 600 }}>Uploaded photos</p>
-          {(["before", "after"] as const).map((phase) => (
-            <div key={phase} style={{ display: "grid", gap: 8 }}>
-              <h4 style={{ margin: 0, textTransform: "capitalize" }}>{phase} photos</h4>
-              {groupedUploadedPhotos[phase].length ? (
+          {PHOTO_STAGE_OPTIONS.map((stage) => (
+            <div key={stage.value} style={{ display: "grid", gap: 8 }}>
+              <h4 style={{ margin: 0 }}>{stage.label} photos</h4>
+              {groupedUploadedPhotos[stage.value].length ? (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-                  {groupedUploadedPhotos[phase].map((photo) => (
+                  {groupedUploadedPhotos[stage.value].map((photo) => (
                     <div key={photo.id} style={{ border: "1px solid #d5d9e2", borderRadius: 8, padding: 8 }}>
                       <img src={photo.public_url} alt={photo.caption ?? "Project photo"} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 6 }} />
-                      <p style={{ margin: "8px 0 6px", fontSize: 12 }}>{photo.caption ?? "Untitled"}</p>
+                      <label style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 12 }}>
+                        Internal file name
+                        <input className="input" defaultValue={photo.file_name ?? ""} onBlur={(event) => void updatePhoto(photo.id, { file_name: event.target.value })} />
+                      </label>
+                      <label style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 12 }}>
+                        Stage
+                        <select className="input" value={photo.stage ?? "before"} onChange={(event) => void updatePhoto(photo.id, { stage: event.target.value as PhotoStage })}>
+                          {PHOTO_STAGE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 12 }}>
+                        Caption
+                        <input className="input" defaultValue={photo.caption ?? ""} onBlur={(event) => void updatePhoto(photo.id, { caption: event.target.value })} />
+                      </label>
+                      <label style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 12 }}>
+                        Description
+                        <textarea className="input input--multiline" rows={3} defaultValue={photo.description ?? ""} onBlur={(event) => void updatePhoto(photo.id, { description: event.target.value })} />
+                      </label>
                       <button className="button" type="button" onClick={() => void setPrimary(photo.id)} style={{ width: "100%" }} disabled={settingPrimaryId === photo.id}>
                         {settingPrimaryId === photo.id ? "Saving..." : (photo.is_primary ? "Primary image" : "Set as primary")}
+                      </button>
+                      <button className="button" type="button" onClick={() => void removePhoto(photo.id)} style={{ width: "100%", marginTop: 6, background: "#fff", color: "#b42318", border: "1px solid #f4c7c3" }}>
+                        Delete image
                       </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>No {phase} photos yet.</p>
+                <p style={{ margin: 0, color: "var(--color-muted)", fontSize: 13 }}>No {stage.label} photos yet.</p>
               )}
             </div>
           ))}

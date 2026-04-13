@@ -10,6 +10,15 @@ import { getPlaceholderProjectImage } from "@/lib/images";
 import { getNearestNeighborhoodLinksForProject } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
+const STAGE_ORDER = ["before", "tear_off_prep", "installation", "after", "detail_issue"] as const;
+const STAGE_LABELS: Record<(typeof STAGE_ORDER)[number], string> = {
+  before: "Before",
+  tear_off_prep: "Tear-off / Prep",
+  installation: "Installation",
+  after: "After",
+  detail_issue: "Detail / Issue"
+};
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const project = await getProjectBySlug(params.slug);
   if (!project) {
@@ -32,6 +41,12 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
   if (!project) return notFound();
 
   const gallery = project.photos ?? [];
+  const locationLabel = [project.neighborhood, project.city].filter(Boolean).join(", ") || project.city;
+  const groupedGallery = STAGE_ORDER.map((stage) => ({
+    stage,
+    label: STAGE_LABELS[stage],
+    photos: gallery.filter((photo) => (photo.stage ?? "before") === stage)
+  })).filter((entry) => entry.photos.length > 0);
   const relatedNeighborhoods = await getNearestNeighborhoodLinksForProject(project, 3);
 
   return (
@@ -58,18 +73,35 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
           </article>
 
           {gallery.length ? (
-            <div className="ui-grid ui-grid--gallery" style={{ marginTop: 18 }}>
-              {gallery.slice(0, 12).map((photo) => (
-                <article className="ui-card" key={photo.id}>
-                  <Image
-                    src={photo.public_url}
-                    alt={photo.caption ?? project.title}
-                    width={960}
-                    height={720}
-                    style={{ width: "100%", height: "auto", borderRadius: 12 }}
-                  />
-                  {photo.caption ? <p>{photo.caption}</p> : null}
-                </article>
+            <div style={{ marginTop: 18, display: "grid", gap: 20 }}>
+              {groupedGallery.map((group) => (
+                <section key={group.stage} style={{ display: "grid", gap: 12 }}>
+                  <h3 style={{ margin: 0 }}>{group.label}</h3>
+                  <div className="ui-grid ui-grid--gallery">
+                    {group.photos.slice(0, 12).map((photo) => {
+                      const caption = (photo.caption ?? "").trim();
+                      const alt = caption
+                        ? `${group.label}: ${caption}`
+                        : `${group.label}: ${project.title} in ${locationLabel}`;
+                      return (
+                        <article className="ui-card" key={photo.id}>
+                          <Image
+                            src={photo.public_url}
+                            alt={alt}
+                            width={960}
+                            height={720}
+                            style={{ width: "100%", height: "auto", borderRadius: 12 }}
+                          />
+                          <p style={{ margin: "10px 0 6px", fontWeight: 600, fontSize: 12, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--color-primary)" }}>
+                            {group.label}
+                          </p>
+                          {caption ? <p style={{ margin: "0 0 6px" }}>{caption}</p> : null}
+                          {photo.description ? <p style={{ margin: 0 }}>{photo.description}</p> : null}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
             </div>
           ) : (
