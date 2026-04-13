@@ -597,13 +597,17 @@ export default function ProjectForm({ services, mode, project }: Props) {
             project_id: effectiveProjectId,
             file_name: uploadFile.name,
             content_type: uploadFile.type,
-            stage: uploadStage
+            stage: uploadStage,
+            sequence: nextSortStart + index + 1,
+            service_slug: serviceSlug,
+            street_level: addressPrivate,
+            completed_at: completedAt || null
           })
         });
 
         const signText = await signRes.text();
-        const signData = signText ? parseJsonSafe<{ error?: string; bucket?: string; path?: string; token?: string; public_url?: string }>(signText) : {};
-        if (!signRes.ok || !signData.bucket || !signData.path || !signData.token || !signData.public_url) {
+        const signData = signText ? parseJsonSafe<{ error?: string; bucket?: string; path?: string; token?: string; public_url?: string; file_name?: string }>(signText) : {};
+        if (!signRes.ok || !signData.bucket || !signData.path || !signData.token || !signData.public_url || !signData.file_name) {
           setFeedback(signData.error ?? `Unable to initialize direct upload (HTTP ${signRes.status}).`, "error");
           setUploading(false);
           setUploadProgress(null);
@@ -631,7 +635,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             project_id: effectiveProjectId,
-            file_name: originalFile.name,
+            file_name: signData.file_name,
             storage_provider: "supabase",
             storage_bucket: signData.bucket,
             storage_path: signData.path,

@@ -857,11 +857,25 @@ export async function addProjectPhoto(
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
-    const { data, error } = await client
+    let { data, error } = await client
       .from("project_photos")
       .insert(payload)
       .select("*")
       .single();
+
+    if (error?.message.includes("Could not find the")) {
+      const fallbackPayload = {
+        ...payload,
+        file_name: undefined,
+        stage: undefined,
+        description: undefined
+      };
+      ({ data, error } = await client
+        .from("project_photos")
+        .insert(fallbackPayload)
+        .select("*")
+        .single());
+    }
 
     if (error) throw new Error(error.message);
     return data as ProjectPhoto;
@@ -895,12 +909,24 @@ export async function updateProjectPhoto(
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
-    const { data, error } = await client
+    let { data, error } = await client
       .from("project_photos")
       .update(payload)
       .eq("id", photoId)
       .select("*")
       .single();
+
+    if (error?.message.includes("Could not find the")) {
+      const fallbackPayload = {
+        ...(payload.caption !== undefined ? { caption: payload.caption } : {})
+      };
+      ({ data, error } = await client
+        .from("project_photos")
+        .update(fallbackPayload)
+        .eq("id", photoId)
+        .select("*")
+        .single());
+    }
 
     if (error) throw new Error(error.message);
     return data as ProjectPhoto;
