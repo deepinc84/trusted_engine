@@ -22,7 +22,9 @@ function toPublicProject(project: Awaited<ReturnType<typeof listProjects>>[numbe
     photos: (project.photos ?? []).map((photo) => ({
       id: photo.id,
       public_url: photo.public_url,
+      stage: photo.stage,
       caption: photo.caption,
+      description: photo.description,
       sort_order: photo.sort_order
     }))
   };
