@@ -330,6 +330,37 @@ export default function QuoteFlow() {
     setError(null);
   };
 
+  const downloadEstimatePdf = async () => {
+    if (!estimate || !primaryRange) return;
+    try {
+      const res = await fetch("/api/instaquote/quote-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestedScope: selectedScope,
+          primaryLow: primaryRange.low,
+          primaryHigh: primaryRange.high,
+          estimate
+        })
+      });
+      if (!res.ok) {
+        setError("Unable to generate PDF right now.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `instant-estimate-${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Unable to generate PDF right now.");
+    }
+  };
+
   return (
     <div className="instant-quote form-grid">
       <h2>Instant {quoteHeadlineByScope[selectedScope]} Quote</h2>
@@ -469,6 +500,7 @@ export default function QuoteFlow() {
 
           <div className="instant-quote__step-actions">
             <button className="button" type="button" onClick={restartFromStep2}>Estimate another address</button>
+            <button className="button" type="button" onClick={() => void downloadEstimatePdf()}>Download estimate PDF</button>
             <button className="button button--ghost" type="button" onClick={restartFromStep2}>Cancel step 2</button>
           </div>
 
