@@ -512,21 +512,50 @@ export default function QuoteFlow() {
               void submitStep2();
             }}
           >
-            <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" required />
-            <input className="input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" required />
-            <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Phone" required />
-            <select className="input" value={budgetResponse} onChange={(event) => setBudgetResponse(event.target.value as BudgetResponse)}>
-              <option value="yes">Yes, ready to move forward</option>
-              <option value="financing">I need monthly payment options</option>
-              <option value="too_expensive">Too high, I’m price checking</option>
-            </select>
+            <div style={{ display: "grid", gap: 6 }}>
+              <h3 style={{ margin: 0 }}>Want a full, itemized proposal?</h3>
+              <p style={{ margin: 0, color: "var(--color-muted)" }}>
+                We&apos;ll review measurements, confirm scope options, and send a detailed proposal within 2 business days.
+              </p>
+            </div>
+            <label>
+              Your name
+              <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" required />
+            </label>
+            <label>
+              Email address
+              <input className="input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
+            </label>
+            <label>
+              Phone (optional if you prefer email only)
+              <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(403) 555-0100" />
+            </label>
+            <fieldset style={{ border: "1px solid rgba(30,58,138,0.16)", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+              <legend style={{ padding: "0 6px", fontWeight: 600 }}>Where are you in the process?</legend>
+              <label style={{ border: budgetResponse === "yes" ? "1px solid var(--color-primary)" : "1px solid rgba(148,163,184,0.4)", borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>
+                <input type="radio" name="budget_response" value="yes" checked={budgetResponse === "yes"} onChange={() => setBudgetResponse("yes")} />
+                <span style={{ marginLeft: 8, fontWeight: 600 }}>Ready to move forward</span>
+                <p style={{ margin: "4px 0 0 24px", color: "var(--color-muted)", fontSize: 13 }}>I&apos;d like a full proposal and next-step scheduling.</p>
+              </label>
+              <label style={{ border: budgetResponse === "too_expensive" ? "1px solid var(--color-primary)" : "1px solid rgba(148,163,184,0.4)", borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>
+                <input type="radio" name="budget_response" value="too_expensive" checked={budgetResponse === "too_expensive"} onChange={() => setBudgetResponse("too_expensive")} />
+                <span style={{ marginLeft: 8, fontWeight: 600 }}>Comparing a few quotes</span>
+                <p style={{ margin: "4px 0 0 24px", color: "var(--color-muted)", fontSize: 13 }}>I&apos;m shopping around before I decide.</p>
+              </label>
+              <label style={{ border: budgetResponse === "financing" ? "1px solid var(--color-primary)" : "1px solid rgba(148,163,184,0.4)", borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>
+                <input type="radio" name="budget_response" value="financing" checked={budgetResponse === "financing"} onChange={() => setBudgetResponse("financing")} />
+                <span style={{ marginLeft: 8, fontWeight: 600 }}>Planning ahead</span>
+                <p style={{ margin: "4px 0 0 24px", color: "var(--color-muted)", fontSize: 13 }}>Not in a rush — I want accurate options and payment flexibility.</p>
+              </label>
+            </fieldset>
             <input className="input" value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="Timeline (optional)" />
             <button className="button button--ghost" type="button" onClick={() => void downloadEstimatePdf()}>
               Download estimate PDF
             </button>
-            <button className="button" type="submit" disabled={submitting || !name || !email || !phone}>
-              {submitting ? "Submitting..." : "Request My Detailed Quote"}
+            <button className="button" type="submit" disabled={submitting || !name || !email}>
+              {submitting ? "Submitting..." : "Send me my detailed proposal"}
             </button>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--color-muted)" }}>• No obligation &nbsp; • No spam &nbsp; • Response within 2 business days</p>
           </form>
         </>
       ) : null}
