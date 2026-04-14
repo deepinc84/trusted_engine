@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Project } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
-import { neighborhoodSlug } from "@/lib/serviceAreas";
 
 function titleCase(value: string) {
   return value
@@ -19,37 +18,36 @@ export default function ProjectCard({ project }: { project: Project }) {
     city: project.city
   });
   const neighborhood = project.neighborhood ?? project.city;
-  const neighborhoodHref = `/service-areas/${neighborhoodSlug(neighborhood)}`;
   const material = titleCase(project.service_slug);
   const complexity = project.description ? "Specified in brief" : "Not specified";
 
   return (
     <article className="ui-card ui-card--project seo-card">
-      <div className="seo-card__media">
-        <Image
-          src={heroImage}
-          alt={project.title}
-          width={640}
-          height={400}
-          className="ui-card--project__image"
-        />
-        <div className="seo-card__overlay" aria-hidden="true">
-          <p><strong>Complexity:</strong> {complexity}</p>
-          <p><strong>Material:</strong> {material}</p>
-          <p><strong>Neighborhood:</strong> {neighborhood}</p>
+      <Link href={`/projects/${project.slug}`} className="seo-card--link">
+        <div className="seo-card__media">
+          <Image
+            src={heroImage}
+            alt={project.title}
+            width={640}
+            height={400}
+            className="ui-card--project__image"
+          />
+          <div className="seo-card__overlay" aria-hidden="true">
+            <p><strong>Complexity:</strong> {complexity}</p>
+            <p><strong>Material:</strong> {material}</p>
+            <p><strong>Neighborhood:</strong> {neighborhood}</p>
+          </div>
         </div>
-      </div>
-      <div className="seo-card__content">
-        <span className="ui-pill">{project.service_slug}</span>
-        <h3>
-          <Link href={`/projects/${project.slug}`}>{project.title}</Link>
-        </h3>
-        <p className="seo-card__eyebrow">{neighborhood}, {project.city}</p>
-        <p className="seo-card__summary seo-card__summary--clamped">{project.summary}</p>
-        <div className="seo-card__actions">
-          <Link href={neighborhoodHref}>Explore {neighborhood}</Link>
+        <div className="seo-card__content">
+          <span className="ui-pill">{project.service_slug}</span>
+          <h3>{project.title}</h3>
+          <p className="seo-card__eyebrow">{neighborhood}, {project.city}</p>
+          <p className="seo-card__summary seo-card__summary--clamped">{project.summary}</p>
+          <div className="seo-card__actions">
+            <span>Explore {neighborhood} project details</span>
+          </div>
         </div>
-      </div>
+      </Link>
     </article>
   );
 }
