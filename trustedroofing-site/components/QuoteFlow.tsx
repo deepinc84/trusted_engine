@@ -54,6 +54,13 @@ const quoteHeadlineByScope: Record<QuoteScope, string> = {
   eavestrough: "Eavestrough"
 };
 
+function formatDataSourceLabel(value: string | null | undefined) {
+  const source = (value ?? "").toLowerCase();
+  if (source.includes("google_solar") || source.includes("solar")) return "Trusted internal roof modeling";
+  if (source.includes("regional")) return "Trusted regional intelligence model";
+  return "Trusted internal pricing model";
+}
+
 function parseJsonSafe(text: string) {
   try {
     return text ? (JSON.parse(text) as Record<string, unknown>) : {};
@@ -152,6 +159,20 @@ export default function QuoteFlow() {
   const selectedSidingRange = estimate
     ? (sidingMaterial === "hardie" ? estimate.extras.sidingHardie : estimate.extras.sidingVinyl)
     : null;
+  const alternateSidingRange = estimate
+    ? (sidingMaterial === "hardie" ? estimate.extras.sidingVinyl : estimate.extras.sidingHardie)
+    : null;
+  const explicitScopeSecondary = estimate
+    ? (selectedScope === "vinyl_siding"
+      ? { label: "Hardie", range: estimate.extras.sidingHardie }
+      : selectedScope === "hardie_siding"
+        ? { label: "Vinyl", range: estimate.extras.sidingVinyl }
+        : null)
+    : null;
+  const secondarySiding = explicitScopeSecondary ?? {
+    label: sidingMaterial === "hardie" ? "Vinyl" : "Hardie",
+    range: alternateSidingRange
+  };
 
   const combinedAllRange = estimate && selectedSidingRange
     ? {
@@ -203,8 +224,8 @@ export default function QuoteFlow() {
       setStep(2);
       setStatus(
         result.areaSource === "regional"
-          ? `Estimate ready using regional fallback. Solar debug: ${result.solarDebug ?? "no debug message"} (trace: ${result.solarRequestId ?? "n/a"})`
-          : "Estimate ready with Google Solar data. Complete your details to lock in next steps."
+          ? `Estimate ready using trusted regional intelligence fallback. Model debug: ${result.solarDebug ?? "no debug message"} (trace: ${result.solarRequestId ?? "n/a"})`
+          : "Estimate ready with trusted internal roof modeling. Complete your details to lock in next steps."
       );
     } catch {
       setError("Unable to calculate estimate right now.");
@@ -399,7 +420,7 @@ export default function QuoteFlow() {
               </h3>
               <p>Precise options available after we confirm complexity and access.</p>
               <p>
-                Secondary siding ({sidingMaterial === "hardie" ? "Hardie" : "Vinyl"}) range: ${selectedSidingRange?.low.toLocaleString()} - ${selectedSidingRange?.high.toLocaleString()}
+                Secondary siding ({secondarySiding.label}) range: ${secondarySiding.range?.low.toLocaleString()} - ${secondarySiding.range?.high.toLocaleString()}
               </p>
             </div>
             {selectedScope === "roofing" || selectedScope === "eavestrough" ? null : (
@@ -441,7 +462,7 @@ export default function QuoteFlow() {
               </div>
               <div>
                 <span>Data source</span>
-                <strong>{estimate.dataSource}</strong>
+                <strong>{formatDataSourceLabel(estimate.dataSource)}</strong>
               </div>
             </div>
           </div>
