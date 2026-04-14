@@ -24,6 +24,7 @@ type EstimateResult = {
   pitchDegrees: number;
   pitchRatio?: string;
   dataSource: string;
+  dataSourceLabel?: string;
   areaSource: string;
   complexityBand: string;
   complexityScore: number;
@@ -493,7 +494,7 @@ export default function QuoteFlow() {
               </div>
               <div>
                 <span>Data source</span>
-                <strong>{formatDataSourceLabel(estimate.dataSource)}</strong>
+                <strong>{estimate.dataSourceLabel ?? formatDataSourceLabel(estimate.dataSource)}</strong>
               </div>
             </div>
           </div>
@@ -520,6 +521,9 @@ export default function QuoteFlow() {
               <option value="too_expensive">Too high, I’m price checking</option>
             </select>
             <input className="input" value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="Timeline (optional)" />
+            <button className="button button--ghost" type="button" onClick={() => void downloadEstimatePdf()}>
+              Download estimate PDF
+            </button>
             <button className="button" type="submit" disabled={submitting || !name || !email || !phone}>
               {submitting ? "Submitting..." : "Request My Detailed Quote"}
             </button>
