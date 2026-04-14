@@ -64,6 +64,13 @@ function normalizeNeighborhood(value: string | null | undefined) {
   return normalizeLocalityCandidate(value) ?? null;
 }
 
+function dataSourceLabel(code: string) {
+  if (code.includes("solar")) return "Trusted internal roof modeling";
+  if (code.includes("historical")) return "Trusted internal historical model";
+  if (code.includes("regional")) return "Trusted regional intelligence model";
+  return "Trusted internal pricing model";
+}
+
 async function geocodeAddress(address: string) {
   const key = process.env.GOOGLE_SECRET_KEY;
   if (!key) return null;
@@ -266,7 +273,7 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
       roofAreaSqft: areaSqft,
       pitchDegrees: Math.round(avgPitch * 10) / 10,
       complexityBand: complexityBandFromSegments(segments.length || 4),
-      dataSource: "google_solar",
+      dataSource: "internal_model_solar",
       areaSource: "solar"
     },
     debugReason: null,
@@ -383,7 +390,7 @@ export async function POST(request: Request) {
         roofAreaSqft: historicalProfileMatch.roofAreaSqft,
         pitchDegrees: historicalProfileMatch.pitchDegrees,
         complexityBand: historicalProfileMatch.complexityBand,
-        dataSource: `historical_profile_${historicalProfileMatch.areaSource}`,
+        dataSource: `internal_model_historical_${historicalProfileMatch.areaSource}`,
         areaSource: historicalProfileMatch.areaSource
       };
       solarDebug = [solarDebug, `using historical profile matched by ${historicalProfileMatch.matchedBy} (${historicalProfileMatch.queriedAt})`]
@@ -395,7 +402,7 @@ export async function POST(request: Request) {
         roofAreaSqft: regional.roofAreaSqft,
         pitchDegrees: 25,
         complexityBand: "moderate",
-        dataSource: "regional_fallback",
+        dataSource: "internal_model_regional",
         areaSource: "regional"
       };
     }
@@ -506,7 +513,7 @@ export async function POST(request: Request) {
     };
 
     if (historicalProfileMatch) {
-      if (estimateResult.dataSource.startsWith("historical_profile_")) {
+      if (estimateResult.dataSource.startsWith("internal_model_historical_")) {
         addressQueryId = historicalProfileMatch.queryId;
         await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, queryOptions);
       } else {
@@ -549,6 +556,7 @@ export async function POST(request: Request) {
     pitchDegrees: ranges.pitchDegrees,
     pitchRatio: degreesToPitchRatio(ranges.pitchDegrees),
     dataSource: estimateResult.dataSource,
+    dataSourceLabel: dataSourceLabel(estimateResult.dataSource),
     areaSource: estimateResult.areaSource,
     complexityBand: ranges.complexityBand,
     complexityScore: ranges.complexityScore,

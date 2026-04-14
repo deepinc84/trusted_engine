@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { embedGpsExifIfPossible } from "@/lib/exif";
 
 export type StorageProvider = "supabase" | "mock";
+export type ProjectPhotoStage = "before" | "tear_off_prep" | "installation" | "after" | "detail_issue";
 
 export type UploadedProjectImage = {
   provider: StorageProvider;
@@ -24,10 +25,14 @@ export function getProjectImageStorageProvider(): StorageProvider {
   throw new Error(`Unsupported PROJECT_IMAGE_STORAGE_PROVIDER: ${configured}`);
 }
 
-export function buildProjectPhotoPath(projectId: string, fileName: string, phase?: "before" | "after") {
+export function buildProjectPhotoPath(projectId: string, fileName: string, stage?: ProjectPhotoStage) {
   const safeName = fileName.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
-  const safePhase = phase === "after" ? "after" : "before";
-  return `${projectId}/${safePhase}/${Date.now()}-${safeName}`;
+  const safeStage = stage === "tear_off_prep"
+    ? "tear-off-prep"
+    : stage === "detail_issue"
+      ? "detail-issue"
+      : stage ?? "before";
+  return `${projectId}/${safeStage}/${safeName}`;
 }
 
 function readPngDimensions(buffer: Buffer) {

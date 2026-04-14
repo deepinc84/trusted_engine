@@ -51,7 +51,7 @@ export async function getLiveActivityFeed(limit = 20): Promise<LiveActivityItem[
       quadrant: project.quadrant
     });
     const service = titleFromSlug(project.service_slug);
-    const occurredAt = project.completed_at ?? project.created_at;
+    const occurredAt = project.created_at;
 
     return {
       id: `project-${project.id}`,
