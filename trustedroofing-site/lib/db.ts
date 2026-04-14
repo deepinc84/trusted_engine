@@ -1856,14 +1856,22 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
 
     const { data: legacyData } = await readClient
       .from("quote_events")
-      .select("id,address,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
-      .eq("city", "Calgary")
+      .select("id,address,city,province,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
       .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted")
       .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    return (legacyData ?? []).map((row: Record<string, unknown>) => {
+    const isAlbertaRecord = (row: Record<string, unknown>) => {
+      const province = typeof row.province === "string" ? row.province.trim().toLowerCase() : "";
+      if (province === "ab" || province === "alberta") return true;
+      const address = typeof row.address === "string" ? row.address : "";
+      return /\b(AB|Alberta)\b/i.test(address);
+    };
+
+    return (legacyData ?? [])
+      .filter((row: Record<string, unknown>) => isAlbertaRecord(row))
+      .map((row: Record<string, unknown>) => {
       let parsedNotes: Record<string, unknown> = {};
       if (typeof row.notes === "string") {
         try {
@@ -1926,7 +1934,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
           : null,
         queried_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString())
       };
-    });
+      });
   }
 
   return [];
