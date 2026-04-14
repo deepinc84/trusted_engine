@@ -22,6 +22,8 @@ const faqs = [
   { question: "Will more Calgary and area projects be added over time?", answer: "Yes. The page will continue to grow as more work is completed and published." }
 ];
 
+export const dynamic = "force-dynamic";
+
 export const metadata = buildMetadata({
   title: "Projects",
   description: "A growing library of real Calgary-area exterior projects that helps homeowners compare scope, materials, and pricing context.",

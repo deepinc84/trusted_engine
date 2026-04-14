@@ -80,14 +80,17 @@ export function extractNeighborhood(value: string | null | undefined) {
 }
 
 export function neighborhoodSlug(value: string) {
-  return sanitizeText(value);
+  return sanitizeText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
 export function normalizeNeighborhoodSlug(value: string) {
   try {
-    return neighborhoodSlug(decodeURIComponent(value));
+    return neighborhoodSlug(decodeURIComponent(value).replace(/\+/g, " "));
   } catch {
-    return neighborhoodSlug(value);
+    return neighborhoodSlug(value.replace(/\+/g, " "));
   }
 }
 

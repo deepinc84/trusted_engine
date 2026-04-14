@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { haversineKm } from "./geo";
 import { roundLatLng, sanitizeText } from "./sanitize";
+import { getProjectPhotosBucketName } from "./storage";
 
 export type Service = {
   id: string;
@@ -21,7 +22,10 @@ export type ProjectPhoto = {
   mime_type: string | null;
   width: number | null;
   height: number | null;
+  file_name: string | null;
+  stage: "before" | "tear_off_prep" | "installation" | "after" | "detail_issue" | null;
   caption: string | null;
+  description: string | null;
   sort_order: number;
   is_primary: boolean;
   address_private: string | null;
@@ -266,6 +270,13 @@ function sortProjectPhotos(photos: ProjectPhoto[]) {
   return [...photos].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order);
 }
 
+function normalizeSlug(value: string) {
+  return sanitizeText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 function buildProjectImageSet(photos: ProjectPhoto[]): ProjectImageSet {
   const gallery = sortProjectPhotos(photos);
   return {
@@ -304,6 +315,56 @@ async function fetchPhotosByProjectIds(projectIds: string[], clientOverride?: Su
     .order("sort_order", { ascending: true });
 
   return (data ?? []) as ProjectPhoto[];
+}
+
+async function listStoragePhotosForProject(projectId: string, client: SupabaseClient) {
+  const bucket = getProjectPhotosBucketName();
+  const storageStages = ["before", "after", "installation", "tear-off-prep", "detail-issue", "tear_off_prep", "detail_issue"] as const;
+  const mapped: ProjectPhoto[] = [];
+  let sortOrder = 0;
+
+  for (const stageFolder of storageStages) {
+    const { data: files } = await client.storage.from(bucket).list(`${projectId}/${stageFolder}`, { limit: 200 });
+    for (const file of files ?? []) {
+      if (!file.name || file.name.endsWith("/")) continue;
+      const path = `${projectId}/${stageFolder}/${file.name}`;
+      const { data: publicData } = client.storage.from(bucket).getPublicUrl(path);
+      const normalizedStage = stageFolder === "tear-off-prep"
+        ? "tear_off_prep"
+        : stageFolder === "detail-issue"
+          ? "detail_issue"
+          : stageFolder;
+      mapped.push({
+        id: `storage-${projectId}-${path}`,
+        project_id: projectId,
+        storage_provider: "supabase",
+        storage_bucket: bucket,
+        storage_path: path,
+        public_url: publicData.publicUrl,
+        file_size: null,
+        mime_type: null,
+        width: null,
+        height: null,
+        file_name: file.name,
+        stage: normalizedStage as ProjectPhoto["stage"],
+        caption: null,
+        description: null,
+        sort_order: sortOrder,
+        is_primary: sortOrder === 0,
+        address_private: null,
+        lat_private: null,
+        lng_private: null,
+        lat_public: null,
+        lng_public: null,
+        geocode_source: null,
+        blurhash: null,
+        created_at: new Date().toISOString()
+      });
+      sortOrder += 1;
+    }
+  }
+
+  return mapped;
 }
 
 export async function probeDataRead(): Promise<{ ok: boolean; error: string | null }> {
@@ -437,6 +498,18 @@ export async function listProjects(filters?: {
         photos: imageSets.get(project.id)?.gallery ?? []
       }));
 
+      const missingPhotos = output.filter((project) => (project.photos?.length ?? 0) === 0);
+      if (missingPhotos.length > 0) {
+        const recoveredSets = await Promise.all(
+          missingPhotos.map(async (project) => ({ id: project.id, set: await getProjectImageSet(project.id) }))
+        );
+        const recoveredMap = new Map(recoveredSets.map((entry) => [entry.id, entry.set]));
+        output = output.map((project) => ({
+          ...project,
+          photos: (project.photos?.length ?? 0) > 0 ? project.photos : (recoveredMap.get(project.id)?.gallery ?? [])
+        }));
+      }
+
       if (filters?.near_lat !== null && filters?.near_lat !== undefined && filters?.near_lng !== null && filters?.near_lng !== undefined) {
         output = output
           .map((project) => ({
@@ -497,10 +570,35 @@ export async function getProjectImageSets(projectIds: string[]): Promise<Map<str
 
 export async function getProjectImageSet(projectId: string): Promise<ProjectImageSet> {
   const imageSets = await getProjectImageSets([projectId]);
-  return imageSets.get(projectId) ?? { primaryImage: null, gallery: [] };
+  const imageSet = imageSets.get(projectId) ?? { primaryImage: null, gallery: [] };
+
+  if (getDataMode() === "supabase" && imageSet.gallery.length === 0) {
+    const client = getServiceClient();
+    if (client) {
+      const storagePhotos = await listStoragePhotosForProject(projectId, client);
+      if (storagePhotos.length > 0) {
+        return buildProjectImageSet(storagePhotos);
+      }
+    }
+  }
+
+  return imageSet;
 }
 
 export async function getProjectBySlug(slug: string, includeUnpublished = false): Promise<Project | null> {
+  if (getDataMode() === "supabase") {
+    const client = includeUnpublished
+      ? (getServiceClient() ?? getAnonClient())
+      : getAnonClient();
+    if (client) {
+      const { data } = await client.from("projects").select("*").eq("slug", slug).maybeSingle();
+      if (!data) return null;
+      if (!includeUnpublished && !(data as Project).is_published) return null;
+      const imageSet = await getProjectImageSet((data as Project).id);
+      return { ...(data as Project), photos: imageSet.gallery };
+    }
+  }
+
   const list = await listProjects({ include_unpublished: includeUnpublished });
   return list.find((project) => project.slug === slug) ?? null;
 }
@@ -662,7 +760,7 @@ function toProjectPayload(data: ProjectInput) {
       : null;
 
   return {
-    slug: sanitizeText(data.slug),
+    slug: normalizeSlug(data.slug),
     title: sanitizeText(data.title),
     summary: sanitizeText(data.summary),
     description: data.description ? sanitizeText(data.description) : null,
@@ -811,7 +909,10 @@ export async function addProjectPhoto(
     mime_type?: string | null;
     width?: number | null;
     height?: number | null;
+    file_name?: string | null;
+    stage?: "before" | "tear_off_prep" | "installation" | "after" | "detail_issue" | null;
     caption?: string | null;
+    description?: string | null;
     sort_order?: number;
     is_primary?: boolean;
     address_private?: string | null;
@@ -833,7 +934,10 @@ export async function addProjectPhoto(
     mime_type: photo.mime_type ?? null,
     width: photo.width ?? null,
     height: photo.height ?? null,
+    file_name: photo.file_name ?? null,
+    stage: photo.stage ?? "before",
     caption: photo.caption ?? null,
+    description: photo.description ?? null,
     sort_order: photo.sort_order ?? 0,
     is_primary: photo.is_primary ?? false,
     address_private: photo.address_private ?? null,
@@ -848,11 +952,25 @@ export async function addProjectPhoto(
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
-    const { data, error } = await client
+    let { data, error } = await client
       .from("project_photos")
       .insert(payload)
       .select("*")
       .single();
+
+    if (error?.message.includes("Could not find the")) {
+      const fallbackPayload = {
+        ...payload,
+        file_name: undefined,
+        stage: undefined,
+        description: undefined
+      };
+      ({ data, error } = await client
+        .from("project_photos")
+        .insert(fallbackPayload)
+        .select("*")
+        .single());
+    }
 
     if (error) throw new Error(error.message);
     return data as ProjectPhoto;
@@ -865,6 +983,73 @@ export async function addProjectPhoto(
   };
   mockProjectPhotos.push(created);
   return created;
+}
+
+export async function updateProjectPhoto(
+  photoId: string,
+  updates: {
+    file_name?: string | null;
+    stage?: "before" | "tear_off_prep" | "installation" | "after" | "detail_issue" | null;
+    caption?: string | null;
+    description?: string | null;
+  }
+) {
+  const payload = {
+    ...(updates.file_name !== undefined ? { file_name: updates.file_name?.trim() || null } : {}),
+    ...(updates.stage !== undefined ? { stage: updates.stage } : {}),
+    ...(updates.caption !== undefined ? { caption: updates.caption?.trim() || null } : {}),
+    ...(updates.description !== undefined ? { description: updates.description?.trim() || null } : {})
+  };
+
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    let { data, error } = await client
+      .from("project_photos")
+      .update(payload)
+      .eq("id", photoId)
+      .select("*")
+      .single();
+
+    if (error?.message.includes("Could not find the")) {
+      const fallbackPayload = {
+        ...(payload.caption !== undefined ? { caption: payload.caption } : {})
+      };
+      ({ data, error } = await client
+        .from("project_photos")
+        .update(fallbackPayload)
+        .eq("id", photoId)
+        .select("*")
+        .single());
+    }
+
+    if (error) throw new Error(error.message);
+    return data as ProjectPhoto;
+  }
+
+  const existing = mockProjectPhotos.find((photo) => photo.id === photoId);
+  if (!existing) throw new Error("Photo not found");
+  Object.assign(existing, payload);
+  return existing;
+}
+
+export async function deleteProjectPhoto(photoId: string) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
+    const { error } = await client
+      .from("project_photos")
+      .delete()
+      .eq("id", photoId);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  const index = mockProjectPhotos.findIndex((photo) => photo.id === photoId);
+  if (index >= 0) {
+    mockProjectPhotos.splice(index, 1);
+  }
+  return true;
 }
 
 
@@ -1671,14 +1856,22 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
 
     const { data: legacyData } = await readClient
       .from("quote_events")
-      .select("id,address,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
-      .eq("city", "Calgary")
+      .select("id,address,city,province,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes")
       .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted")
       .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    return (legacyData ?? []).map((row: Record<string, unknown>) => {
+    const isAlbertaRecord = (row: Record<string, unknown>) => {
+      const province = typeof row.province === "string" ? row.province.trim().toLowerCase() : "";
+      if (province === "ab" || province === "alberta") return true;
+      const address = typeof row.address === "string" ? row.address : "";
+      return /\b(AB|Alberta)\b/i.test(address);
+    };
+
+    return (legacyData ?? [])
+      .filter((row: Record<string, unknown>) => isAlbertaRecord(row))
+      .map((row: Record<string, unknown>) => {
       let parsedNotes: Record<string, unknown> = {};
       if (typeof row.notes === "string") {
         try {
@@ -1741,7 +1934,7 @@ export async function listRecentInstaquoteAddressQueries(limit = 500): Promise<I
           : null,
         queried_at: String(row.updated_at ?? row.created_at ?? new Date().toISOString())
       };
-    });
+      });
   }
 
   return [];

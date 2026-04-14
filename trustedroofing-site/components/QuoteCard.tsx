@@ -52,14 +52,18 @@ export default function QuoteCard({
     { label: "Updated", value: relativeTime }
   ];
 
-  const cardBody = (
-    <>
+  return (
+    <article className={`ui-card ui-card--quote seo-card quote-card quote-card--${variant}`} id={variant === "full" && !href ? `quote-${quote.slug}` : undefined}>
       <div className="seo-card__content quote-card__content">
         <div className="quote-card__topline">
           <span className="ui-pill">Quote signal</span>
           {!compact ? <span className="quote-card__time">Updated {relativeTime}</span> : null}
         </div>
-        <h3>{quote.title}</h3>
+        <h3>
+          {href ? (
+            <Link href={href}>{quote.title}</Link>
+          ) : quote.title}
+        </h3>
         <p className="seo-card__eyebrow">{currencyRange(quote.estimateLow, quote.estimateHigh)}</p>
         {!compact ? <p className="quote-card__summary">{quote.description}</p> : null}
 
@@ -72,21 +76,6 @@ export default function QuoteCard({
           ))}
         </dl>
       </div>
-      {href ? <span className="quote-card__cta">View quote archive</span> : null}
-    </>
-  );
-
-  return (
-    <article className={`ui-card ui-card--quote seo-card quote-card quote-card--${variant}`} id={variant === "full" && !href ? `quote-${quote.slug}` : undefined}>
-      {href ? (
-        <Link
-          href={href}
-          className="seo-card--link quote-card__link"
-          aria-label={`Open quote archive entry for ${quote.title}`}
-        >
-          {cardBody}
-        </Link>
-      ) : cardBody}
     </article>
   );
 }

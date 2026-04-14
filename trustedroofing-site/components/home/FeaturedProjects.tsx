@@ -22,9 +22,10 @@ export default function FeaturedProjects({ projects }: { projects: HomeProject[]
               </div>
               <div className="homev3-project-card__body">
                 <small>{project.service}</small>
-                <h3>{project.title}</h3>
+                <h3>
+                  <Link href={`/projects/${project.slug}`}>{project.title}</Link>
+                </h3>
                 <p>{project.summary}</p>
-                <Link href={`/projects/${project.slug}`}>View project</Link>
               </div>
             </article>
           ))}

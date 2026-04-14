@@ -28,7 +28,9 @@ export async function GET(
       photos: (project.photos ?? []).map((photo) => ({
         id: photo.id,
         public_url: photo.public_url,
+        stage: photo.stage,
         caption: photo.caption,
+        description: photo.description,
         sort_order: photo.sort_order,
         is_primary: photo.is_primary,
         lat_public: photo.lat_public,
