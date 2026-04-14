@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { unstable_noStore as noStore } from "next/cache";
 import { haversineKm } from "./geo";
 import { roundLatLng, sanitizeText } from "./sanitize";
 import { getProjectPhotosBucketName } from "./storage";
@@ -475,6 +476,7 @@ export async function listProjects(filters?: {
   near_lng?: number | null;
   include_unpublished?: boolean;
 }): Promise<Project[]> {
+  noStore();
   const includeUnpublished = !!filters?.include_unpublished;
 
   if (getDataMode() === "supabase") {
