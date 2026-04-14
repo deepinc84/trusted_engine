@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { unstable_noStore as noStore } from "next/cache";
 import HeatMap from "@/components/HeatMap";
 import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborhoods } from "@/lib/seo-engine";
 
@@ -18,6 +19,7 @@ const serviceLinks = [
 ];
 
 export default async function SiteHeader() {
+  noStore();
   const cookieStore = cookies();
   const adminCookie = cookieStore.get("admin_token")?.value;
   const adminToken = process.env.ADMIN_TOKEN;
