@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
+import { buildPublicQuoteDisplay, buildQuoteStructuredData } from "@/lib/publicQuoteDisplay";
 import dynamic from "next/dynamic";
 
 const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCarousel"), {
@@ -54,13 +55,6 @@ const quoteHeadlineByScope: Record<QuoteScope, string> = {
   hardie_siding: "Hardie siding",
   eavestrough: "Eavestrough"
 };
-
-function formatDataSourceLabel(value: string | null | undefined) {
-  const source = (value ?? "").toLowerCase();
-  if (source.includes("google_solar") || source.includes("solar")) return "Trusted internal roof modeling";
-  if (source.includes("regional")) return "Trusted regional intelligence model";
-  return "Trusted internal pricing model";
-}
 
 function parseJsonSafe(text: string) {
   try {
@@ -193,6 +187,38 @@ export default function QuoteFlow() {
             ? combinedAllRange ?? estimate.ranges.good
             : estimate.ranges.good)
     : null;
+  const publicQuoteDisplay = useMemo(() => {
+    if (!estimate) return null;
+    return buildPublicQuoteDisplay({
+      selectedScope,
+      roofAreaSqft: estimate.roofAreaSqft,
+      roofSquares: estimate.roofSquares,
+      pitchRatio: estimate.pitchRatio,
+      pitchDegrees: estimate.pitchDegrees,
+      complexityBand: estimate.complexityBand,
+      dataSource: estimate.dataSource,
+      dataSourceLabel: estimate.dataSourceLabel,
+      eavesLengthLf: estimate.extras.eavesLf,
+      stories: estimate.extras.assumedStories,
+      material: selectedScope === "hardie_siding" || sidingMaterial === "hardie" ? "Hardie board" : "Vinyl siding"
+    });
+  }, [estimate, selectedScope, sidingMaterial]);
+  const quoteStructuredData = useMemo(() => {
+    if (!estimate || !primaryRange || !publicQuoteDisplay) return null;
+    if (typeof window === "undefined") return null;
+    const scopeLabel = quoteScopes.find((scope) => scope.value === selectedScope)?.label ?? "Service";
+    return buildQuoteStructuredData({
+      pageUrl: window.location.href,
+      serviceName: `${scopeLabel} instant estimate`,
+      pageName: "Trusted instant estimate result",
+      pageDescription: "Service-aware instant estimate details and supporting property attributes.",
+      providerName: "Trusted Roofing & Exteriors",
+      areaServed: "Calgary, Alberta",
+      estimateLow: primaryRange.low,
+      estimateHigh: primaryRange.high,
+      publicDisplay: publicQuoteDisplay
+    });
+  }, [estimate, primaryRange, publicQuoteDisplay, selectedScope]);
 
   const submitStep1 = async () => {
     setSubmitting(true);
@@ -443,6 +469,12 @@ export default function QuoteFlow() {
 
       {step === 2 && estimate ? (
         <>
+          {quoteStructuredData ? (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(quoteStructuredData) }}
+            />
+          ) : null}
           <div className="instant-quote__estimate-panel">
             <p className="instant-quote__address">{estimate.address}</p>
             <div className="instant-quote__range-hero">
@@ -480,22 +512,12 @@ export default function QuoteFlow() {
               </div>
             )}
             <div className="instant-quote__stats-grid">
-              <div>
-                <span>Roof size</span>
-                <strong>{estimate.roofAreaSqft} sqft ({estimate.roofSquares} squares)</strong>
-              </div>
-              <div>
-                <span>Pitch</span>
-                <strong>{estimate.pitchRatio ?? `${estimate.pitchDegrees}°`}</strong>
-              </div>
-              <div>
-                <span>Complexity</span>
-                <strong>{estimate.complexityBand}</strong>
-              </div>
-              <div>
-                <span>Data source</span>
-                <strong>{estimate.dataSourceLabel ?? formatDataSourceLabel(estimate.dataSource)}</strong>
-              </div>
+              {publicQuoteDisplay?.supportingItems.map((item) => (
+                <div key={item.key}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
             </div>
           </div>
 

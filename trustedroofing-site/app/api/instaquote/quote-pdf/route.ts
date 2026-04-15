@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listRecentInstaquoteAddressQueries } from "@/lib/db";
 import { haversineKm } from "@/lib/geo";
+import { buildPublicQuoteDisplay } from "@/lib/publicQuoteDisplay";
 
 function escapePdfText(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
@@ -62,6 +63,8 @@ export async function POST(request: Request) {
       dataSource?: string;
       ranges?: { good?: { low?: number; high?: number } };
       extras?: {
+        eavesLf?: number;
+        sidingSqft?: number;
         eaves?: { low?: number; high?: number };
         sidingVinyl?: { low?: number; high?: number };
         sidingHardie?: { low?: number; high?: number };
@@ -70,6 +73,21 @@ export async function POST(request: Request) {
     const requestedScope = String(body.requestedScope ?? "roofing");
     const primaryLow = Number(body.primaryLow ?? 0);
     const primaryHigh = Number(body.primaryHigh ?? 0);
+    const material = requestedScope === "hardie_siding"
+      ? "Hardie board"
+      : requestedScope === "vinyl_siding"
+        ? "Vinyl siding"
+        : null;
+    const publicQuoteDisplay = buildPublicQuoteDisplay({
+      selectedScope: requestedScope,
+      roofAreaSqft: estimate.roofAreaSqft,
+      pitchRatio: estimate.pitchRatio,
+      complexityBand: estimate.complexityBand,
+      dataSource: estimate.dataSource,
+      eavesLengthLf: estimate.extras?.eavesLf,
+      stories: 2,
+      material
+    });
 
     const rows = await listRecentInstaquoteAddressQueries(500);
     const nearby = rows.filter((row) =>
@@ -105,11 +123,8 @@ export async function POST(request: Request) {
       `Homes near you quoted recently (within ~5km): ${nearby.length}`,
       `Similar-sized properties quoted (±15% area): ${similarSize.length}`,
       "",
-      "Site model details",
-      `Roof size: ${estimate.roofAreaSqft ?? "n/a"} sqft`,
-      `Pitch: ${estimate.pitchRatio ?? "n/a"}`,
-      `Complexity: ${estimate.complexityBand ?? "n/a"}`,
-      `Data source: Trusted internal modeling`
+      "Estimate details",
+      ...publicQuoteDisplay.supportingItems.map((item) => `${item.label}: ${item.value}`)
     ];
 
     const pdf = buildPdf(lines);

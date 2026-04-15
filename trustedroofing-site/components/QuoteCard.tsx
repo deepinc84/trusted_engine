@@ -1,21 +1,11 @@
 import Link from "next/link";
 import type { QuoteCardData } from "@/lib/seo-engine";
 import { formatRelativeTime, formatRelativeTimeCompact } from "@/lib/time";
+import { buildPublicQuoteDisplay } from "@/lib/publicQuoteDisplay";
 
 function currencyRange(low: number | null, high: number | null) {
   if (low === null || high === null) return "Live range available on request";
   return `$${Math.round(low).toLocaleString()} - $${Math.round(high).toLocaleString()}`;
-}
-
-function formatArea(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return null;
-  return `${Math.round(value).toLocaleString()} sqft`;
-}
-
-function formatPitch(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return null;
-  const rise = Math.max(0, Math.round(Math.tan((value * Math.PI) / 180) * 12));
-  return `${rise}/12`;
 }
 
 type Props = {
@@ -31,14 +21,25 @@ export default function QuoteCard({
 }: Props) {
   const compact = variant === "compact";
   const relativeTime = compact ? formatRelativeTimeCompact(quote.queriedAt) : formatRelativeTime(quote.queriedAt);
-  const areaLabel = formatArea(quote.roofAreaSqft);
-  const pitchLabel = formatPitch(quote.pitchDegrees);
+  const publicQuoteDisplay = buildPublicQuoteDisplay({
+    selectedScope: quote.scope,
+    serviceType: quote.serviceType,
+    requestedScopes: quote.requestedScopes,
+    material: quote.material,
+    roofAreaSqft: quote.roofAreaSqft,
+    pitchDegrees: quote.pitchDegrees,
+    complexityBand: quote.complexityBand,
+    sidingAreaSqft: quote.sidingAreaSqft,
+    eavesLengthLf: quote.eavesLengthLf,
+    stories: quote.stories,
+    estimateBasis: quote.estimateBasis
+  });
+  const compactItems = publicQuoteDisplay.supportingItems.slice(0, 2);
 
   const compactMeta = [
     { label: "Locality", value: quote.locationLabel },
     { label: "City / quadrant", value: quote.cityQuadrantLabel },
-    { label: "Sqft", value: areaLabel },
-    { label: "Pitch", value: pitchLabel },
+    ...compactItems.map((item) => ({ label: item.label, value: item.value })),
     { label: "Updated", value: relativeTime }
   ].filter((item): item is { label: string; value: string } => !!item.value);
 
@@ -46,9 +47,7 @@ export default function QuoteCard({
     { label: "Service", value: quote.material },
     { label: "Locality", value: quote.locationLabel },
     { label: "City / quadrant", value: quote.cityQuadrantLabel },
-    { label: "Complexity", value: quote.complexity },
-    ...(pitchLabel ? [{ label: "Pitch", value: pitchLabel }] : []),
-    ...(areaLabel ? [{ label: "Area", value: areaLabel }] : []),
+    ...publicQuoteDisplay.supportingItems.map((item) => ({ label: item.label, value: item.value })),
     { label: "Updated", value: relativeTime }
   ];
 
