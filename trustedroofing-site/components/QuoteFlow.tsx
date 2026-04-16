@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
 import { buildPublicQuoteDisplay, buildQuoteStructuredData } from "@/lib/publicQuoteDisplay";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 
 const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCarousel"), {
   ssr: false,
@@ -65,6 +66,7 @@ function parseJsonSafe(text: string) {
 }
 
 export default function QuoteFlow() {
+  const searchParams = useSearchParams();
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [status, setStatus] = useState<string | null>(null);
@@ -98,6 +100,43 @@ export default function QuoteFlow() {
     if (selectedScope === "hardie_siding") setSidingMaterial("hardie");
     else if (selectedScope === "vinyl_siding") setSidingMaterial("vinyl");
   }, [selectedScope]);
+
+  useEffect(() => {
+    const resumeToken = searchParams.get("resume");
+    if (!resumeToken || estimate) return;
+    const controller = new AbortController();
+
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/instaquote/resume?token=${encodeURIComponent(resumeToken)}`, {
+          signal: controller.signal,
+          cache: "no-store"
+        });
+        const payload = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          requestedScope?: QuoteScope;
+          sidingMaterial?: SidingMaterial | null;
+          estimate?: EstimateResult;
+        };
+
+        if (!res.ok || !payload.ok || !payload.estimate) return;
+        setEstimate(payload.estimate);
+        setStep(2);
+        if (payload.requestedScope) setSelectedScope(payload.requestedScope);
+        if (payload.sidingMaterial) setSidingMaterial(payload.sidingMaterial);
+        setAddress(payload.estimate.address ?? "");
+        setPlaceId(payload.estimate.placeId ?? null);
+        setLat(payload.estimate.lat ?? null);
+        setLng(payload.estimate.lng ?? null);
+        setStatus("Estimate restored. Continue to request your full proposal when ready.");
+      } catch {
+        // keep standard flow if restore fails
+      }
+    };
+
+    void run();
+    return () => controller.abort();
+  }, [searchParams, estimate]);
 
   useEffect(() => {
     const queryValue = address.trim();
@@ -365,6 +404,7 @@ export default function QuoteFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestedScope: selectedScope,
+          sidingMaterial,
           primaryLow: primaryRange.low,
           primaryHigh: primaryRange.high,
           estimate
