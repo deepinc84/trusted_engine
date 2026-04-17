@@ -25,8 +25,16 @@ export type QuoteCardData = {
   material: string;
   estimateLow: number | null;
   estimateHigh: number | null;
+  scope: string | null;
+  serviceType: string | null;
+  requestedScopes: string[] | null;
   roofAreaSqft: number | null;
   pitchDegrees: number | null;
+  complexityBand: string | null;
+  sidingAreaSqft: number | null;
+  eavesLengthLf: number | null;
+  stories: number | null;
+  estimateBasis: string | null;
   queriedAt: string;
   title: string;
   description: string;
@@ -111,8 +119,16 @@ function toQuoteCard(row: InstaquoteAddressQuery): QuoteCardData {
     material,
     estimateLow,
     estimateHigh,
+    scope: row.requested_scopes?.[0] ?? null,
+    serviceType: row.service_type,
+    requestedScopes: row.requested_scopes,
     roofAreaSqft: typeof row.roof_area_sqft === "number" ? row.roof_area_sqft : null,
     pitchDegrees: typeof row.pitch_degrees === "number" ? row.pitch_degrees : null,
+    complexityBand: row.complexity_band,
+    sidingAreaSqft: null,
+    eavesLengthLf: null,
+    stories: 2,
+    estimateBasis: null,
     queriedAt: row.queried_at,
     title: buildQuoteSignalTitle(material, location.locality, location.city),
     description: `Recent address-level ${material.toLowerCase()} estimate generated for this area. Modeled estimate signal based on recent local property inputs.`
