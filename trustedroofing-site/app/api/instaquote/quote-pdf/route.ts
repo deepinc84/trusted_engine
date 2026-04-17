@@ -74,7 +74,7 @@ function serviceSlugFromScope(scope: string) {
 }
 
 function materialConfig(scope: string, sidingMaterial: "vinyl" | "hardie") {
-  if (scope === "hardie_siding" || sidingMaterial === "hardie") {
+  if (scope === "hardie_siding") {
     return {
       heading: "Requested material",
       included: "Included in this estimate: James Hardie lap siding, 0% baseline",
@@ -107,6 +107,28 @@ function materialConfig(scope: string, sidingMaterial: "vinyl" | "hardie") {
       ]
     };
   }
+  if (scope === "all") {
+    return sidingMaterial === "hardie"
+      ? {
+        heading: "Requested material blend",
+        included: "Included in this estimate: Roofing + Hardie siding + eavestrough planning baseline, 0% baseline",
+        upgrades: [
+          "Upgrade option: Malarkey Vista roof + Hardie premium trim, +12% to +20%",
+          "Upgrade option: Legacy roof package + enhanced drainage, +20% to +32%",
+          "Premium option: Euroshield roof + architectural siding package, +65% to +110%"
+        ]
+      }
+      : {
+        heading: "Requested material blend",
+        included: "Included in this estimate: Roofing + vinyl siding + eavestrough planning baseline, 0% baseline",
+        upgrades: [
+          "Upgrade option: UHDZ roof + insulated vinyl blend, +12% to +20%",
+          "Upgrade option: Vista roof + premium trim and drainage, +18% to +28%",
+          "Premium option: Legacy roof + premium envelope package, +30% to +50%"
+        ]
+      };
+  }
+
   return {
     heading: "Requested system",
     included: "Included in this estimate: GAF Timberline HDZ, 0% baseline",
@@ -362,7 +384,14 @@ function addLink(builder: PdfBuilder, page: PdfPageDraft, x: number, y: number, 
 }
 
 function drawImage(page: PdfPageDraft, image: PdfImageRef, x: number, y: number, w: number, h: number) {
-  page.commands.push(`q ${w} 0 0 ${h} ${x} ${y} cm /${image.name} Do Q`);
+  const widthRatio = w / image.width;
+  const heightRatio = h / image.height;
+  const scale = Math.min(widthRatio, heightRatio);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  const offsetX = x + (w - drawWidth) / 2;
+  const offsetY = y + (h - drawHeight) / 2;
+  page.commands.push(`q ${drawWidth} 0 0 ${drawHeight} ${offsetX} ${offsetY} cm /${image.name} Do Q`);
 }
 
 async function fetchBuffer(url: string) {
@@ -371,6 +400,35 @@ async function fetchBuffer(url: string) {
     if (!response.ok) return null;
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
+  } catch {
+    return null;
+  }
+}
+
+function appendApiKey(url: string, key: string) {
+  if (!url) return url;
+  if (url.includes("key=")) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
+}
+
+async function fetchSolarRgbImage(lat: number, lng: number, key: string) {
+  try {
+    const params = new URLSearchParams({
+      "location.latitude": String(lat),
+      "location.longitude": String(lng),
+      radiusMeters: "80",
+      pixelSizeMeters: "0.21",
+      view: "FULL_LAYERS",
+      requiredQuality: "LOW",
+      key
+    });
+    const response = await fetch(`https://solar.googleapis.com/v1/dataLayers:get?${params.toString()}`, {
+      cache: "no-store"
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as { rgbUrl?: string };
+    if (!payload.rgbUrl) return null;
+    return await fetchBuffer(appendApiKey(payload.rgbUrl, key));
   } catch {
     return null;
   }
@@ -387,7 +445,7 @@ async function fetchPropertyImages(input: { lat?: number | null; lng?: number | 
 
   if (!target) return { aerial: null as Buffer | null, street: null as Buffer | null };
 
-  const aerialUrl =
+  const aerialFallbackUrl =
     typeof input.lat === "number" && typeof input.lng === "number"
       ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(target)}&zoom=20&size=640x360&maptype=satellite&key=${encodeURIComponent(key)}`
       : `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(target)}&zoom=19&size=640x360&maptype=satellite&key=${encodeURIComponent(key)}`;
@@ -397,7 +455,16 @@ async function fetchPropertyImages(input: { lat?: number | null; lng?: number | 
       ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${encodeURIComponent(target)}&fov=95&heading=0&pitch=5&key=${encodeURIComponent(key)}`
       : `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${encodeURIComponent(target)}&fov=95&heading=0&pitch=5&key=${encodeURIComponent(key)}`;
 
-  const [aerial, street] = await Promise.all([fetchBuffer(aerialUrl), fetchBuffer(streetUrl)]);
+  const streetFallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(target)}&zoom=18&size=640x360&maptype=roadmap&markers=color:0x1d4ed8%7C${encodeURIComponent(target)}&key=${encodeURIComponent(key)}`;
+
+  const solarAerial =
+    typeof input.lat === "number" && typeof input.lng === "number"
+      ? await fetchSolarRgbImage(input.lat, input.lng, key)
+      : null;
+  const [aerialFallback, streetPrimary] = await Promise.all([fetchBuffer(aerialFallbackUrl), fetchBuffer(streetUrl)]);
+  const streetFallback = streetPrimary ? null : await fetchBuffer(streetFallbackUrl);
+  const aerial = solarAerial ?? aerialFallback;
+  const street = streetPrimary ?? streetFallback;
   return { aerial, street };
 }
 
@@ -548,29 +615,42 @@ export async function POST(request: Request) {
     const page2 = beginPage();
     const page3 = beginPage();
 
-    drawRect(page1, 0, PAGE_HEIGHT - 130, PAGE_WIDTH, 130, "0.07 0.12 0.25");
-    drawText(page1, "Trusted Roofing & Exteriors", MARGIN + 90, PAGE_HEIGHT - 62, 22, "1 1 1");
-    drawText(page1, "Instant estimate summary", MARGIN + 90, PAGE_HEIGHT - 88, 12, "0.76 0.86 1");
+    drawRect(page1, 0, PAGE_HEIGHT - 124, PAGE_WIDTH, 124, "0.07 0.12 0.25");
+    drawText(page1, "Trusted Roofing & Exteriors", MARGIN + 82, PAGE_HEIGHT - 56, 18, "1 1 1");
+    drawText(page1, "Instant estimate summary", MARGIN + 82, PAGE_HEIGHT - 78, 11, "0.76 0.86 1");
 
     if (logoBuffer) {
       const logo = addImageObject(builder, page1, "Logo", logoBuffer);
-      if (logo) drawImage(page1, logo, MARGIN, PAGE_HEIGHT - 95, 78, 45);
+      if (logo) {
+        const logoScale = 0.24;
+        const logoWidth = logo.width * logoScale;
+        const logoHeight = logo.height * logoScale;
+        drawImage(page1, logo, MARGIN, PAGE_HEIGHT - 84, logoWidth, logoHeight);
+      }
     }
 
-    drawRoundedBox(page1, MARGIN, PAGE_HEIGHT - 220, CONTENT_WIDTH, 78, "0.94 0.97 1", "0.78 0.84 0.94");
-    drawText(page1, "ESTIMATE ONLY", MARGIN + 14, PAGE_HEIGHT - 165, 9, "0.13 0.33 0.62");
-    drawText(page1, `${serviceLabelFromScope(requestedScope)} estimate for ${estimate.address ?? "your property"}`, MARGIN + 14, PAGE_HEIGHT - 188, 14);
-    drawText(page1, `Quoted planning range: ${fmtCurrency(primaryLow)} - ${fmtCurrency(primaryHigh)}`, MARGIN + 14, PAGE_HEIGHT - 208, 16, "0.05 0.14 0.35");
+    drawRoundedBox(page1, PAGE_WIDTH - MARGIN - 112, PAGE_HEIGHT - 92, 112, 28, "0.18 0.39 0.74", "0.18 0.39 0.74");
+    drawText(page1, "ESTIMATE ONLY", PAGE_WIDTH - MARGIN - 98, PAGE_HEIGHT - 75, 8, "1 1 1");
 
-    let detailsY = PAGE_HEIGHT - 246;
+    drawRoundedBox(page1, MARGIN, PAGE_HEIGHT - 228, CONTENT_WIDTH, 90, "0.94 0.97 1", "0.78 0.84 0.94");
+    drawText(page1, `${serviceLabelFromScope(requestedScope)} estimate for`, MARGIN + 14, PAGE_HEIGHT - 166, 11, "0.24 0.36 0.54");
+    drawMultiline(page1, estimate.address ?? "your property", MARGIN + 14, PAGE_HEIGHT - 184, 76, 14, 15, "0.07 0.15 0.29");
+    drawText(page1, `Quoted planning range: ${fmtCurrency(primaryLow)} - ${fmtCurrency(primaryHigh)}`, MARGIN + 14, PAGE_HEIGHT - 214, 18, "0.05 0.14 0.35");
+
+    let detailsY = PAGE_HEIGHT - 250;
     drawText(page1, "Modeled details", MARGIN, detailsY, 12, "0.16 0.27 0.44");
     detailsY -= 18;
-    publicQuoteDisplay.supportingItems.slice(0, 5).forEach((item) => {
-      drawText(page1, `${item.label}: ${item.value}`, MARGIN + 4, detailsY, 10);
-      detailsY -= 14;
+    publicQuoteDisplay.supportingItems.slice(0, 6).forEach((item, index) => {
+      const row = Math.floor(index / 2);
+      const col = index % 2;
+      const cardX = MARGIN + col * ((CONTENT_WIDTH - 12) / 2 + 12);
+      const cardY = detailsY - row * 56 - 44;
+      drawRoundedBox(page1, cardX, cardY, (CONTENT_WIDTH - 12) / 2, 48, "0.97 0.99 1", "0.84 0.89 0.95");
+      drawText(page1, item.label, cardX + 10, cardY + 31, 9, "0.35 0.44 0.56");
+      drawText(page1, item.value, cardX + 10, cardY + 13, 11, "0.11 0.2 0.33");
     });
 
-    const imagePanelTop = PAGE_HEIGHT - 410;
+    const imagePanelTop = PAGE_HEIGHT - 488;
     drawText(page1, "Property imagery", MARGIN, imagePanelTop + 12, 12, "0.16 0.27 0.44");
 
     const aerialRect = { x: MARGIN, y: imagePanelTop - 150, w: (CONTENT_WIDTH - 12) / 2, h: 140 };
@@ -593,7 +673,7 @@ export async function POST(request: Request) {
       drawText(page1, "Street view unavailable", streetRect.x + 16, streetRect.y + streetRect.h / 2, 10, "0.28 0.39 0.54");
     }
 
-    const noteY = imagePanelTop - 178;
+    const noteY = imagePanelTop - 176;
     drawMultiline(
       page1,
       "This instant quote is a planning estimate. Final proposal pricing confirms exact measurements, material selections, and full scope after review.",
