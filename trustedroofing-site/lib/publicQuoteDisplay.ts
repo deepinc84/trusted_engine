@@ -8,7 +8,7 @@ export type PublicQuoteDetailItem = {
 };
 
 export type PublicQuoteDisplay = {
-  serviceType: "roofing" | "siding" | "eaves" | string;
+  serviceType: "roofing" | "siding" | "eaves" | "all" | string;
   headline: string;
   supportingItems: PublicQuoteDetailItem[];
   dataSourceLabel?: string;
@@ -51,11 +51,15 @@ function defaultDataSourceLabel(value: string | null | undefined) {
   return "Trusted internal pricing model";
 }
 
-function inferServiceType(input: PublicQuoteDisplayInput): "roofing" | "siding" | "eaves" {
+function inferServiceType(input: PublicQuoteDisplayInput): "roofing" | "siding" | "eaves" | "all" {
   const scope = (input.selectedScope ?? "").toString().toLowerCase();
   const serviceType = (input.serviceType ?? "").toLowerCase();
   const material = (input.material ?? "").toLowerCase();
   const requested = (input.requestedScopes ?? []).map((value) => value.toLowerCase());
+
+  if (scope === "all") {
+    return "all";
+  }
 
   if (scope.includes("eaves") || serviceType.includes("eaves") || requested.includes("eaves") || material.includes("eaves")) {
     return "eaves";
@@ -176,6 +180,16 @@ function buildEavesItems(input: PublicQuoteDisplayInput): PublicQuoteDetailItem[
   return items;
 }
 
+function buildAllExteriorItems(input: PublicQuoteDisplayInput): PublicQuoteDetailItem[] {
+  return [
+    ...buildRoofingItems(input),
+    ...buildSidingItems(input).filter((item) => item.key !== "estimate_basis" && item.key !== "complexity"),
+    ...buildEavesItems(input).filter((item) =>
+      item.key === "estimated_eaves_length" || item.key === "roofline_complexity" || item.key === "drainage_layout"
+    )
+  ];
+}
+
 export function buildPublicQuoteDisplay(input: PublicQuoteDisplayInput): PublicQuoteDisplay {
   const serviceType = inferServiceType(input);
   const dataSourceLabel = input.dataSourceLabel ?? defaultDataSourceLabel(input.dataSource);
@@ -183,13 +197,17 @@ export function buildPublicQuoteDisplay(input: PublicQuoteDisplayInput): PublicQ
     ? "Siding estimate details"
     : serviceType === "eaves"
       ? "Eavestrough estimate details"
+      : serviceType === "all"
+        ? "Full exterior estimate details"
       : "Roofing estimate details";
 
   const supportingItems = serviceType === "siding"
     ? buildSidingItems(input)
     : serviceType === "eaves"
       ? buildEavesItems(input)
-      : buildRoofingItems(input);
+      : serviceType === "all"
+        ? buildAllExteriorItems(input)
+        : buildRoofingItems(input);
 
   return {
     serviceType,

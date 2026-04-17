@@ -239,7 +239,11 @@ export default function QuoteFlow() {
       dataSourceLabel: estimate.dataSourceLabel,
       eavesLengthLf: estimate.extras.eavesLf,
       stories: estimate.extras.assumedStories,
-      material: selectedScope === "hardie_siding" || sidingMaterial === "hardie" ? "Hardie board" : "Vinyl siding"
+      material: selectedScope === "hardie_siding"
+        ? "Hardie board"
+        : selectedScope === "vinyl_siding"
+          ? "Vinyl siding"
+          : undefined
     });
   }, [estimate, selectedScope, sidingMaterial]);
   const quoteStructuredData = useMemo(() => {

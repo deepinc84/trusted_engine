@@ -523,7 +523,11 @@ export async function POST(request: Request) {
       dataSourceLabel: estimate.dataSourceLabel,
       eavesLengthLf: estimate.extras?.eavesLf,
       stories: 2,
-      material: requestedScope === "hardie_siding" || sidingMaterial === "hardie" ? "Hardie board" : "Vinyl siding"
+      material: requestedScope === "hardie_siding"
+        ? "Hardie board"
+        : requestedScope === "vinyl_siding"
+          ? "Vinyl siding"
+          : undefined
     });
 
     const quoteResumeToken = createQuoteResumeToken({
