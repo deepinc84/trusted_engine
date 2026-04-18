@@ -9,6 +9,14 @@ type EndpointReference = {
   description: string;
 };
 
+type EndpointResult = {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  payload: unknown;
+  errorSummary: string | null;
+};
+
 type SolarInspectResponse = {
   addressInput: string;
   geocode: {
@@ -25,84 +33,20 @@ type SolarInspectResponse = {
   };
   endpointReferences: EndpointReference[];
   responses: {
-    buildingInsights: {
-      ok: boolean;
-      status: number;
-      payload: unknown;
-    };
-    dataLayers: {
-      ok: boolean;
-      status: number;
-      payload: unknown;
-    };
+    buildingInsights: EndpointResult;
+    dataLayers: EndpointResult;
   };
   geoTiffAssets: Array<{
     layer: string;
     url: string;
     id: string;
-    geoTiffRequestUrl: string;
+    proxyGeoTiffUrl: string;
+    available: boolean;
+    reason: string;
   }>;
   fieldGuide: Record<string, Record<string, string>>;
   error?: string;
 };
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function formatValue(value: unknown): string {
-  if (typeof value === "number") return Number(value).toLocaleString();
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "string") return value;
-  return JSON.stringify(value);
-}
-
-function JsonTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
-  if (!isObject(value) && !Array.isArray(value)) {
-    return <span className="solar-debug-leaf">{formatValue(value)}</span>;
-  }
-
-  if (Array.isArray(value)) {
-    return (
-      <div className="solar-debug-tree" style={{ marginLeft: depth ? 14 : 0 }}>
-        {value.map((item, index) => (
-          <details key={`${index}-${typeof item}`} className="solar-debug-details" open={depth < 1}>
-            <summary>
-              <strong>[{index}]</strong>
-            </summary>
-            <JsonTree value={item} depth={depth + 1} />
-          </details>
-        ))}
-      </div>
-    );
-  }
-
-  const entries = Object.entries(value);
-  return (
-    <div className="solar-debug-tree" style={{ marginLeft: depth ? 14 : 0 }}>
-      {entries.map(([key, entryValue]) => {
-        const nested = isObject(entryValue) || Array.isArray(entryValue);
-        if (!nested) {
-          return (
-            <div key={key} className="solar-debug-row">
-              <span className="solar-debug-key">{key}</span>
-              <span className="solar-debug-leaf">{formatValue(entryValue)}</span>
-            </div>
-          );
-        }
-
-        return (
-          <details key={key} className="solar-debug-details" open={depth < 1}>
-            <summary>
-              <strong>{key}</strong>
-            </summary>
-            <JsonTree value={entryValue} depth={depth + 1} />
-          </details>
-        );
-      })}
-    </div>
-  );
-}
 
 function FieldGuide({ data }: { data: Record<string, Record<string, string>> }) {
   return (
@@ -128,6 +72,33 @@ function FieldGuide({ data }: { data: Record<string, Record<string, string>> }) 
   );
 }
 
+function EndpointStatus({ name, result }: { name: string; result: EndpointResult }) {
+  return (
+    <div className={`solar-endpoint-status ${result.ok ? "solar-endpoint-status--ok" : "solar-endpoint-status--error"}`}>
+      <strong>{name}:</strong> {result.status} {result.statusText || "Unknown"}
+      {!result.ok && result.errorSummary ? <p>{result.errorSummary}</p> : null}
+    </div>
+  );
+}
+
+function buildFullReport(result: SolarInspectResponse) {
+  return JSON.stringify(
+    {
+      meta: {
+        addressInput: result.addressInput,
+        geocode: result.geocode,
+        settings: result.settings,
+        endpoints: result.endpointReferences
+      },
+      fieldGuide: result.fieldGuide,
+      responses: result.responses,
+      geoTiffAssets: result.geoTiffAssets
+    },
+    null,
+    2
+  );
+}
+
 export default function SolarDebugClient() {
   const [address, setAddress] = useState("1600 Amphitheatre Parkway, Mountain View, CA");
   const [radiusMeters, setRadiusMeters] = useState(100);
@@ -138,6 +109,7 @@ export default function SolarDebugClient() {
   const [error, setError] = useState<string | null>(null);
 
   const endpointRows = useMemo(() => result?.endpointReferences ?? [], [result]);
+  const fullReport = useMemo(() => (result ? buildFullReport(result) : ""), [result]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -242,25 +214,49 @@ export default function SolarDebugClient() {
             </div>
           </div>
 
+          <div className="card solar-debug-card">
+            <h2>Endpoint response health</h2>
+            <p className="solar-debug-muted">Shows HTTP status plus error details returned by Solar API.</p>
+            <div className="solar-endpoint-health-grid">
+              <EndpointStatus name="buildingInsights" result={result.responses.buildingInsights} />
+              <EndpointStatus name="dataLayers" result={result.responses.dataLayers} />
+            </div>
+          </div>
+
           <FieldGuide data={result.fieldGuide} />
 
           <div className="card solar-debug-card">
             <h2>GeoTIFF/Image options</h2>
             <p className="solar-debug-muted">
-              dataLayers includes URLs for raster assets. Use the links below to inspect each layer.
+              GeoTIFF downloads are now proxied through this app so your server key is used instead of
+              an unauthenticated mobile browser call.
             </p>
             <div className="solar-assets-grid">
               {result.geoTiffAssets.map((asset) => (
-                <article key={`${asset.layer}-${asset.id}`} className="solar-asset-row">
+                <article key={`${asset.layer}-${asset.id || "none"}`} className="solar-asset-row">
                   <strong>{asset.layer}</strong>
+                  <span className={asset.available ? "solar-asset-ok" : "solar-asset-missing"}>
+                    {asset.available ? "Available" : "Missing"}
+                  </span>
+                  <span>{asset.reason}</span>
                   <span>ID: {asset.id || "(missing)"}</span>
-                  <a href={asset.url} target="_blank" rel="noreferrer">
-                    Open asset URL
-                  </a>
-                  {asset.geoTiffRequestUrl ? (
-                    <a href={asset.geoTiffRequestUrl} target="_blank" rel="noreferrer">
-                      Open geoTiff:get URL
+                  {asset.url ? (
+                    <a href={asset.url} target="_blank" rel="noreferrer">
+                      Open raw asset URL (Google)
                     </a>
+                  ) : null}
+                  {asset.proxyGeoTiffUrl ? (
+                    <a href={asset.proxyGeoTiffUrl} target="_blank" rel="noreferrer">
+                      Open proxied GeoTIFF (no 403 key issue)
+                    </a>
+                  ) : null}
+                  {asset.proxyGeoTiffUrl ? (
+                    <img
+                      className="solar-asset-preview"
+                      src={asset.proxyGeoTiffUrl}
+                      alt={`${asset.layer} preview`}
+                      loading="lazy"
+                    />
                   ) : null}
                 </article>
               ))}
@@ -268,15 +264,19 @@ export default function SolarDebugClient() {
           </div>
 
           <div className="card solar-debug-card">
-            <h2>Building insights response</h2>
-            <p className="solar-debug-muted">Status: {result.responses.buildingInsights.status}</p>
-            <JsonTree value={result.responses.buildingInsights.payload} />
+            <h2>Full report (copy/paste friendly)</h2>
+            <p className="solar-debug-muted">No collapsible sections. This is plain text JSON for full-page copy/paste.</p>
+            <textarea className="solar-debug-report" value={fullReport} readOnly />
           </div>
 
           <div className="card solar-debug-card">
-            <h2>Data layers response</h2>
-            <p className="solar-debug-muted">Status: {result.responses.dataLayers.status}</p>
-            <JsonTree value={result.responses.dataLayers.payload} />
+            <h2>Building insights response JSON</h2>
+            <pre className="solar-debug-json-block">{JSON.stringify(result.responses.buildingInsights.payload, null, 2)}</pre>
+          </div>
+
+          <div className="card solar-debug-card">
+            <h2>Data layers response JSON</h2>
+            <pre className="solar-debug-json-block">{JSON.stringify(result.responses.dataLayers.payload, null, 2)}</pre>
           </div>
         </>
       ) : null}

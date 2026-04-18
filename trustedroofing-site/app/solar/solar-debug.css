@@ -132,3 +132,71 @@
   cursor: pointer;
   color: #0f172a;
 }
+
+
+.solar-endpoint-health-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.solar-endpoint-status {
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid;
+}
+
+.solar-endpoint-status--ok {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.solar-endpoint-status--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.solar-endpoint-status p {
+  margin-top: 6px;
+}
+
+.solar-asset-ok {
+  color: #166534;
+  font-weight: 600;
+}
+
+.solar-asset-missing {
+  color: #991b1b;
+  font-weight: 700;
+}
+
+
+.solar-asset-preview {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: #fff;
+}
+
+.solar-debug-report {
+  width: 100%;
+  min-height: 360px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre;
+}
+
+.solar-debug-json-block {
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  padding: 12px;
+  background: #ffffff;
+  max-height: none;
+  overflow: visible;
+  font-size: 13px;
+}

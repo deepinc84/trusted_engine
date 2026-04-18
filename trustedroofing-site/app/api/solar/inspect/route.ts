@@ -22,6 +22,23 @@ type EndpointReference = {
   description: string;
 };
 
+type EndpointResult = {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  payload: unknown;
+  errorSummary: string | null;
+};
+
+type GeoTiffAssetRow = {
+  layer: string;
+  url: string;
+  id: string;
+  proxyGeoTiffUrl: string;
+  available: boolean;
+  reason: string;
+};
+
 const BASE_ENDPOINT = "https://solar.googleapis.com/v1";
 
 const ENDPOINT_DESCRIPTIONS: EndpointReference[] = [
@@ -54,12 +71,8 @@ function sanitizeNumber(input: unknown, fallback: number, min: number, max: numb
   return Math.min(max, Math.max(min, parsed));
 }
 
-
 async function geocodeAddress(address: string, key: string): Promise<GeocodePayload> {
-  const geocodeParams = new URLSearchParams({
-    address,
-    key
-  });
+  const geocodeParams = new URLSearchParams({ address, key });
 
   const geocodeResponse = await fetch(
     `https://maps.googleapis.com/maps/api/geocode/json?${geocodeParams.toString()}`,
@@ -70,7 +83,7 @@ async function geocodeAddress(address: string, key: string): Promise<GeocodePayl
   );
 
   if (!geocodeResponse.ok) {
-    throw new Error(`Google Geocoding error (${geocodeResponse.status}).`);
+    throw new Error(`Google Geocoding HTTP error (${geocodeResponse.status} ${geocodeResponse.statusText}).`);
   }
 
   const geocodePayload = (await geocodeResponse.json()) as {
@@ -115,19 +128,70 @@ function getGeoTiffId(url: string) {
   }
 }
 
-function toGeoTiffAssetRows(dataLayers: Record<string, unknown>, apiKey: string) {
-  const rows: Array<{ layer: string; url: string; id: string; geoTiffRequestUrl: string }> = [];
+function getErrorSummary(payload: unknown, fallback: string) {
+  if (typeof payload === "string" && payload.trim()) return payload;
+  if (!payload || typeof payload !== "object") return fallback;
+
+  const record = payload as Record<string, unknown>;
+  const errorObj = record.error;
+  if (errorObj && typeof errorObj === "object") {
+    const message = (errorObj as Record<string, unknown>).message;
+    const status = (errorObj as Record<string, unknown>).status;
+    const code = (errorObj as Record<string, unknown>).code;
+    const pieces = [code, status, message].filter((piece) => typeof piece === "string" || typeof piece === "number");
+    if (pieces.length) return pieces.join(" | ");
+  }
+
+  if (typeof record.message === "string") return record.message;
+  return fallback;
+}
+
+async function fetchSolarJson(requestUrl: string): Promise<EndpointResult> {
+  const response = await fetch(requestUrl, {
+    headers: { Accept: "application/json" },
+    cache: "no-store"
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  const fallback = `Solar API error (${response.status} ${response.statusText || "unknown"}).`;
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    payload,
+    errorSummary: response.ok ? null : getErrorSummary(payload, fallback)
+  };
+}
+
+function toGeoTiffAssetRows(dataLayers: Record<string, unknown>): GeoTiffAssetRow[] {
+  const rows: GeoTiffAssetRow[] = [];
 
   const addRow = (layer: string, value: unknown) => {
-    if (typeof value !== "string" || !value) return;
+    if (typeof value !== "string" || !value) {
+      rows.push({
+        layer,
+        url: "",
+        id: "",
+        proxyGeoTiffUrl: "",
+        available: false,
+        reason: "Layer URL missing from dataLayers response for this location/settings."
+      });
+      return;
+    }
+
     const id = getGeoTiffId(value);
+    const hasId = Boolean(id);
+
     rows.push({
       layer,
       url: value,
       id,
-      geoTiffRequestUrl: id
-        ? buildSolarUrl("/geoTiff:get", new URLSearchParams({ id, key: apiKey }))
-        : ""
+      proxyGeoTiffUrl: hasId ? `/api/solar/geotiff?id=${encodeURIComponent(id)}` : "",
+      available: true,
+      reason: hasId
+        ? "Available."
+        : "Layer URL is present but an `id` query param could not be parsed for geoTiff:get."
     });
   };
 
@@ -138,33 +202,15 @@ function toGeoTiffAssetRows(dataLayers: Record<string, unknown>, apiKey: string)
   addRow("monthlyFluxUrl", dataLayers.monthlyFluxUrl);
 
   const hourlyShadeUrls = dataLayers.hourlyShadeUrls;
-  if (Array.isArray(hourlyShadeUrls)) {
+  if (Array.isArray(hourlyShadeUrls) && hourlyShadeUrls.length) {
     hourlyShadeUrls.forEach((value, index) => addRow(`hourlyShadeUrls[${index}]`, value));
+  } else {
+    for (let index = 0; index < 24; index += 1) {
+      addRow(`hourlyShadeUrls[${index}]`, undefined);
+    }
   }
 
   return rows;
-}
-
-async function fetchSolarJson(requestUrl: string) {
-  const response = await fetch(requestUrl, {
-    headers: { Accept: "application/json" },
-    cache: "no-store"
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    return {
-      ok: false,
-      status: response.status,
-      payload
-    };
-  }
-
-  return {
-    ok: true,
-    status: response.status,
-    payload
-  };
 }
 
 export async function POST(request: Request) {
@@ -172,9 +218,7 @@ export async function POST(request: Request) {
 
   if (!secret) {
     return NextResponse.json(
-      {
-        error: "GOOGLE_SECRET_KEY is not configured on the server."
-      },
+      { error: "GOOGLE_SECRET_KEY is not configured on the server." },
       { status: 500 }
     );
   }
@@ -222,10 +266,7 @@ export async function POST(request: Request) {
     const endpointReferences = ENDPOINT_DESCRIPTIONS.map((item) => {
       if (item.key === "buildingInsights") return { ...item, requestUrl: buildingInsightsUrl };
       if (item.key === "dataLayers") return { ...item, requestUrl: dataLayersUrl };
-      return {
-        ...item,
-        requestUrl: `${BASE_ENDPOINT}/geoTiff:get?id=ASSET_ID&key=YOUR_API_KEY`
-      };
+      return { ...item, requestUrl: `/api/solar/geotiff?id=ASSET_ID` };
     });
 
     const dataLayersPayload =
@@ -233,7 +274,7 @@ export async function POST(request: Request) {
         ? (dataLayersResult.payload as Record<string, unknown>)
         : {};
 
-    const geoTiffAssets = toGeoTiffAssetRows(dataLayersPayload, secret);
+    const geoTiffAssets = toGeoTiffAssetRows(dataLayersPayload);
 
     return NextResponse.json(
       {
