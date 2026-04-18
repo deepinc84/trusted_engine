@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type EndpointReference = {
   key: string;
@@ -40,13 +40,76 @@ type SolarInspectResponse = {
     layer: string;
     url: string;
     id: string;
-    proxyGeoTiffUrl: string;
+    geoTiffRequestUrl: string;
     available: boolean;
     reason: string;
   }>;
   fieldGuide: Record<string, Record<string, string>>;
   error?: string;
 };
+
+type AutocompleteSuggestion = {
+  label: string;
+  place_id?: string | null;
+};
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function formatValue(value: unknown): string {
+  if (typeof value === "number") return Number(value).toLocaleString();
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
+}
+
+function JsonTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
+  if (!isObject(value) && !Array.isArray(value)) {
+    return <span className="solar-debug-leaf">{formatValue(value)}</span>;
+  }
+
+  if (Array.isArray(value)) {
+    return (
+      <div className="solar-debug-tree" style={{ marginLeft: depth ? 14 : 0 }}>
+        {value.map((item, index) => (
+          <details key={`${index}-${typeof item}`} className="solar-debug-details" open={depth < 1}>
+            <summary>
+              <strong>[{index}]</strong>
+            </summary>
+            <JsonTree value={item} depth={depth + 1} />
+          </details>
+        ))}
+      </div>
+    );
+  }
+
+  const entries = Object.entries(value);
+  return (
+    <div className="solar-debug-tree" style={{ marginLeft: depth ? 14 : 0 }}>
+      {entries.map(([key, entryValue]) => {
+        const nested = isObject(entryValue) || Array.isArray(entryValue);
+        if (!nested) {
+          return (
+            <div key={key} className="solar-debug-row">
+              <span className="solar-debug-key">{key}</span>
+              <span className="solar-debug-leaf">{formatValue(entryValue)}</span>
+            </div>
+          );
+        }
+
+        return (
+          <details key={key} className="solar-debug-details" open={depth < 1}>
+            <summary>
+              <strong>{key}</strong>
+            </summary>
+            <JsonTree value={entryValue} depth={depth + 1} />
+          </details>
+        );
+      })}
+    </div>
+  );
+}
 
 function FieldGuide({ data }: { data: Record<string, Record<string, string>> }) {
   return (
@@ -81,22 +144,14 @@ function EndpointStatus({ name, result }: { name: string; result: EndpointResult
   );
 }
 
-function buildFullReport(result: SolarInspectResponse) {
-  return JSON.stringify(
-    {
-      meta: {
-        addressInput: result.addressInput,
-        geocode: result.geocode,
-        settings: result.settings,
-        endpoints: result.endpointReferences
-      },
-      fieldGuide: result.fieldGuide,
-      responses: result.responses,
-      geoTiffAssets: result.geoTiffAssets
-    },
-    null,
-    2
-  );
+async function parseResponsePayload(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return { error: `Unexpected non-JSON response: ${text.slice(0, 300)}` };
+  }
 }
 
 export default function SolarDebugClient() {
@@ -107,9 +162,56 @@ export default function SolarDebugClient() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SolarInspectResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
+  const [autocompleteBusy, setAutocompleteBusy] = useState(false);
+  const [addressValidated, setAddressValidated] = useState(false);
 
   const endpointRows = useMemo(() => result?.endpointReferences ?? [], [result]);
-  const fullReport = useMemo(() => (result ? buildFullReport(result) : ""), [result]);
+  const autocompleteAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const query = address.trim();
+    setAddressValidated(false);
+
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    setAutocompleteBusy(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        autocompleteAbortRef.current?.abort();
+        const controller = new AbortController();
+        autocompleteAbortRef.current = controller;
+
+        const response = await fetch(`/api/geocode/autocomplete?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+          cache: "no-store"
+        });
+
+        const payload = (await parseResponsePayload(response)) as {
+          suggestions?: AutocompleteSuggestion[];
+        };
+
+        if (!response.ok) {
+          throw new Error(`Autocomplete failed (${response.status} ${response.statusText}).`);
+        }
+
+        setSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
+      } catch (suggestionError) {
+        if (suggestionError instanceof DOMException && suggestionError.name === "AbortError") return;
+        setSuggestions([]);
+      } finally {
+        setAutocompleteBusy(false);
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [address]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -117,25 +219,50 @@ export default function SolarDebugClient() {
     setStatus("Calling geocode + Solar endpoints...");
     setError(null);
 
+    const cleanAddress = address.trim();
+    if (cleanAddress.length < 6) {
+      setError("Please enter a full address before running inspection.");
+      setStatus("Validation failed.");
+      setLoading(false);
+      return;
+    }
+
     try {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 45000);
+
       const response = await fetch("/api/solar/inspect", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ address, radiusMeters, pixelSizeMeters })
+        body: JSON.stringify({
+          address: cleanAddress,
+          radiusMeters: Number.isFinite(radiusMeters) ? radiusMeters : 100,
+          pixelSizeMeters: Number.isFinite(pixelSizeMeters) ? pixelSizeMeters : 0.5
+        }),
+        signal: controller.signal
       });
 
-      const payload = (await response.json()) as SolarInspectResponse;
+      window.clearTimeout(timeout);
+
+      const payload = (await parseResponsePayload(response)) as SolarInspectResponse;
 
       if (!response.ok || payload.error) {
-        throw new Error(payload.error ?? `Solar inspector request failed (${response.status}).`);
+        const detail =
+          payload.error ?? `Solar inspector request failed (${response.status} ${response.statusText || "unknown"}).`;
+        throw new Error(detail);
       }
 
       setResult(payload);
       setStatus("Done. Data loaded.");
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : "Unexpected request error.";
+      const message =
+        requestError instanceof DOMException && requestError.name === "AbortError"
+          ? "Request timed out after 45 seconds. Please try again."
+          : requestError instanceof Error
+            ? requestError.message
+            : "Unexpected request error.";
       setError(message);
       setStatus("Request failed.");
       setResult(null);
@@ -158,8 +285,32 @@ export default function SolarDebugClient() {
             onChange={(event) => setAddress(event.target.value)}
             placeholder="Enter a full street address"
             required
+            autoComplete="off"
           />
         </label>
+
+        {autocompleteBusy ? <p className="solar-debug-muted">Checking valid addresses…</p> : null}
+        {suggestions.length > 0 ? (
+          <div className="solar-suggestions">
+            {suggestions.map((suggestion) => (
+              <button
+                key={`${suggestion.label}-${suggestion.place_id ?? "none"}`}
+                type="button"
+                className="solar-suggestion-btn"
+                onClick={() => {
+                  setAddress(suggestion.label);
+                  setSuggestions([]);
+                  setAddressValidated(true);
+                  setStatus("Address selected from autocomplete.");
+                }}
+              >
+                {suggestion.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {addressValidated ? <p className="admin-status admin-status--success">Address selected from autocomplete.</p> : null}
 
         <div className="solar-debug-split">
           <label>
@@ -228,8 +379,8 @@ export default function SolarDebugClient() {
           <div className="card solar-debug-card">
             <h2>GeoTIFF/Image options</h2>
             <p className="solar-debug-muted">
-              GeoTIFF downloads are now proxied through this app so your server key is used instead of
-              an unauthenticated mobile browser call.
+              Each row shows whether an asset was returned. Missing rows include a reason so you can
+              see why a requested layer did not come back.
             </p>
             <div className="solar-assets-grid">
               {result.geoTiffAssets.map((asset) => (
@@ -242,21 +393,13 @@ export default function SolarDebugClient() {
                   <span>ID: {asset.id || "(missing)"}</span>
                   {asset.url ? (
                     <a href={asset.url} target="_blank" rel="noreferrer">
-                      Open raw asset URL (Google)
+                      Open asset URL
                     </a>
                   ) : null}
-                  {asset.proxyGeoTiffUrl ? (
-                    <a href={asset.proxyGeoTiffUrl} target="_blank" rel="noreferrer">
-                      Open proxied GeoTIFF (no 403 key issue)
+                  {asset.geoTiffRequestUrl ? (
+                    <a href={asset.geoTiffRequestUrl} target="_blank" rel="noreferrer">
+                      Open geoTiff:get URL
                     </a>
-                  ) : null}
-                  {asset.proxyGeoTiffUrl ? (
-                    <img
-                      className="solar-asset-preview"
-                      src={asset.proxyGeoTiffUrl}
-                      alt={`${asset.layer} preview`}
-                      loading="lazy"
-                    />
                   ) : null}
                 </article>
               ))}
@@ -264,19 +407,15 @@ export default function SolarDebugClient() {
           </div>
 
           <div className="card solar-debug-card">
-            <h2>Full report (copy/paste friendly)</h2>
-            <p className="solar-debug-muted">No collapsible sections. This is plain text JSON for full-page copy/paste.</p>
-            <textarea className="solar-debug-report" value={fullReport} readOnly />
+            <h2>Building insights response</h2>
+            <p className="solar-debug-muted">Status: {result.responses.buildingInsights.status}</p>
+            <JsonTree value={result.responses.buildingInsights.payload} />
           </div>
 
           <div className="card solar-debug-card">
-            <h2>Building insights response JSON</h2>
-            <pre className="solar-debug-json-block">{JSON.stringify(result.responses.buildingInsights.payload, null, 2)}</pre>
-          </div>
-
-          <div className="card solar-debug-card">
-            <h2>Data layers response JSON</h2>
-            <pre className="solar-debug-json-block">{JSON.stringify(result.responses.dataLayers.payload, null, 2)}</pre>
+            <h2>Data layers response</h2>
+            <p className="solar-debug-muted">Status: {result.responses.dataLayers.status}</p>
+            <JsonTree value={result.responses.dataLayers.payload} />
           </div>
         </>
       ) : null}

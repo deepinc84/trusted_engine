@@ -34,7 +34,7 @@ type GeoTiffAssetRow = {
   layer: string;
   url: string;
   id: string;
-  proxyGeoTiffUrl: string;
+  geoTiffRequestUrl: string;
   available: boolean;
   reason: string;
 };
@@ -164,7 +164,7 @@ async function fetchSolarJson(requestUrl: string): Promise<EndpointResult> {
   };
 }
 
-function toGeoTiffAssetRows(dataLayers: Record<string, unknown>): GeoTiffAssetRow[] {
+function toGeoTiffAssetRows(dataLayers: Record<string, unknown>, apiKey: string): GeoTiffAssetRow[] {
   const rows: GeoTiffAssetRow[] = [];
 
   const addRow = (layer: string, value: unknown) => {
@@ -173,7 +173,7 @@ function toGeoTiffAssetRows(dataLayers: Record<string, unknown>): GeoTiffAssetRo
         layer,
         url: "",
         id: "",
-        proxyGeoTiffUrl: "",
+        geoTiffRequestUrl: "",
         available: false,
         reason: "Layer URL missing from dataLayers response for this location/settings."
       });
@@ -187,7 +187,9 @@ function toGeoTiffAssetRows(dataLayers: Record<string, unknown>): GeoTiffAssetRo
       layer,
       url: value,
       id,
-      proxyGeoTiffUrl: hasId ? `/api/solar/geotiff?id=${encodeURIComponent(id)}` : "",
+      geoTiffRequestUrl: hasId
+        ? buildSolarUrl("/geoTiff:get", new URLSearchParams({ id, key: apiKey }))
+        : "",
       available: true,
       reason: hasId
         ? "Available."
@@ -266,7 +268,7 @@ export async function POST(request: Request) {
     const endpointReferences = ENDPOINT_DESCRIPTIONS.map((item) => {
       if (item.key === "buildingInsights") return { ...item, requestUrl: buildingInsightsUrl };
       if (item.key === "dataLayers") return { ...item, requestUrl: dataLayersUrl };
-      return { ...item, requestUrl: `/api/solar/geotiff?id=ASSET_ID` };
+      return { ...item, requestUrl: `${BASE_ENDPOINT}/geoTiff:get?id=ASSET_ID&key=YOUR_API_KEY` };
     });
 
     const dataLayersPayload =
@@ -274,7 +276,7 @@ export async function POST(request: Request) {
         ? (dataLayersResult.payload as Record<string, unknown>)
         : {};
 
-    const geoTiffAssets = toGeoTiffAssetRows(dataLayersPayload);
+    const geoTiffAssets = toGeoTiffAssetRows(dataLayersPayload, secret);
 
     return NextResponse.json(
       {
