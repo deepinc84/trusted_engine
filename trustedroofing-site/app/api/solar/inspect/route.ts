@@ -192,7 +192,9 @@ function toGeoTiffAssetRows(dataLayers: Record<string, unknown>, apiKey: string)
       geoTiffRequestUrl: hasId
         ? buildSolarUrl("/geoTiff:get", new URLSearchParams({ id, key: apiKey }))
         : "",
-      previewUrl: `/api/solar/asset?url=${encodeURIComponent(value)}`,
+      previewUrl: layer === "rgbUrl" && hasId
+        ? `/api/solar/rgb-preview?assetId=${encodeURIComponent(id)}`
+        : "",
       available: true,
       reason: hasId
         ? "Available."

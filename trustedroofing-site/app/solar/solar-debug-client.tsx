@@ -140,6 +140,38 @@ function EndpointStatus({ name, result }: { name: string; result: EndpointResult
   );
 }
 
+
+function RgbPreview({ asset }: { asset: SolarInspectResponse["geoTiffAssets"][number] }) {
+  const [state, setState] = useState<"idle" | "loading" | "success" | "error">("loading");
+
+  if (!asset.available || !asset.previewUrl) {
+    return <p className="solar-preview-fallback">RGB layer is missing for this location/settings.</p>;
+  }
+
+  return (
+    <div className="solar-preview-box">
+      <h3>Rendered RGB preview</h3>
+      {state === "loading" ? <p className="solar-preview-loading">Loading RGB preview...</p> : null}
+      {state === "error" ? (
+        <p className="solar-preview-error">
+          Could not render RGB preview. The route returned a non-renderable response for this browser.
+        </p>
+      ) : null}
+      <img
+        className="solar-asset-image"
+        src={asset.previewUrl}
+        alt="Rendered RGB aerial preview"
+        loading="lazy"
+        onLoad={() => setState("success")}
+        onError={() => setState("error")}
+      />
+      <a href={asset.previewUrl} target="_blank" rel="noreferrer">
+        Open rendered image directly
+      </a>
+    </div>
+  );
+}
+
 export default function SolarDebugClient() {
   const [address, setAddress] = useState("1600 Amphitheatre Parkway, Mountain View, CA");
   const [radiusMeters, setRadiusMeters] = useState(100);
@@ -268,37 +300,45 @@ export default function SolarDebugClient() {
           <div className="card solar-debug-card">
             <h2>GeoTIFF/Image options</h2>
             <p className="solar-debug-muted">
-              Each row now attempts to render the image directly on-screen. Missing or non-renderable rows include a reason so you can see why the layer did not load.
+              RGB now renders through the server-side preview route. Other layers remain debug-only for now.
             </p>
             <div className="solar-assets-grid">
-              {result.geoTiffAssets.map((asset) => (
-                <article key={`${asset.layer}-${asset.id || "none"}`} className="solar-asset-row">
-                  <strong>{asset.layer}</strong>
-                  <span className={asset.available ? "solar-asset-ok" : "solar-asset-missing"}>
-                    {asset.available ? "Available" : "Missing"}
-                  </span>
-                  <span>{asset.reason}</span>
-                  <span>ID: {asset.id || "(missing)"}</span>
-                  {asset.available && asset.previewUrl ? (
-                    <img
-                      className="solar-asset-image"
-                      src={asset.previewUrl}
-                      alt={`${asset.layer} preview`}
-                      loading="lazy"
-                    />
-                  ) : null}
-                  {asset.url ? (
-                    <a href={asset.url} target="_blank" rel="noreferrer">
-                      Open asset URL
-                    </a>
-                  ) : null}
-                  {asset.geoTiffRequestUrl ? (
-                    <a href={asset.geoTiffRequestUrl} target="_blank" rel="noreferrer">
-                      Open geoTiff:get URL
-                    </a>
-                  ) : null}
-                </article>
-              ))}
+              <RgbPreview
+                asset={
+                  result.geoTiffAssets.find((asset) => asset.layer === "rgbUrl") ?? {
+                    layer: "rgbUrl",
+                    url: "",
+                    id: "",
+                    geoTiffRequestUrl: "",
+                    previewUrl: "",
+                    available: false,
+                    reason: "RGB layer missing."
+                  }
+                }
+              />
+
+              {result.geoTiffAssets
+                .filter((asset) => asset.layer !== "rgbUrl")
+                .map((asset) => (
+                  <article key={`${asset.layer}-${asset.id || "none"}`} className="solar-asset-row">
+                    <strong>{asset.layer}</strong>
+                    <span className={asset.available ? "solar-asset-ok" : "solar-asset-missing"}>
+                      {asset.available ? "Available" : "Missing"}
+                    </span>
+                    <span>{asset.reason}</span>
+                    <span>ID: {asset.id || "(missing)"}</span>
+                    {asset.url ? (
+                      <a href={asset.url} target="_blank" rel="noreferrer">
+                        Open asset URL
+                      </a>
+                    ) : null}
+                    {asset.geoTiffRequestUrl ? (
+                      <a href={asset.geoTiffRequestUrl} target="_blank" rel="noreferrer">
+                        Open geoTiff:get URL
+                      </a>
+                    ) : null}
+                  </article>
+                ))}
             </div>
           </div>
 
