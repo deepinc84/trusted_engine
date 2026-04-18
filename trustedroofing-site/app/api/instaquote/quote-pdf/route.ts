@@ -394,6 +394,47 @@ function drawImage(page: PdfPageDraft, image: PdfImageRef, x: number, y: number,
   page.commands.push(`q ${drawWidth} 0 0 ${drawHeight} ${offsetX} ${offsetY} cm /${image.name} Do Q`);
 }
 
+function drawImageCover(page: PdfPageDraft, image: PdfImageRef, x: number, y: number, w: number, h: number) {
+  const widthRatio = w / image.width;
+  const heightRatio = h / image.height;
+  const scale = Math.max(widthRatio, heightRatio);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  const offsetX = x + (w - drawWidth) / 2;
+  const offsetY = y + (h - drawHeight) / 2;
+  page.commands.push(
+    `q ${x} ${y} ${w} ${h} re W n ${drawWidth} 0 0 ${drawHeight} ${offsetX} ${offsetY} cm /${image.name} Do Q`
+  );
+}
+
+function drawHeader(
+  page: PdfPageDraft,
+  input: {
+    title: string;
+    subtitle: string;
+    logo?: PdfImageRef | null;
+    badge: string;
+  }
+) {
+  const headerTop = PAGE_HEIGHT - 124;
+  drawRect(page, 0, headerTop, PAGE_WIDTH, 124, "0.09 0.17 0.41");
+  drawRect(page, 0, headerTop - 2, PAGE_WIDTH, 2, "0.81 0.66 0.27");
+  if (input.logo) {
+    const logoMaxWidth = 108;
+    const logoMaxHeight = 48;
+    const widthRatio = logoMaxWidth / input.logo.width;
+    const heightRatio = logoMaxHeight / input.logo.height;
+    const scale = Math.min(widthRatio, heightRatio);
+    const logoWidth = input.logo.width * scale;
+    const logoHeight = input.logo.height * scale;
+    drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 86, logoWidth, logoHeight);
+  }
+  drawText(page, input.title, MARGIN + 132, PAGE_HEIGHT - 56, 20, "1 1 1");
+  drawText(page, input.subtitle, MARGIN + 132, PAGE_HEIGHT - 78, 10.5, "0.82 0.88 0.98");
+  drawRoundedBox(page, PAGE_WIDTH - MARGIN - 132, PAGE_HEIGHT - 90, 132, 30, "0.18 0.29 0.62", "0.18 0.29 0.62");
+  drawText(page, input.badge, PAGE_WIDTH - MARGIN - 108, PAGE_HEIGHT - 72, 9, "1 1 1");
+}
+
 async function fetchBuffer(url: string) {
   try {
     const response = await fetch(url, { cache: "no-store" });
@@ -615,25 +656,18 @@ export async function POST(request: Request) {
     const page2 = beginPage();
     const page3 = beginPage();
 
-    drawRect(page1, 0, PAGE_HEIGHT - 124, PAGE_WIDTH, 124, "0.07 0.12 0.25");
-    drawText(page1, "Trusted Roofing & Exteriors", MARGIN + 82, PAGE_HEIGHT - 56, 18, "1 1 1");
-    drawText(page1, "Instant estimate summary", MARGIN + 82, PAGE_HEIGHT - 78, 11, "0.76 0.86 1");
-
-    if (logoBuffer) {
-      const logo = addImageObject(builder, page1, "Logo", logoBuffer);
-      if (logo) {
-        const logoScale = 0.24;
-        const logoWidth = logo.width * logoScale;
-        const logoHeight = logo.height * logoScale;
-        drawImage(page1, logo, MARGIN, PAGE_HEIGHT - 84, logoWidth, logoHeight);
-      }
-    }
-
-    drawRoundedBox(page1, PAGE_WIDTH - MARGIN - 112, PAGE_HEIGHT - 92, 112, 28, "0.18 0.39 0.74", "0.18 0.39 0.74");
-    drawText(page1, "ESTIMATE ONLY", PAGE_WIDTH - MARGIN - 98, PAGE_HEIGHT - 75, 8, "1 1 1");
+    const headerLogo = logoBuffer ? addImageObject(builder, page1, "Logo", logoBuffer) : null;
+    drawHeader(page1, {
+      title: "Instant Estimate Summary",
+      subtitle: "Estimate only — request a full proposal to lock in scope",
+      logo: headerLogo,
+      badge: "Customer Estimate"
+    });
 
     drawRoundedBox(page1, MARGIN, PAGE_HEIGHT - 228, CONTENT_WIDTH, 90, "0.94 0.97 1", "0.78 0.84 0.94");
-    drawText(page1, `${serviceLabelFromScope(requestedScope)} estimate for`, MARGIN + 14, PAGE_HEIGHT - 166, 11, "0.24 0.36 0.54");
+    drawText(page1, `${serviceLabelFromScope(requestedScope)} estimate for`, MARGIN + 14, PAGE_HEIGHT - 166, 10, "0.24 0.36 0.54");
+    drawRoundedBox(page1, PAGE_WIDTH - MARGIN - 116, PAGE_HEIGHT - 168, 102, 20, "0.94 0.9 0.63", "0.94 0.9 0.63");
+    drawText(page1, "ESTIMATE ONLY", PAGE_WIDTH - MARGIN - 102, PAGE_HEIGHT - 156, 7.8, "0.42 0.33 0.08");
     drawMultiline(page1, estimate.address ?? "your property", MARGIN + 14, PAGE_HEIGHT - 184, 76, 14, 15, "0.07 0.15 0.29");
     drawText(page1, `Quoted planning range: ${fmtCurrency(primaryLow)} - ${fmtCurrency(primaryHigh)}`, MARGIN + 14, PAGE_HEIGHT - 214, 18, "0.05 0.14 0.35");
 
@@ -661,16 +695,19 @@ export async function POST(request: Request) {
 
     if (propertyImages.aerial) {
       const aerial = addImageObject(builder, page1, "AerialImg", propertyImages.aerial);
-      if (aerial) drawImage(page1, aerial, aerialRect.x + 4, aerialRect.y + 4, aerialRect.w - 8, aerialRect.h - 8);
+      if (aerial) drawImageCover(page1, aerial, aerialRect.x + 4, aerialRect.y + 4, aerialRect.w - 8, aerialRect.h - 8);
     } else {
-      drawText(page1, "Aerial image unavailable", aerialRect.x + 16, aerialRect.y + aerialRect.h / 2, 10, "0.28 0.39 0.54");
+      drawRect(page1, aerialRect.x + 4, aerialRect.y + 4, aerialRect.w - 8, aerialRect.h - 8, "0.9 0.93 0.97");
+      drawText(page1, "Aerial view pending", aerialRect.x + 58, aerialRect.y + 72, 10, "0.38 0.45 0.58");
+      drawText(page1, "Google Solar API", aerialRect.x + 68, aerialRect.y + 56, 8.5, "0.44 0.5 0.6");
     }
 
     if (propertyImages.street) {
       const street = addImageObject(builder, page1, "StreetImg", propertyImages.street);
-      if (street) drawImage(page1, street, streetRect.x + 4, streetRect.y + 4, streetRect.w - 8, streetRect.h - 8);
+      if (street) drawImageCover(page1, street, streetRect.x + 4, streetRect.y + 4, streetRect.w - 8, streetRect.h - 8);
     } else {
-      drawText(page1, "Street view unavailable", streetRect.x + 16, streetRect.y + streetRect.h / 2, 10, "0.28 0.39 0.54");
+      drawRect(page1, streetRect.x + 4, streetRect.y + 4, streetRect.w - 8, streetRect.h - 8, "0.9 0.93 0.97");
+      drawText(page1, "Street view unavailable", streetRect.x + 50, streetRect.y + 66, 9.5, "0.38 0.45 0.58");
     }
 
     const noteY = imagePanelTop - 176;
@@ -690,36 +727,54 @@ export async function POST(request: Request) {
     drawText(page1, "Request Full Proposal", MARGIN + 18, ctaY + 16, 14, "1 1 1");
     addLink(builder, page1, MARGIN, ctaY, CONTENT_WIDTH, 42, proposalUrl);
 
+    const headerLogo2 = logoBuffer ? addImageObject(builder, page2, "Logo2", logoBuffer) : null;
+    drawHeader(page2, {
+      title: "Materials & Upgrade Options",
+      subtitle: "Your quoted system first — upgrades shown as planning ranges",
+      logo: headerLogo2,
+      badge: "Customer Estimate"
+    });
+
     const material = materialConfig(requestedScope, sidingMaterial);
-    drawRect(page2, 0, PAGE_HEIGHT - 120, PAGE_WIDTH, 120, "0.1 0.17 0.3");
-    drawText(page2, "Material and upgrade options", MARGIN, PAGE_HEIGHT - 62, 20, "1 1 1");
-    drawText(page2, "Upgrade percentages are relative to your quoted base system.", MARGIN, PAGE_HEIGHT - 86, 11, "0.74 0.85 1");
 
     drawRoundedBox(page2, MARGIN, PAGE_HEIGHT - 230, CONTENT_WIDTH, 84, "0.95 0.98 1", "0.82 0.88 0.95");
-    drawText(page2, material.heading, MARGIN + 14, PAGE_HEIGHT - 168, 11, "0.13 0.33 0.62");
-    drawMultiline(page2, material.included, MARGIN + 14, PAGE_HEIGHT - 190, 84, 13, 15);
+    drawText(page2, "Your quoted material is shown first", MARGIN + 14, PAGE_HEIGHT - 170, 14, "0.14 0.18 0.25");
+    drawMultiline(page2, "Upgrade percentages are relative to your quoted base system. Numbers lock in at the proposal stage after site review.", MARGIN + 14, PAGE_HEIGHT - 190, 92, 9.4, 11.5, "0.39 0.44 0.52");
 
     let upgradeY = PAGE_HEIGHT - 258;
-    material.upgrades.forEach((upgrade) => {
-      drawRoundedBox(page2, MARGIN, upgradeY - 42, CONTENT_WIDTH, 38, "1 1 1", "0.83 0.88 0.95");
-      drawMultiline(page2, upgrade, MARGIN + 12, upgradeY - 20, 90, 11, 14, "0.13 0.23 0.37");
+    const [includedLabel, includedDelta] = material.included.split(", ");
+    const materialRows = [
+      { tag: "Included in this estimate", title: includedLabel.replace("Included in this estimate: ", ""), delta: includedDelta?.replace("baseline", "baseline") ?? "0% baseline" },
+      ...material.upgrades.map((upgrade) => {
+        const [name, delta] = upgrade.split(", ");
+        return {
+          tag: name.toLowerCase().includes("premium") ? "Premium option" : "Upgrade option",
+          title: name.replace("Upgrade option: ", "").replace("Premium option: ", ""),
+          delta: delta ?? ""
+        };
+      })
+    ];
+
+    materialRows.forEach((row) => {
+      drawRoundedBox(page2, MARGIN, upgradeY - 54, CONTENT_WIDTH, 50, "1 1 1", "0.83 0.88 0.95");
+      drawRoundedBox(page2, MARGIN + 10, upgradeY - 18, 102, 12, row.tag === "Included in this estimate" ? "0.86 0.94 0.87" : "0.92 0.93 0.98", row.tag === "Included in this estimate" ? "0.86 0.94 0.87" : "0.92 0.93 0.98");
+      drawText(page2, row.tag, MARGIN + 15, upgradeY - 11, 6.8, "0.28 0.33 0.42");
+      drawText(page2, row.title, MARGIN + 12, upgradeY - 34, 14, "0.12 0.16 0.23");
+      drawText(page2, row.delta, PAGE_WIDTH - MARGIN - 124, upgradeY - 34, 12.5, "0.14 0.19 0.34");
       upgradeY -= 50;
     });
 
-    drawMultiline(
-      page2,
-      "Final proposal stage confirms exact product availability, accessory package selections, and installation sequencing.",
-      MARGIN,
-      120,
-      96,
-      10,
-      13,
-      "0.27 0.33 0.44"
-    );
+    drawRoundedBox(page2, MARGIN, 116, CONTENT_WIDTH, 34, "0.93 0.95 0.99", "0.81 0.85 0.94");
+    drawText(page2, "Final proposal stage", MARGIN + 12, 136, 11, "0.16 0.2 0.3");
+    drawText(page2, "Confirms exact product availability, accessory package selections, and installation sequencing.", MARGIN + 12, 122, 9.2, "0.31 0.37 0.46");
 
-    drawRect(page3, 0, PAGE_HEIGHT - 120, PAGE_WIDTH, 120, "0.08 0.16 0.29");
-    drawText(page3, "Other exterior options and related projects", MARGIN, PAGE_HEIGHT - 62, 20, "1 1 1");
-    drawText(page3, "These are secondary planning ranges for the same property.", MARGIN, PAGE_HEIGHT - 86, 11, "0.74 0.85 1");
+    const headerLogo3 = logoBuffer ? addImageObject(builder, page3, "Logo3", logoBuffer) : null;
+    drawHeader(page3, {
+      title: "Other Exterior Options",
+      subtitle: "Secondary planning ranges for the same property",
+      logo: headerLogo3,
+      badge: "Customer Estimate"
+    });
 
     let optionsY = PAGE_HEIGHT - 158;
     otherOptions(requestedScope, estimate).forEach((option) => {
@@ -748,20 +803,33 @@ export async function POST(request: Request) {
         const imageBuffer = await fetchBuffer(project.imageUrl);
         if (imageBuffer) {
           const image = addImageObject(builder, page3, `Proj${i + 1}`, imageBuffer);
-          if (image) drawImage(page3, image, x + 4, y + 64, cardWidth - 8, 78);
+          if (image) drawImageCover(page3, image, x + 4, y + 64, cardWidth - 8, 78);
+        } else {
+          drawRect(page3, x + 4, y + 64, cardWidth - 8, 78, "0.9 0.93 0.97");
+          drawText(page3, "Image unavailable", x + 18, y + 102, 8, "0.4 0.47 0.58");
         }
 
         drawMultiline(page3, project.title, x + 6, y + 52, 22, 9, 11, "0.14 0.23 0.38");
         const summary = project.summary?.trim() ? project.summary : "See this recent project example.";
         drawMultiline(page3, summary, x + 6, y + 28, 24, 8, 10, "0.28 0.34 0.45");
-        drawText(page3, "View project", x + 6, y + 10, 9, "0.13 0.38 0.72");
+        drawText(page3, "View project \u2192", x + 6, y + 10, 9, "0.13 0.38 0.72");
         addLink(builder, page3, x + 1, y + 1, cardWidth - 2, 145, project.href);
       }
     }
 
-    drawRoundedBox(page3, MARGIN, 64, CONTENT_WIDTH, 32, "0.13 0.37 0.72", "0.13 0.37 0.72");
-    drawText(page3, "Request Full Proposal", MARGIN + 16, 76, 12, "1 1 1");
-    addLink(builder, page3, MARGIN, 64, CONTENT_WIDTH, 32, proposalUrl);
+    drawRoundedBox(page3, MARGIN, 58, (CONTENT_WIDTH - 14) / 2, 48, "0.96 0.97 0.99", "0.82 0.86 0.93");
+    drawText(page3, "Useful Links", MARGIN + 12, 88, 12, "0.15 0.2 0.3");
+    drawText(page3, "\u2192 Request full proposal", MARGIN + 12, 74, 9.5, "0.18 0.25 0.36");
+    drawText(page3, "\u2192 See recent project photos", MARGIN + 12, 62, 9.5, "0.18 0.25 0.36");
+    addLink(builder, page3, MARGIN + 10, 70, 160, 12, proposalUrl);
+    addLink(builder, page3, MARGIN + 10, 58, 172, 12, canonicalUrl("/projects"));
+
+    const ctaX = MARGIN + (CONTENT_WIDTH - 14) / 2 + 14;
+    drawRoundedBox(page3, ctaX, 58, (CONTENT_WIDTH - 14) / 2, 48, "0.1 0.2 0.5", "0.1 0.2 0.5");
+    drawText(page3, "Want a locked-in scope?", ctaX + 12, 88, 12, "1 1 1");
+    drawRoundedBox(page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, "0.84 0.71 0.31", "0.84 0.71 0.31");
+    drawText(page3, "Request a full proposal \u2192", ctaX + 78, 70.5, 8.7, "0.12 0.17 0.29");
+    addLink(builder, page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, proposalUrl);
 
     const pdf = finalizeDocument(builder, [page1, page2, page3]);
 
