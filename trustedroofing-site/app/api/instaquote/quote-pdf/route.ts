@@ -446,33 +446,41 @@ async function fetchBuffer(url: string) {
   }
 }
 
-function appendApiKey(url: string, key: string) {
-  if (!url) return url;
-  if (url.includes("key=")) return url;
-  return `${url}${url.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
+function buildStreetViewUrl(input: {
+  key: string;
+  location: string;
+  heading?: number;
+  fov?: number;
+  pitch?: number;
+  size?: string;
+}) {
+  const params = new URLSearchParams({
+    size: input.size ?? "1280x720",
+    location: input.location,
+    fov: String(input.fov ?? 58),
+    heading: String(input.heading ?? 20),
+    pitch: String(input.pitch ?? -8),
+    key: input.key
+  });
+  return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`;
 }
 
-async function fetchSolarRgbImage(lat: number, lng: number, key: string) {
-  try {
-    const params = new URLSearchParams({
-      "location.latitude": String(lat),
-      "location.longitude": String(lng),
-      radiusMeters: "80",
-      pixelSizeMeters: "0.21",
-      view: "FULL_LAYERS",
-      requiredQuality: "LOW",
-      key
-    });
-    const response = await fetch(`https://solar.googleapis.com/v1/dataLayers:get?${params.toString()}`, {
-      cache: "no-store"
-    });
-    if (!response.ok) return null;
-    const payload = (await response.json()) as { rgbUrl?: string };
-    if (!payload.rgbUrl) return null;
-    return await fetchBuffer(appendApiKey(payload.rgbUrl, key));
-  } catch {
-    return null;
-  }
+function buildSatelliteStaticMapUrl(input: {
+  key: string;
+  center: string;
+  zoom?: number;
+  size?: string;
+  scale?: number;
+}) {
+  const params = new URLSearchParams({
+    center: input.center,
+    zoom: String(input.zoom ?? 21),
+    size: input.size ?? "1280x720",
+    scale: String(input.scale ?? 2),
+    maptype: "satellite",
+    key: input.key
+  });
+  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
 }
 
 async function fetchPropertyImages(input: { lat?: number | null; lng?: number | null; address?: string }) {
@@ -486,25 +494,35 @@ async function fetchPropertyImages(input: { lat?: number | null; lng?: number | 
 
   if (!target) return { aerial: null as Buffer | null, street: null as Buffer | null };
 
-  const aerialFallbackUrl =
-    typeof input.lat === "number" && typeof input.lng === "number"
-      ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(target)}&zoom=20&size=640x360&maptype=satellite&key=${encodeURIComponent(key)}`
-      : `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(target)}&zoom=19&size=640x360&maptype=satellite&key=${encodeURIComponent(key)}`;
+  const center = typeof input.lat === "number" && typeof input.lng === "number"
+    ? `${input.lat},${input.lng}`
+    : target;
+  const heading = typeof input.lng === "number"
+    ? input.lng >= -114.18 && input.lng <= -113.95
+      ? 28
+      : 22
+    : 22;
 
-  const streetUrl =
-    typeof input.lat === "number" && typeof input.lng === "number"
-      ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${encodeURIComponent(target)}&fov=95&heading=0&pitch=5&key=${encodeURIComponent(key)}`
-      : `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${encodeURIComponent(target)}&fov=95&heading=0&pitch=5&key=${encodeURIComponent(key)}`;
+  const aerialUrl = buildSatelliteStaticMapUrl({
+    key,
+    center,
+    zoom: 21,
+    size: "640x420",
+    scale: 2
+  });
+  const streetUrl = buildStreetViewUrl({
+    key,
+    location: center,
+    heading,
+    fov: 58,
+    pitch: -8,
+    size: "640x420"
+  });
+  const streetFallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(center)}&zoom=19&size=640x420&scale=2&maptype=roadmap&markers=color:0x1d4ed8%7C${encodeURIComponent(center)}&key=${encodeURIComponent(key)}`;
 
-  const streetFallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(target)}&zoom=18&size=640x360&maptype=roadmap&markers=color:0x1d4ed8%7C${encodeURIComponent(target)}&key=${encodeURIComponent(key)}`;
-
-  const solarAerial =
-    typeof input.lat === "number" && typeof input.lng === "number"
-      ? await fetchSolarRgbImage(input.lat, input.lng, key)
-      : null;
-  const [aerialFallback, streetPrimary] = await Promise.all([fetchBuffer(aerialFallbackUrl), fetchBuffer(streetUrl)]);
+  const [aerialPrimary, streetPrimary] = await Promise.all([fetchBuffer(aerialUrl), fetchBuffer(streetUrl)]);
   const streetFallback = streetPrimary ? null : await fetchBuffer(streetFallbackUrl);
-  const aerial = solarAerial ?? aerialFallback;
+  const aerial = aerialPrimary;
   const street = streetPrimary ?? streetFallback;
   return { aerial, street };
 }
