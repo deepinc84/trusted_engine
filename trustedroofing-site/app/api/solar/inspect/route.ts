@@ -35,6 +35,7 @@ type GeoTiffAssetRow = {
   url: string;
   id: string;
   geoTiffRequestUrl: string;
+  previewUrl: string;
   available: boolean;
   reason: string;
 };
@@ -174,6 +175,7 @@ function toGeoTiffAssetRows(dataLayers: Record<string, unknown>, apiKey: string)
         url: "",
         id: "",
         geoTiffRequestUrl: "",
+        previewUrl: "",
         available: false,
         reason: "Layer URL missing from dataLayers response for this location/settings."
       });
@@ -190,6 +192,7 @@ function toGeoTiffAssetRows(dataLayers: Record<string, unknown>, apiKey: string)
       geoTiffRequestUrl: hasId
         ? buildSolarUrl("/geoTiff:get", new URLSearchParams({ id, key: apiKey }))
         : "",
+      previewUrl: `/api/solar/asset?url=${encodeURIComponent(value)}`,
       available: true,
       reason: hasId
         ? "Available."

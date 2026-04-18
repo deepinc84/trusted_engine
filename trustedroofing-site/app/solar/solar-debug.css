@@ -170,28 +170,11 @@
 }
 
 
-.solar-suggestions {
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 12px;
-  background: #fff;
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.solar-suggestion-btn {
+.solar-asset-image {
   width: 100%;
-  text-align: left;
-  border: none;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  background: transparent;
-  padding: 10px 12px;
-  cursor: pointer;
-}
-
-.solar-suggestion-btn:last-child {
-  border-bottom: none;
-}
-
-.solar-suggestion-btn:hover {
-  background: #f1f5f9;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #0f172a;
 }

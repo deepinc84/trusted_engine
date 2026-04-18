@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
 type EndpointReference = {
   key: string;
@@ -41,16 +41,12 @@ type SolarInspectResponse = {
     url: string;
     id: string;
     geoTiffRequestUrl: string;
+    previewUrl: string;
     available: boolean;
     reason: string;
   }>;
   fieldGuide: Record<string, Record<string, string>>;
   error?: string;
-};
-
-type AutocompleteSuggestion = {
-  label: string;
-  place_id?: string | null;
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -144,16 +140,6 @@ function EndpointStatus({ name, result }: { name: string; result: EndpointResult
   );
 }
 
-async function parseResponsePayload(response: Response): Promise<Record<string, unknown>> {
-  const text = await response.text();
-  if (!text.trim()) return {};
-  try {
-    return JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    return { error: `Unexpected non-JSON response: ${text.slice(0, 300)}` };
-  }
-}
-
 export default function SolarDebugClient() {
   const [address, setAddress] = useState("1600 Amphitheatre Parkway, Mountain View, CA");
   const [radiusMeters, setRadiusMeters] = useState(100);
@@ -162,56 +148,8 @@ export default function SolarDebugClient() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SolarInspectResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
-  const [autocompleteBusy, setAutocompleteBusy] = useState(false);
-  const [addressValidated, setAddressValidated] = useState(false);
 
   const endpointRows = useMemo(() => result?.endpointReferences ?? [], [result]);
-  const autocompleteAbortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    const query = address.trim();
-    setAddressValidated(false);
-
-    if (query.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-
-    setAutocompleteBusy(true);
-
-    const timer = window.setTimeout(async () => {
-      try {
-        autocompleteAbortRef.current?.abort();
-        const controller = new AbortController();
-        autocompleteAbortRef.current = controller;
-
-        const response = await fetch(`/api/geocode/autocomplete?q=${encodeURIComponent(query)}`, {
-          signal: controller.signal,
-          cache: "no-store"
-        });
-
-        const payload = (await parseResponsePayload(response)) as {
-          suggestions?: AutocompleteSuggestion[];
-        };
-
-        if (!response.ok) {
-          throw new Error(`Autocomplete failed (${response.status} ${response.statusText}).`);
-        }
-
-        setSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
-      } catch (suggestionError) {
-        if (suggestionError instanceof DOMException && suggestionError.name === "AbortError") return;
-        setSuggestions([]);
-      } finally {
-        setAutocompleteBusy(false);
-      }
-    }, 300);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [address]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -219,50 +157,25 @@ export default function SolarDebugClient() {
     setStatus("Calling geocode + Solar endpoints...");
     setError(null);
 
-    const cleanAddress = address.trim();
-    if (cleanAddress.length < 6) {
-      setError("Please enter a full address before running inspection.");
-      setStatus("Validation failed.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 45000);
-
       const response = await fetch("/api/solar/inspect", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          address: cleanAddress,
-          radiusMeters: Number.isFinite(radiusMeters) ? radiusMeters : 100,
-          pixelSizeMeters: Number.isFinite(pixelSizeMeters) ? pixelSizeMeters : 0.5
-        }),
-        signal: controller.signal
+        body: JSON.stringify({ address, radiusMeters, pixelSizeMeters })
       });
 
-      window.clearTimeout(timeout);
-
-      const payload = (await parseResponsePayload(response)) as SolarInspectResponse;
+      const payload = (await response.json()) as SolarInspectResponse;
 
       if (!response.ok || payload.error) {
-        const detail =
-          payload.error ?? `Solar inspector request failed (${response.status} ${response.statusText || "unknown"}).`;
-        throw new Error(detail);
+        throw new Error(payload.error ?? `Solar inspector request failed (${response.status}).`);
       }
 
       setResult(payload);
       setStatus("Done. Data loaded.");
     } catch (requestError) {
-      const message =
-        requestError instanceof DOMException && requestError.name === "AbortError"
-          ? "Request timed out after 45 seconds. Please try again."
-          : requestError instanceof Error
-            ? requestError.message
-            : "Unexpected request error.";
+      const message = requestError instanceof Error ? requestError.message : "Unexpected request error.";
       setError(message);
       setStatus("Request failed.");
       setResult(null);
@@ -285,32 +198,8 @@ export default function SolarDebugClient() {
             onChange={(event) => setAddress(event.target.value)}
             placeholder="Enter a full street address"
             required
-            autoComplete="off"
           />
         </label>
-
-        {autocompleteBusy ? <p className="solar-debug-muted">Checking valid addresses…</p> : null}
-        {suggestions.length > 0 ? (
-          <div className="solar-suggestions">
-            {suggestions.map((suggestion) => (
-              <button
-                key={`${suggestion.label}-${suggestion.place_id ?? "none"}`}
-                type="button"
-                className="solar-suggestion-btn"
-                onClick={() => {
-                  setAddress(suggestion.label);
-                  setSuggestions([]);
-                  setAddressValidated(true);
-                  setStatus("Address selected from autocomplete.");
-                }}
-              >
-                {suggestion.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {addressValidated ? <p className="admin-status admin-status--success">Address selected from autocomplete.</p> : null}
 
         <div className="solar-debug-split">
           <label>
@@ -379,8 +268,7 @@ export default function SolarDebugClient() {
           <div className="card solar-debug-card">
             <h2>GeoTIFF/Image options</h2>
             <p className="solar-debug-muted">
-              Each row shows whether an asset was returned. Missing rows include a reason so you can
-              see why a requested layer did not come back.
+              Each row now attempts to render the image directly on-screen. Missing or non-renderable rows include a reason so you can see why the layer did not load.
             </p>
             <div className="solar-assets-grid">
               {result.geoTiffAssets.map((asset) => (
@@ -391,6 +279,14 @@ export default function SolarDebugClient() {
                   </span>
                   <span>{asset.reason}</span>
                   <span>ID: {asset.id || "(missing)"}</span>
+                  {asset.available && asset.previewUrl ? (
+                    <img
+                      className="solar-asset-image"
+                      src={asset.previewUrl}
+                      alt={`${asset.layer} preview`}
+                      loading="lazy"
+                    />
+                  ) : null}
                   {asset.url ? (
                     <a href={asset.url} target="_blank" rel="noreferrer">
                       Open asset URL
