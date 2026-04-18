@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
+import { buildPublicQuoteDisplay, buildQuoteStructuredData } from "@/lib/publicQuoteDisplay";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 
 const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCarousel"), {
   ssr: false,
@@ -55,13 +57,6 @@ const quoteHeadlineByScope: Record<QuoteScope, string> = {
   eavestrough: "Eavestrough"
 };
 
-function formatDataSourceLabel(value: string | null | undefined) {
-  const source = (value ?? "").toLowerCase();
-  if (source.includes("google_solar") || source.includes("solar")) return "Trusted internal roof modeling";
-  if (source.includes("regional")) return "Trusted regional intelligence model";
-  return "Trusted internal pricing model";
-}
-
 function parseJsonSafe(text: string) {
   try {
     return text ? (JSON.parse(text) as Record<string, unknown>) : {};
@@ -71,6 +66,7 @@ function parseJsonSafe(text: string) {
 }
 
 export default function QuoteFlow() {
+  const searchParams = useSearchParams();
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [status, setStatus] = useState<string | null>(null);
@@ -104,6 +100,43 @@ export default function QuoteFlow() {
     if (selectedScope === "hardie_siding") setSidingMaterial("hardie");
     else if (selectedScope === "vinyl_siding") setSidingMaterial("vinyl");
   }, [selectedScope]);
+
+  useEffect(() => {
+    const resumeToken = searchParams.get("resume");
+    if (!resumeToken || estimate) return;
+    const controller = new AbortController();
+
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/instaquote/resume?token=${encodeURIComponent(resumeToken)}`, {
+          signal: controller.signal,
+          cache: "no-store"
+        });
+        const payload = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          requestedScope?: QuoteScope;
+          sidingMaterial?: SidingMaterial | null;
+          estimate?: EstimateResult;
+        };
+
+        if (!res.ok || !payload.ok || !payload.estimate) return;
+        setEstimate(payload.estimate);
+        setStep(2);
+        if (payload.requestedScope) setSelectedScope(payload.requestedScope);
+        if (payload.sidingMaterial) setSidingMaterial(payload.sidingMaterial);
+        setAddress(payload.estimate.address ?? "");
+        setPlaceId(payload.estimate.placeId ?? null);
+        setLat(payload.estimate.lat ?? null);
+        setLng(payload.estimate.lng ?? null);
+        setStatus("Estimate restored. Continue to request your full proposal when ready.");
+      } catch {
+        // keep standard flow if restore fails
+      }
+    };
+
+    void run();
+    return () => controller.abort();
+  }, [searchParams, estimate]);
 
   useEffect(() => {
     const queryValue = address.trim();
@@ -193,6 +226,42 @@ export default function QuoteFlow() {
             ? combinedAllRange ?? estimate.ranges.good
             : estimate.ranges.good)
     : null;
+  const publicQuoteDisplay = useMemo(() => {
+    if (!estimate) return null;
+    return buildPublicQuoteDisplay({
+      selectedScope,
+      roofAreaSqft: estimate.roofAreaSqft,
+      roofSquares: estimate.roofSquares,
+      pitchRatio: estimate.pitchRatio,
+      pitchDegrees: estimate.pitchDegrees,
+      complexityBand: estimate.complexityBand,
+      dataSource: estimate.dataSource,
+      dataSourceLabel: estimate.dataSourceLabel,
+      eavesLengthLf: estimate.extras.eavesLf,
+      stories: estimate.extras.assumedStories,
+      material: selectedScope === "hardie_siding"
+        ? "Hardie board"
+        : selectedScope === "vinyl_siding"
+          ? "Vinyl siding"
+          : undefined
+    });
+  }, [estimate, selectedScope, sidingMaterial]);
+  const quoteStructuredData = useMemo(() => {
+    if (!estimate || !primaryRange || !publicQuoteDisplay) return null;
+    if (typeof window === "undefined") return null;
+    const scopeLabel = quoteScopes.find((scope) => scope.value === selectedScope)?.label ?? "Service";
+    return buildQuoteStructuredData({
+      pageUrl: window.location.href,
+      serviceName: `${scopeLabel} instant estimate`,
+      pageName: "Trusted instant estimate result",
+      pageDescription: "Service-aware instant estimate details and supporting property attributes.",
+      providerName: "Trusted Roofing & Exteriors",
+      areaServed: "Calgary, Alberta",
+      estimateLow: primaryRange.low,
+      estimateHigh: primaryRange.high,
+      publicDisplay: publicQuoteDisplay
+    });
+  }, [estimate, primaryRange, publicQuoteDisplay, selectedScope]);
 
   const submitStep1 = async () => {
     setSubmitting(true);
@@ -339,6 +408,7 @@ export default function QuoteFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestedScope: selectedScope,
+          sidingMaterial,
           primaryLow: primaryRange.low,
           primaryHigh: primaryRange.high,
           estimate
@@ -443,6 +513,12 @@ export default function QuoteFlow() {
 
       {step === 2 && estimate ? (
         <>
+          {quoteStructuredData ? (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(quoteStructuredData) }}
+            />
+          ) : null}
           <div className="instant-quote__estimate-panel">
             <p className="instant-quote__address">{estimate.address}</p>
             <div className="instant-quote__range-hero">
@@ -480,22 +556,12 @@ export default function QuoteFlow() {
               </div>
             )}
             <div className="instant-quote__stats-grid">
-              <div>
-                <span>Roof size</span>
-                <strong>{estimate.roofAreaSqft} sqft ({estimate.roofSquares} squares)</strong>
-              </div>
-              <div>
-                <span>Pitch</span>
-                <strong>{estimate.pitchRatio ?? `${estimate.pitchDegrees}°`}</strong>
-              </div>
-              <div>
-                <span>Complexity</span>
-                <strong>{estimate.complexityBand}</strong>
-              </div>
-              <div>
-                <span>Data source</span>
-                <strong>{estimate.dataSourceLabel ?? formatDataSourceLabel(estimate.dataSource)}</strong>
-              </div>
+              {publicQuoteDisplay?.supportingItems.map((item) => (
+                <div key={item.key}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
             </div>
           </div>
 
