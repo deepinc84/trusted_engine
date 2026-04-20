@@ -65,7 +65,11 @@ function parseJsonSafe(text: string) {
   }
 }
 
-export default function QuoteFlow() {
+type QuoteFlowProps = {
+  testMode?: boolean;
+};
+
+export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
   const searchParams = useSearchParams();
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -102,6 +106,7 @@ export default function QuoteFlow() {
   }, [selectedScope]);
 
   useEffect(() => {
+    if (testMode) return;
     const resumeToken = searchParams.get("resume");
     if (!resumeToken || estimate) return;
     const controller = new AbortController();
@@ -136,7 +141,7 @@ export default function QuoteFlow() {
 
     void run();
     return () => controller.abort();
-  }, [searchParams, estimate]);
+  }, [searchParams, estimate, testMode]);
 
   useEffect(() => {
     const queryValue = address.trim();
@@ -306,6 +311,14 @@ export default function QuoteFlow() {
 
   const submitStep2 = async () => {
     if (!estimate) return;
+
+    if (testMode) {
+      setStep(3);
+      setStatus("Test pipeline submission complete. No lead was saved.");
+      setError(null);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setStatus(null);
@@ -637,7 +650,7 @@ export default function QuoteFlow() {
       {error ? <p className="instant-quote__error">{error}</p> : null}
 
       {/* Keep nearby cards visible on first render (recent 6 quote signals). */}
-      <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} />
+      {testMode ? null : <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} />}
     </div>
   );
 }
