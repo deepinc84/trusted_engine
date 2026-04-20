@@ -65,7 +65,11 @@ function parseJsonSafe(text: string) {
   }
 }
 
-export default function QuoteFlow() {
+type QuoteFlowProps = {
+  testMode?: boolean;
+};
+
+export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
   const searchParams = useSearchParams();
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -102,6 +106,7 @@ export default function QuoteFlow() {
   }, [selectedScope]);
 
   useEffect(() => {
+    if (testMode) return;
     const resumeToken = searchParams.get("resume");
     if (!resumeToken || estimate) return;
     const controller = new AbortController();
@@ -136,7 +141,7 @@ export default function QuoteFlow() {
 
     void run();
     return () => controller.abort();
-  }, [searchParams, estimate]);
+  }, [searchParams, estimate, testMode]);
 
   useEffect(() => {
     const queryValue = address.trim();
@@ -272,8 +277,11 @@ export default function QuoteFlow() {
     try {
       const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope })
+        headers: {
+          "Content-Type": "application/json",
+          ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
+        },
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode })
       });
 
       const text = await res.text();
@@ -306,6 +314,14 @@ export default function QuoteFlow() {
 
   const submitStep2 = async () => {
     if (!estimate) return;
+
+    if (testMode) {
+      setStep(3);
+      setStatus("Test pipeline submission complete. No lead was saved.");
+      setError(null);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setStatus(null);
@@ -405,8 +421,12 @@ export default function QuoteFlow() {
     try {
       const res = await fetch("/api/instaquote/quote-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
+        },
         body: JSON.stringify({
+          testMode,
           requestedScope: selectedScope,
           sidingMaterial,
           primaryLow: primaryRange.low,
@@ -637,7 +657,7 @@ export default function QuoteFlow() {
       {error ? <p className="instant-quote__error">{error}</p> : null}
 
       {/* Keep nearby cards visible on first render (recent 6 quote signals). */}
-      <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} />
+      {testMode ? null : <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} />}
     </div>
   );
 }
