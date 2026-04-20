@@ -632,6 +632,7 @@ function finalizeDocument(builder: PdfBuilder, pages: PdfPageDraft[]) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const testMode = body.testMode === true || request.headers.get("x-instaquote-test-mode") === "1";
     const estimate = (body.estimate ?? {}) as EstimatePayload;
     const requestedScope = String(body.requestedScope ?? "roofing");
     const primaryLow = Number(body.primaryLow ?? 0);
@@ -663,7 +664,7 @@ export async function POST(request: Request) {
     });
 
     const proposalUrl = canonicalUrl(`/online-estimate?resume=${encodeURIComponent(quoteResumeToken)}`);
-    const projects = await selectRelatedProjects(requestedScope);
+    const projects = testMode ? [] : await selectRelatedProjects(requestedScope);
     const [propertyImages, logoBuffer] = await Promise.all([
       fetchPropertyImages({ lat: estimate.lat, lng: estimate.lng, address: estimate.address }),
       loadLogo()

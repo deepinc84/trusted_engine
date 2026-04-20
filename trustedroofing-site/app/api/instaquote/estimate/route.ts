@@ -14,6 +14,7 @@ type EstimateBody = {
   placeId?: string;
   lat?: number | null;
   lng?: number | null;
+  testMode?: boolean;
   serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
 };
 
@@ -300,6 +301,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as EstimateBody;
+  const testMode = body.testMode === true || request.headers.get("x-instaquote-test-mode") === "1";
   if (!body.address && (body.lat === null || body.lat === undefined || body.lng === null || body.lng === undefined)) {
     return NextResponse.json({ error: "address or lat/lng is required" }, { status: 400 });
   }
@@ -377,7 +379,7 @@ export async function POST(request: Request) {
     solarDebug = "no lat/lng available for solar lookup";
   }
 
-  if (!estimateResult) {
+  if (!estimateResult && !testMode) {
     historicalProfileMatch = await findHistoricalRoofProfile({
       placeId,
       address: normalizedAddress,
@@ -396,16 +398,18 @@ export async function POST(request: Request) {
       solarDebug = [solarDebug, `using historical profile matched by ${historicalProfileMatch.matchedBy} (${historicalProfileMatch.queriedAt})`]
         .filter(Boolean)
         .join(" | ");
-    } else {
-      const regional = regionalRoofEstimate({ address: normalizedAddress, lat, lng });
-      estimateResult = {
-        roofAreaSqft: regional.roofAreaSqft,
-        pitchDegrees: 25,
-        complexityBand: "moderate",
-        dataSource: "internal_model_regional",
-        areaSource: "regional"
-      };
     }
+  }
+
+  if (!estimateResult) {
+    const regional = regionalRoofEstimate({ address: normalizedAddress, lat, lng });
+    estimateResult = {
+      roofAreaSqft: regional.roofAreaSqft,
+      pitchDegrees: 25,
+      complexityBand: "moderate",
+      dataSource: "internal_model_regional",
+      areaSource: "regional"
+    };
   }
 
   const shouldApplyMinimumPricingFloor = estimateResult.areaSource !== "solar";
@@ -468,8 +472,9 @@ export async function POST(request: Request) {
           }
           : ranges.good;
 
-  let addressQueryId = crypto.randomUUID();
-  try {
+  let addressQueryId = testMode ? `test_${crypto.randomUUID()}` : crypto.randomUUID();
+  if (!testMode) {
+    try {
     const queryPayload = {
       address: normalizedAddress || "Calgary, AB",
       neighborhood,
@@ -530,8 +535,9 @@ export async function POST(request: Request) {
       quote_low: selectedQuotedRange.low,
       quote_high: selectedQuotedRange.high
     });
-  } catch (error) {
-    console.error("instaquote estimate query insert failed", error);
+    } catch (error) {
+      console.error("instaquote estimate query insert failed", error);
+    }
   }
 
   if (estimateResult.areaSource !== "solar") {

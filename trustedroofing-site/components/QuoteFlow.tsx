@@ -277,8 +277,11 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
     try {
       const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope })
+        headers: {
+          "Content-Type": "application/json",
+          ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
+        },
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode })
       });
 
       const text = await res.text();
@@ -418,8 +421,12 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
     try {
       const res = await fetch("/api/instaquote/quote-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
+        },
         body: JSON.stringify({
+          testMode,
           requestedScope: selectedScope,
           sidingMaterial,
           primaryLow: primaryRange.low,
