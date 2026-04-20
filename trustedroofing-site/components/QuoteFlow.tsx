@@ -456,6 +456,10 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
     <div className="instant-quote form-grid">
       <h2>Instant {quoteHeadlineByScope[selectedScope]} Quote</h2>
       <p className="instant-quote__subhead">Address first, instant estimate second, follow-up third.</p>
+      <div className="instant-quote__proposal-callout" role="note" aria-live="polite">
+        <strong>Free estimate proposal PDF — no contact details required.</strong>
+        <span>Generate your range, download the proposal, and decide later. Submit your info only if you want a full itemized follow-up quote.</span>
+      </div>
 
       <div className="instant-quote__scope-row">
         {quoteScopes.map((scope) => (
@@ -587,7 +591,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
 
           <div className="instant-quote__step-actions">
             <button className="button" type="button" onClick={restartFromStep2}>Estimate another address</button>
-            <button className="button" type="button" onClick={() => void downloadEstimatePdf()}>Download estimate PDF</button>
+            <button className="button" type="button" onClick={() => void downloadEstimatePdf()}>Download free estimate proposal (PDF)</button>
             <button className="button button--ghost" type="button" onClick={restartFromStep2}>Cancel step 2</button>
           </div>
 
@@ -636,7 +640,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
             </fieldset>
             <input className="input" value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="Timeline (optional)" />
             <button className="button button--ghost" type="button" onClick={() => void downloadEstimatePdf()}>
-              Download estimate PDF
+              Download free estimate proposal (PDF)
             </button>
             <button className="button" type="submit" disabled={submitting || !name || !email}>
               {submitting ? "Submitting..." : "Send me my detailed proposal"}

@@ -125,12 +125,15 @@ function buildArchiveSchema(cards: Awaited<ReturnType<typeof getQuoteArchiveByMa
 
 function renderAggregateSection(
   title: string,
+  type: "city" | "city-quadrant" | "neighborhood",
+  materialSlug: string,
+  jumpAnchor: string,
   items: Array<{ key: string; title: string; quoteCount: number; averageLow: number | null; averageHigh: number | null }>
 ) {
   if (items.length === 0) return null;
 
   return (
-    <div style={{ marginTop: 22 }}>
+    <div style={{ marginTop: 22 }} id={`${materialSlug}-${type}`}>
       <h3 className="homev3-title" style={{ fontSize: "1.5rem" }}>{title}</h3>
       <div className="quote-card-grid" style={{ marginTop: 16 }}>
         {items.map((item) => (
@@ -142,6 +145,7 @@ function renderAggregateSection(
             <p className="quote-aggregate-card__range">
               {item.averageLow ? `$${item.averageLow.toLocaleString()}` : "N/A"} - {item.averageHigh ? `$${item.averageHigh.toLocaleString()}` : "N/A"}
             </p>
+            <Link href={`/quotes#${jumpAnchor}`} className="quote-aggregate-card__jump">Jump to published quote cards</Link>
           </article>
         ))}
       </div>
@@ -162,6 +166,11 @@ export default async function QuotesArchivePage() {
       day: "numeric"
     })
     : null;
+
+  const quickNavItems = sections.map((section) => ({
+    label: section.material,
+    anchor: `material-${section.material.toLowerCase().replace(/\s+/g, "-")}`
+  }));
 
   return (
     <>
@@ -194,22 +203,42 @@ export default async function QuotesArchivePage() {
             </article>
           </div>
 
+          <section className="quote-quick-nav" aria-label="Quote archive quick navigation">
+            <h2 className="homev3-title" style={{ fontSize: "1.6rem" }}>Jump to the quote section you need</h2>
+            <p className="homev3-copy">Use these links to skip directly to material groups and summary blocks instead of long scrolling.</p>
+            <div className="quote-quick-nav__chips">
+              {quickNavItems.map((item) => (
+                <Link key={item.anchor} href={`/quotes#${item.anchor}`} className="quote-quick-nav__chip">#{item.label}</Link>
+              ))}
+            </div>
+          </section>
+
           {sections.map((section) => (
-            <section key={section.material} style={{ marginTop: 32 }}>
+            <section
+              key={section.material}
+              style={{ marginTop: 32 }}
+              id={`material-${section.material.toLowerCase().replace(/\s+/g, "-")}`}
+            >
               <h2 className="homev3-title" style={{ fontSize: "2rem" }}>{section.material} estimate signals</h2>
               <p className="homev3-copy" style={{ marginTop: 10 }}>
                 {section.cards.length.toLocaleString()} published {section.material.toLowerCase()} quote signal{section.cards.length === 1 ? "" : "s"} are included in this archive section.
               </p>
+              <div className="quote-quick-nav__chips" style={{ marginTop: 14 }}>
+                <Link href={`/quotes#material-${section.material.toLowerCase().replace(/\s+/g, "-")}-city`} className="quote-quick-nav__chip">#city-level</Link>
+                <Link href={`/quotes#material-${section.material.toLowerCase().replace(/\s+/g, "-")}-city-quadrant`} className="quote-quick-nav__chip">#city-quadrant</Link>
+                <Link href={`/quotes#material-${section.material.toLowerCase().replace(/\s+/g, "-")}-neighborhood`} className="quote-quick-nav__chip">#neighborhood</Link>
+              </div>
 
-              {renderAggregateSection("City level", section.aggregates.cities.slice(0, 12))}
-              {renderAggregateSection("City + quadrant level", section.aggregates.cityQuadrants.slice(0, 12))}
-              {renderAggregateSection("Neighborhood level", section.aggregates.neighborhoods.slice(0, 12))}
+              {renderAggregateSection("City level", "city", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.cities.slice(0, 12))}
+              {renderAggregateSection("City + quadrant level", "city-quadrant", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.cityQuadrants.slice(0, 12))}
+              {renderAggregateSection("Neighborhood level", "neighborhood", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.neighborhoods.slice(0, 12))}
 
-              <div style={{ marginTop: 24 }}>
+              <div style={{ marginTop: 24 }} id={`material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`}>
                 <h3 className="homev3-title" style={{ fontSize: "1.5rem" }}>Published {section.material.toLowerCase()} quote cards</h3>
                 <div className="quote-card-grid" style={{ marginTop: 16 }}>
                   {section.cards.map((card) => (
                     <div key={card.slug} id={card.slug} className="quote-card-anchor">
+                      <span id={`quote-${card.id}`} />
                       <QuoteCard quote={card} href={null} variant="full" />
                     </div>
                   ))}
