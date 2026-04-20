@@ -5,6 +5,7 @@ import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { extractCity, extractNeighborhood, extractQuadrant, resolvePublicLocation } from "@/lib/serviceAreas";
 
 type Row = {
+  id: string;
   lat: number;
   lng: number;
   address: string;
@@ -83,6 +84,7 @@ export async function GET(request: Request) {
   const recentRows: Row[] = rows
     .filter((row): row is typeof row & { lat: number; lng: number } => row.lat !== null && row.lng !== null)
     .map((row) => ({
+      id: row.id,
       lat: Number(row.lat),
       lng: Number(row.lng),
       address: row.address,
@@ -116,6 +118,7 @@ export async function GET(request: Request) {
     });
 
     return {
+      id: row.id,
       lat: row.lat,
       lng: row.lng,
       address: location.label,
