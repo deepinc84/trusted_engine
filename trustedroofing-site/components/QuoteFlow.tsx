@@ -40,6 +40,52 @@ type EstimateResult = {
     sidingVinyl: { low: number; high: number };
     sidingHardie: { low: number; high: number };
   };
+  pricingModel?: "legacy" | "experimental_test";
+  pricingFallbackUsed?: boolean;
+  legacyComparison?: {
+    roofAreaSqft: number;
+    pitchDegrees: number;
+    eavesLf: number;
+    sidingSqft: number;
+    hardieLow?: number;
+    hardieHigh?: number;
+    low: number;
+    high: number;
+  };
+  experimentalDiagnostics?: {
+    roofGroundAreaSqft: number;
+    roofHeightDeltaFt: number;
+    weightedPitchDegrees: number;
+    estimatedWallHeightFt: number;
+    sidingPerimeterLf: number;
+    segmentCount: number;
+    sidingModel: string;
+    hardieModel: string;
+    sidingConfidence: "low" | "medium" | "high";
+    hardieComplexityTier: "simple" | "moderate" | "complex" | "very_complex";
+    hardieComplexityScore: number;
+    estimatedWindowDoorCount: number;
+    estimatedCornerLf: number;
+    estimatedFasciaLf: number;
+    eavesModel: string;
+    roofModel: string;
+    isValid: boolean;
+    fallbackReason: string | null;
+    roofAreaSqft: number;
+    experimentalEavesLf: number;
+    experimentalSidingSqft: number;
+    adjustedHardieRateLow: number;
+    adjustedHardieRateHigh: number;
+    impliedLowRate: number;
+    impliedHighRate: number;
+    benchmarkLabel?: string;
+    benchmarkQuotedAmount?: number;
+    benchmarkImpliedRate?: number;
+    benchmarkVarianceLow?: number;
+    benchmarkVarianceHigh?: number;
+    benchmarkPctLow?: number;
+    benchmarkPctHigh?: number;
+  };
   ranges: {
     good: { low: number; high: number };
     better: { low: number; high: number };
@@ -92,6 +138,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
   const [budgetResponse, setBudgetResponse] = useState<BudgetResponse>("yes");
   const [timeline, setTimeline] = useState("");
   const [sidingMaterial, setSidingMaterial] = useState<SidingMaterial>("vinyl");
+  const [benchmarkQuotedAmount, setBenchmarkQuotedAmount] = useState<string>("");
+  const [benchmarkLabel, setBenchmarkLabel] = useState<string>("");
 
   const selectedLabel = useMemo(
     () => quoteScopes.find((scope) => scope.value === selectedScope)?.label,
@@ -281,7 +329,18 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
           "Content-Type": "application/json",
           ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
         },
-        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode })
+        body: JSON.stringify({
+          address,
+          placeId,
+          lat,
+          lng,
+          serviceScope: selectedScope,
+          testMode,
+          ...(testMode && benchmarkQuotedAmount.trim()
+            ? { benchmarkQuotedAmount: Number(benchmarkQuotedAmount) }
+            : {}),
+          ...(testMode && benchmarkLabel.trim() ? { benchmarkLabel: benchmarkLabel.trim() } : {})
+        })
       });
 
       const text = await res.text();
@@ -393,6 +452,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
     setBudgetResponse("yes");
     setTimeline("");
     setSidingMaterial("vinyl");
+    setBenchmarkQuotedAmount("");
+    setBenchmarkLabel("");
     setStatus(null);
     setError(null);
   };
@@ -412,6 +473,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
     setBudgetResponse("yes");
     setTimeline("");
     setSidingMaterial("vinyl");
+    setBenchmarkQuotedAmount("");
+    setBenchmarkLabel("");
     setStatus(null);
     setError(null);
   };
@@ -532,6 +595,31 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
             </button>
           </div>
           <p className="instant-quote__meta">Selected scope: {selectedLabel}</p>
+          {testMode ? (
+            <div style={{ display: "grid", gap: 8 }}>
+              <label>
+                Benchmark quoted amount (optional)
+                <input
+                  className="input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={benchmarkQuotedAmount}
+                  onChange={(event) => setBenchmarkQuotedAmount(event.target.value)}
+                  placeholder="e.g. 28500"
+                />
+              </label>
+              <label>
+                Benchmark label (optional)
+                <input
+                  className="input"
+                  value={benchmarkLabel}
+                  onChange={(event) => setBenchmarkLabel(event.target.value)}
+                  placeholder="e.g. 2025-11 closed Hardie quote"
+                />
+              </label>
+            </div>
+          ) : null}
         </form>
       ) : null}
 
@@ -587,6 +675,44 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
                 </div>
               ))}
             </div>
+            {testMode ? (
+              <div style={{ marginTop: 12, border: "1px solid rgba(30,58,138,0.2)", borderRadius: 10, padding: 12, background: "rgba(239,246,255,0.55)" }}>
+                <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 13 }}>Test pricing diagnostics</p>
+                <div style={{ display: "grid", gap: 4, fontSize: 13 }}>
+                  <p style={{ margin: 0 }}>Model: <strong>{estimate.pricingModel ?? "legacy"}</strong></p>
+                  <p style={{ margin: 0 }}>Fallback used: <strong>{estimate.pricingFallbackUsed ? "yes" : "no"}</strong></p>
+                  <p style={{ margin: 0 }}>Roof area sqft (final): <strong>{estimate.roofAreaSqft}</strong></p>
+                  <p style={{ margin: 0 }}>Roof ground area sqft: <strong>{estimate.experimentalDiagnostics?.roofGroundAreaSqft ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Pitch (legacy vs weighted): <strong>{estimate.legacyComparison?.pitchDegrees ?? estimate.pitchDegrees}</strong> vs <strong>{estimate.experimentalDiagnostics?.weightedPitchDegrees ?? estimate.pitchDegrees}</strong></p>
+                  <p style={{ margin: 0 }}>Roof height delta ft: <strong>{estimate.experimentalDiagnostics?.roofHeightDeltaFt ?? 0}</strong></p>
+                  <p style={{ margin: 0 }}>Eaves LF (legacy vs experimental): <strong>{estimate.legacyComparison?.eavesLf ?? estimate.extras.eavesLf}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalEavesLf ?? estimate.extras.eavesLf}</strong></p>
+                  <p style={{ margin: 0 }}>Siding sqft (legacy vs experimental): <strong>{estimate.legacyComparison?.sidingSqft ?? estimate.extras.sidingSqft}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalSidingSqft ?? estimate.extras.sidingSqft}</strong></p>
+                  <p style={{ margin: 0 }}>Estimated wall height ft: <strong>{estimate.experimentalDiagnostics?.estimatedWallHeightFt ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Siding confidence: <strong>{estimate.experimentalDiagnostics?.sidingConfidence ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Hardie complexity tier: <strong>{estimate.experimentalDiagnostics?.hardieComplexityTier ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Hardie complexity score: <strong>{estimate.experimentalDiagnostics?.hardieComplexityScore ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Estimated openings: <strong>{estimate.experimentalDiagnostics?.estimatedWindowDoorCount ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Estimated corner LF: <strong>{estimate.experimentalDiagnostics?.estimatedCornerLf ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Estimated fascia LF: <strong>{estimate.experimentalDiagnostics?.estimatedFasciaLf ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Hardie rate low/high used: <strong>${estimate.experimentalDiagnostics?.adjustedHardieRateLow ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.adjustedHardieRateHigh ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Hardie low/high (final): <strong>${estimate.extras.sidingHardie.low.toLocaleString()}</strong> / <strong>${estimate.extras.sidingHardie.high.toLocaleString()}</strong></p>
+                  <p style={{ margin: 0 }}>Implied low/high rate: <strong>${estimate.experimentalDiagnostics?.impliedLowRate ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.impliedHighRate ?? "n/a"}</strong></p>
+                  {typeof estimate.experimentalDiagnostics?.benchmarkQuotedAmount === "number" ? (
+                    <>
+                      <p style={{ margin: 0 }}>Benchmark label: <strong>{estimate.experimentalDiagnostics?.benchmarkLabel ?? "n/a"}</strong></p>
+                      <p style={{ margin: 0 }}>Benchmark quoted amount: <strong>${estimate.experimentalDiagnostics.benchmarkQuotedAmount.toLocaleString()}</strong></p>
+                      <p style={{ margin: 0 }}>Benchmark implied rate: <strong>${estimate.experimentalDiagnostics?.benchmarkImpliedRate ?? "n/a"}</strong></p>
+                      <p style={{ margin: 0 }}>Variance low/high: <strong>${estimate.experimentalDiagnostics?.benchmarkVarianceLow?.toLocaleString() ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.benchmarkVarianceHigh?.toLocaleString() ?? "n/a"}</strong></p>
+                      <p style={{ margin: 0 }}>Variance % low/high: <strong>{estimate.experimentalDiagnostics?.benchmarkPctLow ?? "n/a"}%</strong> / <strong>{estimate.experimentalDiagnostics?.benchmarkPctHigh ?? "n/a"}%</strong></p>
+                    </>
+                  ) : null}
+                  <p style={{ margin: 0 }}>Final range used: <strong>${primaryRange?.low.toLocaleString()} - ${primaryRange?.high.toLocaleString()}</strong></p>
+                  {estimate.experimentalDiagnostics?.fallbackReason ? (
+                    <p style={{ margin: 0 }}>Fallback reason: <strong>{estimate.experimentalDiagnostics.fallbackReason}</strong></p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="instant-quote__step-actions">
