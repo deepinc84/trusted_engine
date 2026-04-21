@@ -61,10 +61,17 @@ type EstimateResult = {
     segmentCount: number;
     sidingModel: string;
     hardieModel: string;
+    sidingConfidence: "low" | "medium" | "high";
+    hardieComplexityTier: "simple" | "moderate" | "complex" | "very_complex";
+    hardieComplexityScore: number;
+    estimatedWindowDoorCount: number;
+    estimatedCornerLf: number;
+    estimatedFasciaLf: number;
     eavesModel: string;
     roofModel: string;
     isValid: boolean;
     fallbackReason: string | null;
+    roofAreaSqft: number;
     experimentalEavesLf: number;
     experimentalSidingSqft: number;
     adjustedHardieRateLow: number;
@@ -681,6 +688,12 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
                   <p style={{ margin: 0 }}>Eaves LF (legacy vs experimental): <strong>{estimate.legacyComparison?.eavesLf ?? estimate.extras.eavesLf}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalEavesLf ?? estimate.extras.eavesLf}</strong></p>
                   <p style={{ margin: 0 }}>Siding sqft (legacy vs experimental): <strong>{estimate.legacyComparison?.sidingSqft ?? estimate.extras.sidingSqft}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalSidingSqft ?? estimate.extras.sidingSqft}</strong></p>
                   <p style={{ margin: 0 }}>Estimated wall height ft: <strong>{estimate.experimentalDiagnostics?.estimatedWallHeightFt ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Siding confidence: <strong>{estimate.experimentalDiagnostics?.sidingConfidence ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Hardie complexity tier: <strong>{estimate.experimentalDiagnostics?.hardieComplexityTier ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Hardie complexity score: <strong>{estimate.experimentalDiagnostics?.hardieComplexityScore ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Estimated openings: <strong>{estimate.experimentalDiagnostics?.estimatedWindowDoorCount ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Estimated corner LF: <strong>{estimate.experimentalDiagnostics?.estimatedCornerLf ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Estimated fascia LF: <strong>{estimate.experimentalDiagnostics?.estimatedFasciaLf ?? "n/a"}</strong></p>
                   <p style={{ margin: 0 }}>Hardie rate low/high used: <strong>${estimate.experimentalDiagnostics?.adjustedHardieRateLow ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.adjustedHardieRateHigh ?? "n/a"}</strong></p>
                   <p style={{ margin: 0 }}>Hardie low/high (final): <strong>${estimate.extras.sidingHardie.low.toLocaleString()}</strong> / <strong>${estimate.extras.sidingHardie.high.toLocaleString()}</strong></p>
                   <p style={{ margin: 0 }}>Implied low/high rate: <strong>${estimate.experimentalDiagnostics?.impliedLowRate ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.impliedHighRate ?? "n/a"}</strong></p>

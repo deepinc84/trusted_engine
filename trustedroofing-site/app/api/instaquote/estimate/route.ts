@@ -71,10 +71,17 @@ type ExperimentalDiagnostics = {
   segmentCount: number;
   sidingModel: string;
   hardieModel: string;
+  sidingConfidence: "low" | "medium" | "high";
+  hardieComplexityTier: "simple" | "moderate" | "complex" | "very_complex";
+  hardieComplexityScore: number;
+  estimatedWindowDoorCount: number;
+  estimatedCornerLf: number;
+  estimatedFasciaLf: number;
   eavesModel: string;
   roofModel: string;
   isValid: boolean;
   fallbackReason: string | null;
+  roofAreaSqft: number;
   experimentalEavesLf: number;
   experimentalSidingSqft: number;
   adjustedHardieRateLow: number;
@@ -233,8 +240,6 @@ const SIDING_VINYL_RATE_LOW = 8;
 const SIDING_VINYL_RATE_HIGH = 9.5;
 const EAVES_RATIO_BASELINE = 0.109;
 const SIDING_RATIO_BASELINE = 1.55;
-const HARDIE_RATE_LOW_TEST = 13.5;
-const HARDIE_RATE_HIGH_TEST = 14.75;
 
 function mapScopeToRequestedScopes(scope: EstimateBody["serviceScope"]) {
   if (scope === "all") return ["roof", "eavestrough", "siding_vinyl", "siding_hardie"];
@@ -286,6 +291,112 @@ function estimateGableBonusSqft(perimeterLf: number, roofHeightDeltaFt: number, 
   const clampedRoofHeightDeltaFt = Math.max(0, Math.min(12, roofHeightDeltaFt));
   const gableBonus = perimeterLf * clampedRoofHeightDeltaFt * 0.12;
   return Math.round(gableBonus * gableComplexityMultiplier(complexityBand));
+}
+
+function estimateWindowDoorCount(input: {
+  experimentalSidingSqft: number;
+  complexityBand: ComplexityBand;
+  segmentCount: number;
+}) {
+  const baseCount = input.experimentalSidingSqft < 1400
+    ? 8
+    : input.experimentalSidingSqft < 2200
+      ? 12
+      : input.experimentalSidingSqft < 3000
+        ? 16
+        : 22;
+  const complexityAdd = input.complexityBand === "complex" ? 6 : input.complexityBand === "moderate" ? 3 : 0;
+  const segmentAdd = (input.segmentCount >= 10 ? 5 : input.segmentCount >= 6 ? 2 : 0);
+  return Math.max(6, baseCount + complexityAdd + segmentAdd);
+}
+
+function estimateCornerLf(input: { sidingPerimeterLf: number; complexityBand: ComplexityBand; segmentCount: number }) {
+  const multiplier = input.complexityBand === "complex" ? 1.35 : input.complexityBand === "moderate" ? 1.15 : 1;
+  const segmentMultiplier = input.segmentCount >= 12 ? 1.2 : input.segmentCount >= 8 ? 1.1 : 1;
+  return Math.round(input.sidingPerimeterLf * 0.45 * multiplier * segmentMultiplier);
+}
+
+function estimateFasciaLf(input: {
+  eavesLf: number;
+  roofAreaSqft: number;
+  complexityBand: ComplexityBand;
+}) {
+  const baseline = input.complexityBand === "complex"
+    ? input.roofAreaSqft * 0.17
+    : input.complexityBand === "moderate"
+      ? input.roofAreaSqft * 0.14
+      : input.roofAreaSqft * 0.11;
+  return Math.round(Math.max(input.eavesLf, baseline));
+}
+
+function buildHardieComplexityScore(input: {
+  experimentalSidingSqft: number;
+  roofHeightDeltaFt: number;
+  estimatedWallHeightFt: number;
+  segmentCount: number;
+  estimatedWindowDoorCount: number;
+  estimatedCornerLf: number;
+  estimatedFasciaLf: number;
+}) {
+  const openingScore = input.estimatedWindowDoorCount * 1.5;
+  const cornerScore = input.estimatedCornerLf / 20;
+  const fasciaScore = input.estimatedFasciaLf / 30;
+  const heightScore = (input.estimatedWallHeightFt >= 9.5 ? 2 : 0)
+    + (input.estimatedWallHeightFt >= 10 ? 2 : 0)
+    + (input.roofHeightDeltaFt >= 8 ? 2 : 0)
+    + (input.roofHeightDeltaFt >= 14 ? 2 : 0);
+  const segmentScore = (input.segmentCount >= 6 ? 2 : 0)
+    + (input.segmentCount >= 10 ? 3 : 0)
+    + (input.segmentCount >= 14 ? 3 : 0);
+  const wallAreaScore = (input.experimentalSidingSqft >= 1400 ? 2 : 0)
+    + (input.experimentalSidingSqft >= 2200 ? 3 : 0)
+    + (input.experimentalSidingSqft >= 3000 ? 3 : 0);
+
+  return openingScore + cornerScore + fasciaScore + heightScore + segmentScore + wallAreaScore;
+}
+
+function getHardieComplexityTier(score: number): "simple" | "moderate" | "complex" | "very_complex" {
+  if (score < 18) return "simple";
+  if (score < 28) return "moderate";
+  if (score < 40) return "complex";
+  return "very_complex";
+}
+
+function getHardieRateBandForTier(tier: "simple" | "moderate" | "complex" | "very_complex") {
+  if (tier === "simple") return { low: 9.25, high: 10.75 };
+  if (tier === "moderate") return { low: 11.25, high: 13.25 };
+  if (tier === "complex") return { low: 13.75, high: 15.75 };
+  return { low: 15.25, high: 17.75 };
+}
+
+function scoreOverflowAdjustment(score: number, tier: "simple" | "moderate" | "complex" | "very_complex") {
+  if (tier === "moderate") return Math.max(0, score - 18) * 0.08;
+  if (tier === "complex") return Math.max(0, score - 28) * 0.06;
+  if (tier === "very_complex") return Math.max(0, score - 40) * 0.04;
+  return 0;
+}
+
+function trimIntensityAdjustment(estimatedWindowDoorCount: number, estimatedCornerLf: number, estimatedFasciaLf: number) {
+  return (estimatedWindowDoorCount >= 16 ? 0.35 : 0)
+    + (estimatedWindowDoorCount >= 24 ? 0.35 : 0)
+    + (estimatedCornerLf >= 160 ? 0.35 : 0)
+    + (estimatedFasciaLf >= 250 ? 0.25 : 0)
+    + (estimatedFasciaLf >= 350 ? 0.25 : 0);
+}
+
+function getSidingConfidence(input: {
+  roofHeightDeltaFt: number;
+  segmentCount: number;
+  experimentalSidingSqft: number;
+  legacySidingSqft: number;
+  inferredHeightAggressively: boolean;
+}): "low" | "medium" | "high" {
+  const ratioDiff = Math.abs(input.experimentalSidingSqft - input.legacySidingSqft) / Math.max(input.legacySidingSqft, 1);
+  if (input.roofHeightDeltaFt < 2 && ratioDiff > 0.35) return "low";
+  if (input.inferredHeightAggressively && ratioDiff > 0.25) return "low";
+  if (input.segmentCount >= 10 && input.roofHeightDeltaFt >= 7 && ratioDiff <= 0.3) return "high";
+  if (input.segmentCount >= 8 && input.roofHeightDeltaFt >= 6) return "medium";
+  return ratioDiff <= 0.2 ? "medium" : "low";
 }
 
 function buildExtrasFromInputs(roofAreaSqft: number, complexityBand: ComplexityBand, eavesLfOverride?: number, sidingSqftOverride?: number): QuoteExtras {
@@ -351,16 +462,23 @@ function buildExperimentalTestQuoteModel(
     estimatedWallHeightFt: 0,
     sidingPerimeterLf: 0,
     segmentCount: estimateResult.segmentCount ?? 0,
-    sidingModel: "solar_footprint_gable_v1",
-    hardieModel: "calibrated_hardie_range_v1",
+    sidingModel: "existing_experimental_siding_v1",
+    hardieModel: "scored_hardie_complexity_v2",
+    sidingConfidence: "low",
+    hardieComplexityTier: "simple",
+    hardieComplexityScore: 0,
+    estimatedWindowDoorCount: 0,
+    estimatedCornerLf: 0,
+    estimatedFasciaLf: 0,
     eavesModel: "solar_footprint_perimeter_v1",
     roofModel: "solar_weighted_pitch_v1",
     isValid: false,
     fallbackReason: "experimental model not initialized",
+    roofAreaSqft: estimateResult.roofAreaSqft,
     experimentalEavesLf: legacyModel.extras.eavesLf,
     experimentalSidingSqft: legacyModel.extras.sidingSqft,
-    adjustedHardieRateLow: HARDIE_RATE_LOW_TEST,
-    adjustedHardieRateHigh: HARDIE_RATE_HIGH_TEST,
+    adjustedHardieRateLow: 0,
+    adjustedHardieRateHigh: 0,
     impliedLowRate: 0,
     impliedHighRate: 0,
     ...(benchmarkLabel ? { benchmarkLabel } : {}),
@@ -404,28 +522,45 @@ function buildExperimentalTestQuoteModel(
   const gableBonusSqft = estimateGableBonusSqft(sidingPerimeterLf, roofHeightDeltaFt, ranges.complexityBand);
   const experimentalSidingSqft = Math.max(350, Math.round(baseWallAreaSqft + gableBonusSqft));
   const experimentalEavesLf = estimatePerimeterFromFootprint(roofGroundAreaSqft, ranges.complexityBand);
-  const clampedRoofHeightDeltaFt = Math.max(0, Math.min(12, roofHeightDeltaFt));
-
-  const complexityAdj = ranges.complexityBand === "complex"
-    ? 0.9
-    : ranges.complexityBand === "moderate"
-      ? 0.4
-      : 0;
-  const heightAdj = estimatedWallHeightFt >= 10
-    ? 0.5
-    : estimatedWallHeightFt >= 9.5
-      ? 0.25
-      : 0;
-  const gableAdj = clampedRoofHeightDeltaFt >= 7
-    ? 0.4
-    : clampedRoofHeightDeltaFt >= 4
-      ? 0.2
-      : 0;
-
-  const adjustedHardieRateLow = Math.round((HARDIE_RATE_LOW_TEST + complexityAdj + heightAdj + gableAdj) * 100) / 100;
-  const adjustedHardieRateHigh = Math.round((HARDIE_RATE_HIGH_TEST + complexityAdj + heightAdj + gableAdj) * 100) / 100;
+  const estimatedWindowDoorCount = estimateWindowDoorCount({
+    experimentalSidingSqft,
+    complexityBand: ranges.complexityBand,
+    segmentCount: estimateResult.segmentCount ?? 0
+  });
+  const estimatedCornerLf = estimateCornerLf({
+    sidingPerimeterLf,
+    complexityBand: ranges.complexityBand,
+    segmentCount: estimateResult.segmentCount ?? 0
+  });
+  const estimatedFasciaLf = estimateFasciaLf({
+    eavesLf: experimentalEavesLf,
+    roofAreaSqft: ranges.roofAreaSqft,
+    complexityBand: ranges.complexityBand
+  });
+  const hardieComplexityScore = buildHardieComplexityScore({
+    experimentalSidingSqft,
+    roofHeightDeltaFt,
+    estimatedWallHeightFt,
+    segmentCount: estimateResult.segmentCount ?? 0,
+    estimatedWindowDoorCount,
+    estimatedCornerLf,
+    estimatedFasciaLf
+  });
+  const hardieComplexityTier = getHardieComplexityTier(hardieComplexityScore);
+  const tierBand = getHardieRateBandForTier(hardieComplexityTier);
+  const scoreOverflowAdj = scoreOverflowAdjustment(hardieComplexityScore, hardieComplexityTier);
+  const trimIntensityAdj = trimIntensityAdjustment(estimatedWindowDoorCount, estimatedCornerLf, estimatedFasciaLf);
+  const adjustedHardieRateLow = Math.round((tierBand.low + scoreOverflowAdj + trimIntensityAdj) * 100) / 100;
+  const adjustedHardieRateHigh = Math.round((tierBand.high + scoreOverflowAdj + trimIntensityAdj) * 100) / 100;
   const hardieLow = Math.round(experimentalSidingSqft * adjustedHardieRateLow);
   const hardieHigh = Math.round(experimentalSidingSqft * adjustedHardieRateHigh);
+  const sidingConfidence = getSidingConfidence({
+    roofHeightDeltaFt,
+    segmentCount: estimateResult.segmentCount ?? 0,
+    experimentalSidingSqft,
+    legacySidingSqft: legacyModel.extras.sidingSqft,
+    inferredHeightAggressively: roofHeightDeltaFt <= 0.5
+  });
 
   const eavesMin = legacyModel.extras.eavesLf * 0.5;
   const eavesMax = legacyModel.extras.eavesLf * 2.5;
@@ -449,6 +584,8 @@ function buildExperimentalTestQuoteModel(
     fallbackReason = "experimental siding outside sanity range";
   } else if (!Number.isFinite(adjustedHardieRateLow) || !Number.isFinite(adjustedHardieRateHigh) || adjustedHardieRateLow <= 0 || adjustedHardieRateHigh <= adjustedHardieRateLow) {
     fallbackReason = "experimental hardie rates are invalid";
+  } else if (adjustedHardieRateLow < 8.5 || adjustedHardieRateHigh > 19.5) {
+    fallbackReason = "experimental hardie rates outside safety band";
   } else if (!Number.isFinite(hardieLow) || !Number.isFinite(hardieHigh) || hardieLow <= 0 || hardieHigh <= hardieLow) {
     fallbackReason = "experimental hardie range is invalid";
   }
@@ -469,12 +606,19 @@ function buildExperimentalTestQuoteModel(
     estimatedWallHeightFt,
     sidingPerimeterLf,
     segmentCount: estimateResult.segmentCount ?? 0,
-    sidingModel: "solar_footprint_gable_v1",
-    hardieModel: "calibrated_hardie_range_v1",
+    sidingModel: "existing_experimental_siding_v1",
+    hardieModel: "scored_hardie_complexity_v2",
+    sidingConfidence,
+    hardieComplexityTier,
+    hardieComplexityScore: Math.round(hardieComplexityScore * 10) / 10,
+    estimatedWindowDoorCount,
+    estimatedCornerLf,
+    estimatedFasciaLf,
     eavesModel: "solar_footprint_perimeter_v1",
     roofModel: "solar_weighted_pitch_v1",
     isValid: fallbackReason === null,
     fallbackReason,
+    roofAreaSqft: ranges.roofAreaSqft,
     experimentalEavesLf,
     experimentalSidingSqft,
     adjustedHardieRateLow,
@@ -951,16 +1095,23 @@ export async function POST(request: Request) {
           estimatedWallHeightFt: 0,
           sidingPerimeterLf: 0,
           segmentCount: estimateResult.segmentCount ?? 0,
-          sidingModel: "solar_footprint_gable_v1",
-          hardieModel: "calibrated_hardie_range_v1",
+          sidingModel: "existing_experimental_siding_v1",
+          hardieModel: "scored_hardie_complexity_v2",
+          sidingConfidence: "low",
+          hardieComplexityTier: "simple",
+          hardieComplexityScore: 0,
+          estimatedWindowDoorCount: 0,
+          estimatedCornerLf: 0,
+          estimatedFasciaLf: 0,
           eavesModel: "solar_footprint_perimeter_v1",
           roofModel: "solar_weighted_pitch_v1",
           isValid: false,
           fallbackReason: "experimental model unavailable",
+          roofAreaSqft: legacyModel.ranges.roofAreaSqft,
           experimentalEavesLf: legacyModel.extras.eavesLf,
           experimentalSidingSqft: legacyModel.extras.sidingSqft,
-          adjustedHardieRateLow: HARDIE_RATE_LOW_TEST,
-          adjustedHardieRateHigh: HARDIE_RATE_HIGH_TEST,
+          adjustedHardieRateLow: 0,
+          adjustedHardieRateHigh: 0,
           impliedLowRate: 0,
           impliedHighRate: 0,
           ...(benchmarkLabel ? { benchmarkLabel } : {}),
