@@ -12,8 +12,8 @@ const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
 
 const quoteBenefits = [
   {
-    title: "Start with the estimate first",
-    body: "Use the address lookup and scope selector to see a planning range before you commit to a call."
+    title: "Download a free proposal first",
+    body: "Generate your estimate and download a PDF proposal right away — no name, phone, or email required."
   },
   {
     title: "Compare scope options quickly",
@@ -35,8 +35,8 @@ export const dynamic = "force-dynamic";
 
 const quoteFlowSteps = [
   {
-    title: "Start with the estimate first",
-    description: "Use the address lookup and scope selector to see a planning range before you commit to a call."
+    title: "Download a free proposal first",
+    description: "Generate your estimate and download a PDF proposal right away — no name, phone, or email required."
   },
   {
     title: "Compare scope options quickly",

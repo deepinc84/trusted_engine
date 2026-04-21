@@ -6,6 +6,7 @@ import { buildEstimateRanges, type ComplexityBand } from "@/lib/quote";
 import { buildQuoteAnchorSlug, buildQuoteSignalTitle, quoteComplexityLabel, quoteMaterialLabel, resolvePublicLocation } from "@/lib/serviceAreas";
 
 type NearbyItem = {
+  id: string;
   lat: number;
   lng: number;
   address: string;
@@ -84,7 +85,7 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
   }, [coords?.lat, coords?.lng, address]);
 
   const cards = useMemo(() => {
-    return items.slice(0, 6).map((item, index) => {
+    return items.slice(0, 6).map((item) => {
       const area = item.roof_area_sqft ?? 1800;
       const pitchDegrees = typeof item.pitch_degrees === "number" && Number.isFinite(item.pitch_degrees)
         ? item.pitch_degrees
@@ -108,10 +109,10 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
       const complexityLabel = quoteComplexityLabel(item.complexity_band);
 
       return {
-        id: `${item.queried_at}-${index}`,
+        id: item.id,
         locality: location.locality,
         neighborhood: location.locality,
-        slug: buildQuoteAnchorSlug(material, location.locality, location.city, `${item.queried_at}-${index}`),
+        slug: buildQuoteAnchorSlug(material, location.locality, location.city, item.id),
         city: location.city,
         locationLabel: location.label,
         cityQuadrantLabel: location.cityQuadrantLabel,
@@ -154,7 +155,7 @@ export default function NearbyQuotesCarousel({ coords, address }: Props) {
       {cards.length > 0 ? (
         <div className="nearby-quotes__grid" aria-live="polite">
           {cards.map((quote) => (
-            <QuoteCard key={quote.id} quote={quote} variant="compact" />
+            <QuoteCard key={quote.id} quote={quote} href={`/quotes#quote-${quote.id}`} variant="compact" />
           ))}
         </div>
       ) : null}
