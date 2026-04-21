@@ -577,6 +577,10 @@ main {
   gap: 10px;
 }
 
+.nearby-quotes__grid > * {
+  min-width: 0;
+}
+
 .quote-shell__form {
   order: 3;
   min-width: 0;
@@ -1594,6 +1598,7 @@ main {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .quote-card--compact .seo-card__eyebrow {
@@ -1609,6 +1614,7 @@ main {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .quote-card--compact .quote-card__cta {
