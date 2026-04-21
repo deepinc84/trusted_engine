@@ -1594,11 +1594,9 @@ main {
 .quote-card--compact h3 {
   font-size: 0.96rem;
   line-height: 1.18;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: normal;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .quote-card--compact .seo-card__eyebrow {
@@ -1611,9 +1609,9 @@ main {
   color: var(--color-primary);
   font-weight: 700;
   font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   max-width: 100%;
 }
 
