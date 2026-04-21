@@ -40,6 +40,31 @@ type EstimateResult = {
     sidingVinyl: { low: number; high: number };
     sidingHardie: { low: number; high: number };
   };
+  pricingModel?: "legacy" | "experimental_test";
+  pricingFallbackUsed?: boolean;
+  legacyComparison?: {
+    roofAreaSqft: number;
+    pitchDegrees: number;
+    eavesLf: number;
+    sidingSqft: number;
+    low: number;
+    high: number;
+  };
+  experimentalDiagnostics?: {
+    roofGroundAreaSqft: number;
+    roofHeightDeltaFt: number;
+    weightedPitchDegrees: number;
+    estimatedWallHeightFt: number;
+    sidingPerimeterLf: number;
+    segmentCount: number;
+    sidingModel: string;
+    eavesModel: string;
+    roofModel: string;
+    isValid: boolean;
+    fallbackReason: string | null;
+    experimentalEavesLf: number;
+    experimentalSidingSqft: number;
+  };
   ranges: {
     good: { low: number; high: number };
     better: { low: number; high: number };
@@ -587,6 +612,25 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
                 </div>
               ))}
             </div>
+            {testMode ? (
+              <div style={{ marginTop: 12, border: "1px solid rgba(30,58,138,0.2)", borderRadius: 10, padding: 12, background: "rgba(239,246,255,0.55)" }}>
+                <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 13 }}>Test pricing diagnostics</p>
+                <div style={{ display: "grid", gap: 4, fontSize: 13 }}>
+                  <p style={{ margin: 0 }}>Model: <strong>{estimate.pricingModel ?? "legacy"}</strong></p>
+                  <p style={{ margin: 0 }}>Fallback used: <strong>{estimate.pricingFallbackUsed ? "yes" : "no"}</strong></p>
+                  <p style={{ margin: 0 }}>Roof area sqft (final): <strong>{estimate.roofAreaSqft}</strong></p>
+                  <p style={{ margin: 0 }}>Roof ground area sqft: <strong>{estimate.experimentalDiagnostics?.roofGroundAreaSqft ?? "n/a"}</strong></p>
+                  <p style={{ margin: 0 }}>Pitch (legacy vs weighted): <strong>{estimate.legacyComparison?.pitchDegrees ?? estimate.pitchDegrees}</strong> vs <strong>{estimate.experimentalDiagnostics?.weightedPitchDegrees ?? estimate.pitchDegrees}</strong></p>
+                  <p style={{ margin: 0 }}>Roof height delta ft: <strong>{estimate.experimentalDiagnostics?.roofHeightDeltaFt ?? 0}</strong></p>
+                  <p style={{ margin: 0 }}>Eaves LF (legacy vs experimental): <strong>{estimate.legacyComparison?.eavesLf ?? estimate.extras.eavesLf}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalEavesLf ?? estimate.extras.eavesLf}</strong></p>
+                  <p style={{ margin: 0 }}>Siding sqft (legacy vs experimental): <strong>{estimate.legacyComparison?.sidingSqft ?? estimate.extras.sidingSqft}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalSidingSqft ?? estimate.extras.sidingSqft}</strong></p>
+                  <p style={{ margin: 0 }}>Final range used: <strong>${primaryRange?.low.toLocaleString()} - ${primaryRange?.high.toLocaleString()}</strong></p>
+                  {estimate.experimentalDiagnostics?.fallbackReason ? (
+                    <p style={{ margin: 0 }}>Fallback reason: <strong>{estimate.experimentalDiagnostics.fallbackReason}</strong></p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="instant-quote__step-actions">

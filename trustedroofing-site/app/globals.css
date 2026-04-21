@@ -2143,6 +2143,16 @@ body {
   background: #f8fbff;
 }
 
+.nav-service-areas__list a:hover,
+.nav-service-areas__list a:focus-visible {
+  color: #0f1e38;
+  background: #eef4ff;
+}
+
+.nav-service-areas__list a::after {
+  display: none;
+}
+
 .nav-service-areas__list strong {
   color: var(--blue);
 }

@@ -1,12 +1,11 @@
 import Link from "next/link";
 import CtaBand from "@/components/ui/CtaBand";
-import NeighborhoodChips from "@/components/ui/NeighborhoodChips";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
-import ProjectCard from "@/components/ProjectCard";
 import { listProjects, listServices } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
+import ProjectsExplorer from "@/components/ProjectsExplorer";
 
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
@@ -35,10 +34,6 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
     listServices(),
     listProjects({ service_slug: searchParams?.service_slug ?? null, neighborhood: searchParams?.neighborhood ?? null, include_unpublished: false, limit: 200 })
   ]);
-
-  const serviceChips = [{ label: "All services", href: "/projects" }, ...services.map((service) => ({ label: service.title, href: `/projects?service_slug=${encodeURIComponent(service.slug)}` }))];
-  const neighborhoods = Array.from(new Set(projects.map((project) => project.neighborhood).filter(Boolean))) as string[];
-  const neighborhoodChips = neighborhoods.map((name) => ({ label: name, href: `/projects?neighborhood=${encodeURIComponent(name)}` }));
 
   return (
     <>
@@ -92,7 +87,16 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
           </div>
         </PageContainer>
       </section>
-      <section className="ui-page-section"><PageContainer><NeighborhoodChips chips={serviceChips} /><NeighborhoodChips chips={neighborhoodChips} />{projects.length ? <div className="ui-grid ui-grid--projects" style={{ marginTop: 20 }}>{projects.map((project) => <ProjectCard key={project.id} project={project} />)}</div> : <article className="ui-card" style={{ marginTop: 20 }}><h2>Project cards will populate here as more completed work is published</h2><p>The structure is in place for project cards, neighbourhood filters, and future data expansion. If you do not see a close match yet, the instant quote page is still the fastest way to get a realistic budget range based on comparable completed work.</p><Link href="/online-estimate" className="button">Start instant quote</Link></article>}</PageContainer></section>
+      <section className="ui-page-section">
+        <PageContainer>
+          <ProjectsExplorer
+            projects={projects}
+            services={services}
+            selectedServiceSlug={searchParams?.service_slug ?? null}
+            selectedNeighborhood={searchParams?.neighborhood ?? null}
+          />
+        </PageContainer>
+      </section>
       <CtaBand title="Want to compare your house to similar local work?" body="Start with the instant quote tool for a pricing range, then compare your home against similar projects to see what the scope and materials actually look like before moving forward." />
       <section className="ui-page-section ui-page-section--soft"><PageContainer><article className="ui-card"><h2>Project questions</h2><FaqAccordion items={faqs} /></article></PageContainer></section>
     </>
