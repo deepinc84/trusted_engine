@@ -61,19 +61,37 @@ const GRID_GAP_X = 10;
 const GRID_GAP_Y = 10;
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN_X * 2;
 
+function pdfRgbFromHex(hex: string) {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16) / 255;
+  const g = parseInt(clean.slice(2, 4), 16) / 255;
+  const b = parseInt(clean.slice(4, 6), 16) / 255;
+  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)}`;
+}
+
 const COLORS: Record<string, string> = {
-  navy: "0.08 0.15 0.35",
-  navyDark: "0.06 0.12 0.29",
-  navyText: "0.09 0.19 0.36",
-  blueText: "0.22 0.32 0.48",
-  accentGold: "0.82 0.66 0.27",
+  navy: pdfRgbFromHex("#1B2D5B"),
+  navyDark: pdfRgbFromHex("#131F4A"),
+  navyText: pdfRgbFromHex("#1B2D5B"),
+  blueText: pdfRgbFromHex("#374151"),
+  accentGold: pdfRgbFromHex("#C8A84B"),
   cardBg: "1 1 1",
-  cardSoft: "0.96 0.98 1",
-  cardSofter: "0.98 0.99 1",
-  badgeBlueBg: "0.91 0.94 0.99",
-  badgeBlueFg: "0.20 0.29 0.48",
-  badgeGreenBg: "0.88 0.95 0.90",
-  badgeGreenFg: "0.15 0.33 0.20"
+  cardSoft: pdfRgbFromHex("#F4F6FA"),
+  cardSofter: pdfRgbFromHex("#F4F6FA"),
+  border: pdfRgbFromHex("#DDE1EA"),
+  textDark: pdfRgbFromHex("#111827"),
+  textMid: pdfRgbFromHex("#374151"),
+  textSub: pdfRgbFromHex("#6B7280"),
+  badgeBlueBg: pdfRgbFromHex("#EEF1F8"),
+  badgeBlueFg: pdfRgbFromHex("#1B2D5B"),
+  badgeGreenBg: pdfRgbFromHex("#EAF4EC"),
+  badgeGreenFg: pdfRgbFromHex("#3A7D44"),
+  badgePurpleBg: pdfRgbFromHex("#F5F0FF"),
+  badgePurpleFg: pdfRgbFromHex("#7C3AED"),
+  badgeAmberBg: pdfRgbFromHex("#FEF3C7"),
+  badgeAmberFg: pdfRgbFromHex("#92400E"),
+  customerBadgeBg: pdfRgbFromHex("#243672"),
+  white: "1 1 1"
 };
 const MARGIN = PAGE_MARGIN_X;
 
@@ -395,13 +413,44 @@ function startsWithJpeg(buffer: Buffer) {
   return buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8;
 }
 
-function drawText(page: PdfPageDraft, text: string, x: number, y: number, size = 11, color = "0 0 0") {
-  page.commands.push(`BT /F1 ${size} Tf ${color} rg ${x} ${y} Td (${escapePdfText(text)}) Tj ET`);
+function drawText(
+  page: PdfPageDraft,
+  text: string,
+  x: number,
+  y: number,
+  size = 11,
+  color = "0 0 0",
+  font: "F1" | "F2" = "F1"
+) {
+  page.commands.push(`BT /${font} ${size} Tf ${color} rg ${x} ${y} Td (${escapePdfText(text)}) Tj ET`);
 }
 
-function drawMultiline(page: PdfPageDraft, text: string, x: number, y: number, maxWidth: number, size = 11, leading = 14, color = "0 0 0") {
+function drawTextCentered(
+  page: PdfPageDraft,
+  text: string,
+  centerX: number,
+  y: number,
+  size = 11,
+  color = "0 0 0",
+  font: "F1" | "F2" = "F1"
+) {
+  const width = measureTextWidth(text, size);
+  drawText(page, text, centerX - width / 2, y, size, color, font);
+}
+
+function drawMultiline(
+  page: PdfPageDraft,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  size = 11,
+  leading = 14,
+  color = "0 0 0",
+  font: "F1" | "F2" = "F1"
+) {
   const lines = wrapTextByWidth(text, size, maxWidth);
-  lines.forEach((line, index) => drawText(page, line, x, y - index * leading, size, color));
+  lines.forEach((line, index) => drawText(page, line, x, y - index * leading, size, color, font));
   return lines.length;
 }
 
@@ -441,13 +490,13 @@ function drawRoundedBox(page: PdfPageDraft, x: number, y: number, w: number, h: 
 }
 
 function drawCard(page: PdfPageDraft, x: number, y: number, w: number, h: number, fill = COLORS.cardBg) {
-  drawRoundedBox(page, x, y, w, h, fill, CARD_BORDER_COLOR);
+  drawRoundedBox(page, x, y, w, h, fill, COLORS.border);
 }
 
 function drawStatCell(page: PdfPageDraft, x: number, y: number, w: number, h: number, label: string, value: string) {
   drawCard(page, x, y, w, h, COLORS.cardSofter);
-  drawText(page, label.toUpperCase(), x + CARD_PADDING_X, y + h - 14, 7.6, "0.42 0.49 0.60");
-  drawText(page, value, x + CARD_PADDING_X, y + h - 30, 11, COLORS.navyText);
+  drawText(page, label.toUpperCase(), x + CARD_PADDING_X, y + h - 15, 6.5, COLORS.textSub, "F1");
+  drawText(page, value, x + CARD_PADDING_X, y + 9, 11.5, COLORS.textDark, "F2");
 }
 
 function addLink(builder: PdfBuilder, page: PdfPageDraft, x: number, y: number, w: number, h: number, url: string) {
@@ -503,10 +552,10 @@ function drawHeader(
     const logoHeight = input.logo.height * scale;
     drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
   }
-  drawText(page, input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1");
+  drawText(page, input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
   drawText(page, input.subtitle, MARGIN + 124, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
-  drawRoundedBox(page, PAGE_WIDTH - MARGIN - 124, PAGE_HEIGHT - 72, 124, 24, "0.14 0.25 0.55", "0.14 0.25 0.55");
-  drawText(page, input.badge, PAGE_WIDTH - MARGIN - 98, PAGE_HEIGHT - 57, 8.4, "1 1 1");
+  drawRoundedBox(page, PAGE_WIDTH - MARGIN - 124, PAGE_HEIGHT - 72, 124, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
+  drawTextCentered(page, input.badge, PAGE_WIDTH - MARGIN - 62, PAGE_HEIGHT - 57, 9, COLORS.white, "F2");
 }
 
 function drawFooter(page: PdfPageDraft) {
@@ -520,9 +569,9 @@ function drawIntroCard(page: PdfPageDraft, yTop: number, title: string, descript
   const h = 72;
   const y = yTop - h;
   drawCard(page, MARGIN, y, CONTENT_WIDTH, h, COLORS.cardSoft);
-  drawText(page, title, MARGIN + CARD_PADDING_X, y + h - 24, 14, COLORS.navyText);
-  const lines = clampTextLines(description, 9.8, CONTENT_WIDTH - CARD_PADDING_X * 2, 2);
-  lines.forEach((line, i) => drawText(page, line, MARGIN + CARD_PADDING_X, y + h - 41 - i * 12, 9.8, COLORS.blueText));
+  drawText(page, title, MARGIN + CARD_PADDING_X, y + h - 24, 13, COLORS.textDark, "F2");
+  const lines = clampTextLines(description, 8.5, CONTENT_WIDTH - CARD_PADDING_X * 2, 2);
+  lines.forEach((line, i) => drawText(page, line, MARGIN + CARD_PADDING_X, y + h - 41 - i * 11, 8.5, COLORS.textMid));
 }
 
 function drawMaterialOptionCard(
@@ -535,11 +584,11 @@ function drawMaterialOptionCard(
 ) {
   drawCard(page, x, y, w, h, COLORS.cardBg);
   drawRoundedBox(page, x + CARD_PADDING_X, y + h - 23, 118, 14, input.badgeBg, input.badgeBg);
-  drawText(page, input.badgeText, x + CARD_PADDING_X + 8, y + h - 14, 7, input.badgeFg);
-  drawText(page, input.title, x + CARD_PADDING_X, y + h - 40, 12.8, COLORS.navyText);
-  drawText(page, input.price, x + w - CARD_PADDING_X - 118, y + h - 40, 11.5, COLORS.navyText);
-  const descLines = clampTextLines(input.desc, 9.2, w - CARD_PADDING_X * 2, 2);
-  descLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + h - 56 - i * 11, 9.2, COLORS.blueText));
+  drawTextCentered(page, input.badgeText, x + CARD_PADDING_X + 59, y + h - 14, 7, input.badgeFg, "F2");
+  drawText(page, input.title, x + CARD_PADDING_X, y + h - 40, 13, COLORS.textDark, "F2");
+  drawText(page, input.price, x + w - CARD_PADDING_X - 118, y + h - 40, 13, COLORS.navy, "F2");
+  const descLines = clampTextLines(input.desc, 8.5, w - CARD_PADDING_X * 2, 2);
+  descLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + h - 56 - i * 10.5, 8.5, COLORS.textMid));
 }
 
 function drawProjectCard(
@@ -736,6 +785,7 @@ function beginPage(): PdfPageDraft {
 
 function finalizeDocument(builder: PdfBuilder, pages: PdfPageDraft[]) {
   const fontId = builder.addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  const fontBoldId = builder.addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
   const pageIds: number[] = [];
 
   pages.forEach((page) => {
@@ -747,7 +797,7 @@ function finalizeDocument(builder: PdfBuilder, pages: PdfPageDraft[]) {
       ? `/Annots [${page.annotations.map((id) => `${id} 0 R`).join(" ")}]`
       : "";
 
-    const resources = `<< /Font << /F1 ${fontId} 0 R >>${xObjectEntries ? ` /XObject << ${xObjectEntries} >>` : ""} >>`;
+    const resources = `<< /Font << /F1 ${fontId} 0 R /F2 ${fontBoldId} 0 R >>${xObjectEntries ? ` /XObject << ${xObjectEntries} >>` : ""} >>`;
     const pageId = builder.addObject(
       `<< /Type /Page /Parent 0 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources ${resources} /Contents ${contentId} 0 R ${annots} >>`
     );
@@ -832,13 +882,13 @@ export async function POST(request: Request) {
     const quoteCardY = cursorTop - quoteCardH;
     drawCard(page1, MARGIN, quoteCardY, CONTENT_WIDTH, quoteCardH, COLORS.cardBg);
     const quoteLeftW = 306;
-    drawText(page1, "Requested system", MARGIN + CARD_PADDING_X, quoteCardY + quoteCardH - 22, 9.5, COLORS.blueText);
-    drawText(page1, serviceLabelFromScope(requestedScope), MARGIN + CARD_PADDING_X, quoteCardY + quoteCardH - 38, 16, COLORS.navyText);
-    drawMultiline(page1, estimate.address ?? "your property", MARGIN + CARD_PADDING_X, quoteCardY + quoteCardH - 56, quoteLeftW - 18, 10, 12, COLORS.blueText);
-    drawText(page1, `${fmtCurrency(primaryLow)} - ${fmtCurrency(primaryHigh)}`, MARGIN + CARD_PADDING_X, quoteCardY + 54, 19, COLORS.navyText);
-    drawText(page1, "Estimate basis: instant model + address intelligence", MARGIN + CARD_PADDING_X, quoteCardY + 34, 9, COLORS.blueText);
-    drawRoundedBox(page1, MARGIN + CARD_PADDING_X, quoteCardY + 12, 108, 14, COLORS.badgeBlueBg, COLORS.badgeBlueBg);
-    drawText(page1, "ESTIMATE ONLY", MARGIN + CARD_PADDING_X + 8, quoteCardY + 16, 7.4, COLORS.badgeBlueFg);
+    drawText(page1, "REQUESTED SYSTEM", MARGIN + CARD_PADDING_X, quoteCardY + quoteCardH - 22, 7, COLORS.accentGold);
+    drawText(page1, serviceLabelFromScope(requestedScope), MARGIN + CARD_PADDING_X, quoteCardY + quoteCardH - 38, 17, COLORS.textDark, "F2");
+    drawMultiline(page1, estimate.address ?? "your property", MARGIN + CARD_PADDING_X, quoteCardY + quoteCardH - 56, quoteLeftW - 18, 9, 11, COLORS.textMid);
+    drawText(page1, `${fmtCurrency(primaryLow)} - ${fmtCurrency(primaryHigh)}`, MARGIN + CARD_PADDING_X, quoteCardY + 54, 24, COLORS.navy, "F2");
+    drawText(page1, "Estimate basis: instant model + address intelligence", MARGIN + CARD_PADDING_X, quoteCardY + 34, 8.5, COLORS.textMid);
+    drawRoundedBox(page1, MARGIN + CARD_PADDING_X, quoteCardY + 12, 108, 14, COLORS.badgeAmberBg, COLORS.badgeAmberBg);
+    drawTextCentered(page1, "ESTIMATE ONLY", MARGIN + CARD_PADDING_X + 54, quoteCardY + 16, 7.5, COLORS.badgeAmberFg, "F2");
 
     const imageColX = MARGIN + quoteLeftW + GRID_GAP_X;
     const imageColW = CONTENT_WIDTH - quoteLeftW - GRID_GAP_X - CARD_PADDING_X;
@@ -872,12 +922,13 @@ export async function POST(request: Request) {
 
     drawCard(page1, MARGIN, cursorTop - 56, CONTENT_WIDTH, 56, COLORS.cardSoft);
     const noteLines = clampTextLines(
-      "Important note: this document is an instant planning estimate. Final proposal pricing is confirmed after full scope review, measurements, and product availability.",
-      9.5,
+      "This document is an instant planning estimate. Final proposal pricing is confirmed after full scope review, measurements, and product availability.",
+      8.5,
       CONTENT_WIDTH - CARD_PADDING_X * 2,
       3
     );
-    noteLines.forEach((line, i) => drawText(page1, line, MARGIN + CARD_PADDING_X, cursorTop - 20 - i * 12, 9.5, COLORS.blueText));
+    drawText(page1, "Important note", MARGIN + CARD_PADDING_X, cursorTop - 20, 11, COLORS.textDark, "F2");
+    noteLines.forEach((line, i) => drawText(page1, line, MARGIN + CARD_PADDING_X, cursorTop - 33 - i * 10.5, 8.5, COLORS.textMid));
     addLink(builder, page1, MARGIN, cursorTop - 56, CONTENT_WIDTH, 56, proposalUrl);
     drawFooter(page1);
 
@@ -917,8 +968,16 @@ export async function POST(request: Request) {
       const y = page2Top - materialCardH;
       drawMaterialOptionCard(page2, MARGIN, y, CONTENT_WIDTH, materialCardH, {
         badgeText: row.tag,
-        badgeFg: row.tag === "Included in this estimate" ? COLORS.badgeGreenFg : COLORS.badgeBlueFg,
-        badgeBg: row.tag === "Included in this estimate" ? COLORS.badgeGreenBg : COLORS.badgeBlueBg,
+        badgeFg: row.tag === "Included in this estimate"
+          ? COLORS.badgeGreenFg
+          : row.tag === "Premium option"
+            ? COLORS.badgePurpleFg
+            : COLORS.badgeBlueFg,
+        badgeBg: row.tag === "Included in this estimate"
+          ? COLORS.badgeGreenBg
+          : row.tag === "Premium option"
+            ? COLORS.badgePurpleBg
+            : COLORS.badgeBlueBg,
         title: row.title,
         price: row.delta,
         desc: "Proposal-aligned option card. Final values are confirmed during full proposal review."
@@ -927,16 +986,16 @@ export async function POST(request: Request) {
     });
 
     drawCard(page2, MARGIN, page2Top - 62, CONTENT_WIDTH, 62, COLORS.cardSoft);
-    drawText(page2, "Final proposal stage", MARGIN + CARD_PADDING_X, page2Top - 24, 11.5, COLORS.navyText);
+    drawText(page2, "Final proposal stage", MARGIN + CARD_PADDING_X, page2Top - 24, 13, COLORS.textDark, "F2");
     drawMultiline(
       page2,
       "Confirms exact product availability, accessory package selections, and installation sequencing before contract lock-in.",
       MARGIN + CARD_PADDING_X,
       page2Top - 40,
       CONTENT_WIDTH - CARD_PADDING_X * 2,
-      9.3,
+      8.5,
       11.5,
-      COLORS.blueText
+      COLORS.textMid
     );
     drawFooter(page2);
 
@@ -951,17 +1010,17 @@ export async function POST(request: Request) {
     let optionsY = PAGE_TOP_START - 8;
     otherOptions(requestedScope, estimate).forEach((option) => {
       drawCard(page3, MARGIN, optionsY - 40, CONTENT_WIDTH, 34, COLORS.cardSoft);
-      drawText(page3, option.title, MARGIN + CARD_PADDING_X, optionsY - 20, 10.5, COLORS.navyText);
-      drawText(page3, option.value, MARGIN + 330, optionsY - 20, 10.5, COLORS.navyText);
+      drawText(page3, option.title, MARGIN + CARD_PADDING_X, optionsY - 20, 10.5, COLORS.textDark, "F2");
+      drawText(page3, option.value, MARGIN + 330, optionsY - 20, 10.5, COLORS.navy, "F2");
       optionsY -= 34 + SECTION_GAP_Y;
     });
 
-    drawText(page3, "Recent related projects", MARGIN, optionsY - 10, 13, COLORS.navyText);
+    drawText(page3, "Recent related projects", MARGIN, optionsY - 10, 13, COLORS.textDark, "F2");
     optionsY -= 24;
 
     if (projects.length === 0) {
       drawCard(page3, MARGIN, optionsY - 64, CONTENT_WIDTH, 58, COLORS.cardSoft);
-      drawText(page3, "More project examples are available on our website.", MARGIN + CARD_PADDING_X, optionsY - 33, 11, COLORS.navyText);
+      drawText(page3, "More project examples are available on our website.", MARGIN + CARD_PADDING_X, optionsY - 33, 11, COLORS.textDark, "F2");
       drawText(page3, "See recent work", MARGIN + CARD_PADDING_X, optionsY - 50, 11, "0.12 0.38 0.72");
       addLink(builder, page3, MARGIN + 12, optionsY - 56, 140, 18, canonicalUrl("/projects"));
     } else {
@@ -991,7 +1050,7 @@ export async function POST(request: Request) {
     }
 
     drawCard(page3, MARGIN, 58, (CONTENT_WIDTH - 14) / 2, 48, COLORS.cardSoft);
-    drawText(page3, "Useful Links", MARGIN + 12, 88, 12, COLORS.navyText);
+    drawText(page3, "Useful Links", MARGIN + 12, 88, 12, COLORS.textDark, "F2");
     drawText(page3, "→ Request full proposal", MARGIN + 12, 74, 9.5, COLORS.blueText);
     drawText(page3, "→ See recent project photos", MARGIN + 12, 62, 9.5, COLORS.blueText);
     addLink(builder, page3, MARGIN + 10, 70, 160, 12, proposalUrl);
@@ -1001,7 +1060,7 @@ export async function POST(request: Request) {
     drawRoundedBox(page3, ctaX, 58, (CONTENT_WIDTH - 14) / 2, 48, COLORS.navy, COLORS.navy);
     drawText(page3, "Want a locked-in scope?", ctaX + 12, 88, 12, "1 1 1");
     drawRoundedBox(page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, COLORS.accentGold, COLORS.accentGold);
-    drawText(page3, "Request a full proposal →", ctaX + 78, 70.5, 8.7, "0.12 0.17 0.29");
+    drawTextCentered(page3, "Request a full proposal →", ctaX + 12 + ((CONTENT_WIDTH - 14) / 2 - 24) / 2, 70.5, 9, COLORS.navy, "F2");
     addLink(builder, page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, proposalUrl);
     drawFooter(page3);
 
