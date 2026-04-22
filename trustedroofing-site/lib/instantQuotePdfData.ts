@@ -47,12 +47,17 @@ export type SolarSnapshotData = {
   disclaimer: string;
   sourceNote: string;
   hasStrongData: boolean;
+  suitabilityVerdict: "Strong candidate" | "Moderate candidate" | "Limited candidate";
+  estimatedProductionLowKwh: number | null;
+  estimatedProductionLikelyKwh: number | null;
+  estimatedProductionHighKwh: number | null;
   teaserTitle: string;
   teaserBody: string;
   teaserNextPage: string;
   benefits: string[];
   ctaLabel: string;
   ctaUrl: string;
+  ctaSupport: string;
 };
 
 type ServiceFamily = "roofing" | "siding" | "eavestrough" | "soffit_fascia";
@@ -285,6 +290,26 @@ export function getSolarSnapshotData(input: {
 
   const hasSolarData = [maxPanels, maxArrayAreaM2, maxSunHoursYear].some((value) => typeof value === "number");
   const hasStrongData = hasSolarData || panelConfigSummary.length > 0 || roofSegmentSummary.length > 0;
+  const productionValues = panelConfigSummary
+    .map((row) => row.yearlyKwh)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+    .sort((a, b) => a - b);
+  const inferredLow = typeof maxPanels === "number" ? maxPanels * 380 : null;
+  const inferredHigh = typeof maxPanels === "number" ? maxPanels * 520 : null;
+  const estimatedProductionLowKwh = productionValues[0] ?? inferredLow;
+  const estimatedProductionHighKwh = productionValues[productionValues.length - 1] ?? inferredHigh;
+  const estimatedProductionLikelyKwh = productionValues.length > 0
+    ? productionValues[Math.floor(productionValues.length / 2)]
+    : (estimatedProductionLowKwh !== null && estimatedProductionHighKwh !== null
+      ? Math.round((estimatedProductionLowKwh + estimatedProductionHighKwh) / 2)
+      : null);
+
+  const verdictScore = (maxPanels ?? 0) * 1.2 + (maxSunHoursYear ?? 0) / 140 + (maxArrayAreaM2 ?? 0);
+  const suitabilityVerdict: SolarSnapshotData["suitabilityVerdict"] = verdictScore >= 60
+    ? "Strong candidate"
+    : verdictScore >= 34
+      ? "Moderate candidate"
+      : "Limited candidate";
 
   const chartFromPanelConfig: SolarChartDatum[] = panelConfigSummary.map((row) => ({
     label: `${row.panelCount}p`,
@@ -340,8 +365,8 @@ export function getSolarSnapshotData(input: {
     interpretationParts.push(`and roughly ${Math.round(maxSunHoursYear).toLocaleString()} annual sun-hours`);
   }
   const interpretation = interpretationParts.length > 0
-    ? `${interpretationParts.join(" ")}. This suggests the property is worth a focused solar suitability review before any final system recommendation.`
-    : "Solar API detail is limited for this address, but modeled roof and sun inputs still suggest a solar suitability review could be worthwhile.";
+    ? `${interpretationParts.join(" ")}. Based on these modeled values, this property appears to be a ${suitabilityVerdict.toLowerCase()} for a no-cost solar review.`
+    : "Solar API detail is limited for this address, but modeled roof and sun inputs still suggest this property is worth reviewing.";
 
   const teaserTitle = hasStrongData ? "Solar potential snapshot available" : "Solar planning snapshot";
   const teaserBody = hasStrongData
@@ -365,6 +390,10 @@ export function getSolarSnapshotData(input: {
     disclaimer: "This solar snapshot is an early planning aid and not part of the quoted scope.",
     sourceNote: "Modeled from Google Solar API rooftop analysis",
     hasStrongData,
+    suitabilityVerdict,
+    estimatedProductionLowKwh,
+    estimatedProductionLikelyKwh,
+    estimatedProductionHighKwh,
     teaserTitle,
     teaserBody,
     teaserNextPage: "See page 4 for a quick planning view based on roof and sun exposure metrics.",
@@ -373,7 +402,8 @@ export function getSolarSnapshotData(input: {
       "Easier to evaluate while planning major exterior work.",
       "Best reviewed alongside roof age, usable planes, and electrical goals."
     ],
-    ctaLabel: "Explore solar potential",
-    ctaUrl: canonicalUrl("/solar")
+    ctaLabel: "Request a solar review",
+    ctaUrl: canonicalUrl("/solar"),
+    ctaSupport: "A recent electricity bill is required to prepare the review and size the system to actual usage."
   };
 }
