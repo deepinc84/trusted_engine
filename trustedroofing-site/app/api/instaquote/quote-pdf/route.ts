@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
-import { listProjects, type Project } from "@/lib/db";
 import { buildPublicQuoteDisplay } from "@/lib/publicQuoteDisplay";
 import { canonicalUrl } from "@/lib/seo";
 import { createQuoteResumeToken } from "@/lib/quoteResumeToken";
+import { resolvePublicLocation } from "@/lib/serviceAreas";
+import {
+  getRelatedProjects,
+  getServiceSpecificQuoteSignals,
+  getSolarSnapshotData,
+  type SolarSnapshotData,
+  type RelatedProjectCard,
+  type ServiceSpecificQuoteSignal
+} from "@/lib/instantQuotePdfData";
 import { promises as fs } from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -28,13 +36,10 @@ type EstimatePayload = {
     good?: { low?: number; high?: number };
     eaves?: { low?: number; high?: number };
   };
-};
-
-type ProjectCard = {
-  title: string;
-  summary: string;
-  imageUrl: string;
-  href: string;
+  solarSnapshot?: {
+    buildingInsights?: Record<string, unknown> | null;
+    dataLayers?: Record<string, unknown> | null;
+  } | null;
 };
 
 type PdfImageRef = { name: string; width: number; height: number };
@@ -110,12 +115,6 @@ function serviceLabelFromScope(scope: string) {
   if (scope === "eavestrough") return "Eavestrough";
   if (scope === "all") return "Full exterior";
   return "Roofing";
-}
-
-function serviceSlugFromScope(scope: string) {
-  if (scope.includes("siding")) return "siding";
-  if (scope === "eavestrough") return "gutters";
-  return "roofing";
 }
 
 function materialConfig(scope: string, sidingMaterial: "vinyl" | "hardie") {
@@ -530,6 +529,40 @@ function drawImageCover(page: PdfPageDraft, image: PdfImageRef, x: number, y: nu
   );
 }
 
+function drawSolarChart(page: PdfPageDraft, x: number, y: number, w: number, h: number, snapshot: SolarSnapshotData) {
+  drawRoundedBox(page, x, y, w, h, COLORS.cardBg, COLORS.border);
+  drawText(page, "Solar opportunity chart", x + 12, y + h - 18, 11.2, COLORS.textDark, "F2");
+  const chartX = x + 14;
+  const chartY = y + 18;
+  const chartW = w - 28;
+  const chartH = h - 46;
+  drawRect(page, chartX, chartY, chartW, 0.5, COLORS.border);
+  const bars = snapshot.chartData.slice(0, 5);
+  const maxBars = Math.max(bars.length, 1);
+  const barW = chartW / maxBars - 10;
+  bars.forEach((bar, index) => {
+    const barH = Math.max(8, bar.normalized * (chartH - 16));
+    const bx = chartX + index * (barW + 10) + 4;
+    const by = chartY + 1;
+    drawRoundedBox(
+      page,
+      bx,
+      by,
+      barW,
+      barH,
+      bar.emphasis ? COLORS.navy : COLORS.badgeBlueBg,
+      bar.emphasis ? COLORS.navy : COLORS.badgeBlueBg
+    );
+    drawTextCentered(page, bar.label, bx + barW / 2, chartY - 10, 7.2, COLORS.textSub, "F2");
+    const valueLabel = snapshot.chartType === "panel_config"
+      ? `${Math.round(bar.value).toLocaleString()} kWh`
+      : snapshot.chartType === "roof_segment"
+        ? `${bar.value.toFixed(1)} m²`
+        : `${Math.round(bar.value).toLocaleString()}`;
+    drawTextCentered(page, valueLabel, bx + barW / 2, by + barH + 3, 6.8, COLORS.textMid);
+  });
+}
+
 function drawHeader(
   page: PdfPageDraft,
   input: {
@@ -541,10 +574,11 @@ function drawHeader(
 ) {
   const headerTop = PAGE_HEIGHT - HEADER_H;
   drawRect(page, 0, headerTop, PAGE_WIDTH, HEADER_H, COLORS.navyDark);
+  drawRect(page, 0, headerTop + HEADER_H - 20, PAGE_WIDTH, 20, COLORS.navy);
   drawRect(page, 0, headerTop - 2, PAGE_WIDTH, 2, COLORS.accentGold);
   if (input.logo) {
-    const logoMaxWidth = 104;
-    const logoMaxHeight = 42;
+    const logoMaxWidth = 118;
+    const logoMaxHeight = 46;
     const widthRatio = logoMaxWidth / input.logo.width;
     const heightRatio = logoMaxHeight / input.logo.height;
     const scale = Math.min(widthRatio, heightRatio);
@@ -552,6 +586,7 @@ function drawHeader(
     const logoHeight = input.logo.height * scale;
     drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
   }
+  drawText(page, "TRUSTED ESTIMATE SUMMARY", MARGIN + 124, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
   drawText(page, input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
   drawText(page, input.subtitle, MARGIN + 124, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
   drawRoundedBox(page, PAGE_WIDTH - MARGIN - 124, PAGE_HEIGHT - 72, 124, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
@@ -563,6 +598,7 @@ function drawFooter(page: PdfPageDraft) {
   drawRect(page, 0, FOOTER_H - 1, PAGE_WIDTH, 1, COLORS.accentGold);
   drawText(page, "Trusted Roofing & Exteriors", MARGIN, 16, 9.5, "0.84 0.9 0.98");
   drawText(page, "trustedroofingcalgary.com", PAGE_WIDTH - MARGIN - 150, 16, 9.5, "0.84 0.9 0.98");
+  drawText(page, "Estimate planning document", PAGE_WIDTH / 2 - 55, 16, 8.4, "0.7 0.78 0.9");
 }
 
 function drawIntroCard(page: PdfPageDraft, yTop: number, title: string, description: string) {
@@ -597,12 +633,12 @@ function drawProjectCard(
   y: number,
   w: number,
   h: number,
-  input: { title: string; summary: string; href: string; image?: PdfImageRef | null },
+  input: { title: string; summary: string; href: string; image?: PdfImageRef | null; location: string; serviceBadge: string; ctaLabel: string },
   builder: PdfBuilder
 ) {
   const PROJECT_IMAGE_H = 92;
   const PROJECT_TITLE_MAX_LINES = 2;
-  const PROJECT_DESC_MAX_LINES = 3;
+  const PROJECT_DESC_MAX_LINES = 2;
   const PROJECT_LINK_BOTTOM_OFFSET = 12;
   drawCard(page, x, y, w, h, COLORS.cardBg);
   const imageY = y + h - PROJECT_IMAGE_H - 6;
@@ -611,12 +647,15 @@ function drawProjectCard(
     drawRect(page, x + 6, imageY, w - 12, PROJECT_IMAGE_H, "0.9 0.93 0.97");
     drawText(page, "Image unavailable", x + 16, imageY + PROJECT_IMAGE_H / 2, 8, "0.4 0.47 0.58");
   }
+  drawRoundedBox(page, x + CARD_PADDING_X, imageY - 14, 74, 12, COLORS.badgeBlueBg, COLORS.badgeBlueBg);
+  drawTextCentered(page, input.serviceBadge, x + CARD_PADDING_X + 37, imageY - 10.5, 6.5, COLORS.badgeBlueFg, "F2");
   const textW = w - CARD_PADDING_X * 2;
   const titleLines = clampTextLines(input.title, 9.8, textW, PROJECT_TITLE_MAX_LINES);
   titleLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + 76 - i * 11, 9.8, COLORS.navyText));
+  drawText(page, input.location, x + CARD_PADDING_X, y + 56, 7.8, COLORS.textSub);
   const descLines = clampTextLines(input.summary, 8.4, textW, PROJECT_DESC_MAX_LINES);
-  descLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + 50 - i * 10, 8.4, COLORS.blueText));
-  drawText(page, "View project →", x + CARD_PADDING_X, y + PROJECT_LINK_BOTTOM_OFFSET, 9, "0.13 0.38 0.72");
+  descLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + 42 - i * 10, 8.4, COLORS.blueText));
+  drawText(page, `${input.ctaLabel} →`, x + CARD_PADDING_X, y + PROJECT_LINK_BOTTOM_OFFSET, 9, "0.13 0.38 0.72");
   addLink(builder, page, x + 2, y + 2, w - 4, h - 4, input.href);
 }
 
@@ -710,27 +749,6 @@ async function fetchPropertyImages(input: { lat?: number | null; lng?: number | 
   const aerial = aerialPrimary;
   const street = streetPrimary ?? streetFallback;
   return { aerial, street };
-}
-
-function projectHasImage(project: Project) {
-  return Boolean(project.photos?.[0]?.public_url);
-}
-
-async function selectRelatedProjects(scope: string): Promise<ProjectCard[]> {
-  const primaryService = serviceSlugFromScope(scope);
-  const primary = await listProjects({ service_slug: primaryService, include_unpublished: false, limit: 8 });
-  const secondary = await listProjects({ include_unpublished: false, limit: 20 });
-
-  const combined = [...primary, ...secondary]
-    .filter((project, index, array) => array.findIndex((candidate) => candidate.id === project.id) === index)
-    .filter((project) => project.is_published && projectHasImage(project));
-
-  return combined.slice(0, 3).map((project) => ({
-    title: project.title,
-    summary: project.summary,
-    imageUrl: project.photos?.[0]?.public_url ?? "",
-    href: canonicalUrl(`/projects/${project.slug}`)
-  }));
 }
 
 function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
@@ -850,7 +868,33 @@ export async function POST(request: Request) {
     });
 
     const proposalUrl = canonicalUrl(`/online-estimate?resume=${encodeURIComponent(quoteResumeToken)}`);
-    const projects = testMode ? [] : await selectRelatedProjects(requestedScope);
+    const locationContext = resolvePublicLocation({ address: estimate.address });
+    const [projects, quoteSignal] = testMode
+      ? [[], null] as [RelatedProjectCard[], ServiceSpecificQuoteSignal | null]
+      : await Promise.all([
+        getRelatedProjects({
+          serviceType: requestedScope,
+          address: estimate.address,
+          city: locationContext?.city ?? null,
+          quadrant: locationContext?.quadrant ?? null,
+          neighborhood: locationContext?.locality ?? null,
+          limit: 3
+        }),
+        getServiceSpecificQuoteSignals({
+          address: estimate.address,
+          city: locationContext?.city ?? null,
+          quadrant: locationContext?.quadrant ?? null,
+          neighborhood: locationContext?.locality ?? null,
+          serviceType: requestedScope
+        })
+      ]);
+    const solarSnapshot = getSolarSnapshotData({
+      buildingInsights: estimate.solarSnapshot?.buildingInsights ?? null,
+      dataLayers: estimate.solarSnapshot?.dataLayers ?? null,
+      quoteContext: { serviceType: requestedScope },
+      propertyContext: { roofAreaSqft: estimate.roofAreaSqft }
+    });
+    const includeSolarPage = requestedScope === "roofing" || requestedScope === "all" || solarSnapshot.hasStrongData;
     const [propertyImages, logoBuffer] = await Promise.all([
       fetchPropertyImages({ lat: estimate.lat, lng: estimate.lng, address: estimate.address }),
       loadLogo()
@@ -860,6 +904,7 @@ export async function POST(request: Request) {
     const page1 = beginPage();
     const page2 = beginPage();
     const page3 = beginPage();
+    const page4 = beginPage();
 
     const headerLogo = logoBuffer ? addImageObject(builder, page1, "Logo", logoBuffer) : null;
     drawHeader(page1, {
@@ -930,6 +975,17 @@ export async function POST(request: Request) {
     drawText(page1, "Important note", MARGIN + CARD_PADDING_X, cursorTop - 20, 11, COLORS.textDark, "F2");
     noteLines.forEach((line, i) => drawText(page1, line, MARGIN + CARD_PADDING_X, cursorTop - 33 - i * 10.5, 8.5, COLORS.textMid));
     addLink(builder, page1, MARGIN, cursorTop - 56, CONTENT_WIDTH, 56, proposalUrl);
+    drawCard(page1, MARGIN, 50, CONTENT_WIDTH, 52, COLORS.cardSoft);
+    const trustPills = [
+      "Local estimate intelligence",
+      "Proposal-aligned pricing logic",
+      "Calgary-focused exterior scope planning"
+    ];
+    trustPills.forEach((pill, index) => {
+      const x = MARGIN + CARD_PADDING_X + index * ((CONTENT_WIDTH - 32) / 3);
+      drawRoundedBox(page1, x, 62, ((CONTENT_WIDTH - 50) / 3), 14, COLORS.badgeBlueBg, COLORS.badgeBlueBg);
+      drawTextCentered(page1, pill, x + ((CONTENT_WIDTH - 50) / 6), 66.5, 6.6, COLORS.badgeBlueFg, "F2");
+    });
     drawFooter(page1);
 
     const headerLogo2 = logoBuffer ? addImageObject(builder, page2, "Logo2", logoBuffer) : null;
@@ -1001,21 +1057,36 @@ export async function POST(request: Request) {
 
     const headerLogo3 = logoBuffer ? addImageObject(builder, page3, "Logo3", logoBuffer) : null;
     drawHeader(page3, {
-      title: "Other Exterior Options",
-      subtitle: "Secondary planning ranges for the same property",
+      title: "Planning Support & Similar Scope Signals",
+      subtitle: "Additional quoted items, local quote activity, and related projects",
       logo: headerLogo3,
       badge: "Customer Estimate"
     });
 
     let optionsY = PAGE_TOP_START - 8;
+    drawText(page3, "Additional quoted items", MARGIN, optionsY - 8, 12.5, COLORS.textDark, "F2");
+    optionsY -= 16;
     otherOptions(requestedScope, estimate).forEach((option) => {
       drawCard(page3, MARGIN, optionsY - 40, CONTENT_WIDTH, 34, COLORS.cardSoft);
       drawText(page3, option.title, MARGIN + CARD_PADDING_X, optionsY - 20, 10.5, COLORS.textDark, "F2");
       drawText(page3, option.value, MARGIN + 330, optionsY - 20, 10.5, COLORS.navy, "F2");
       optionsY -= 34 + SECTION_GAP_Y;
     });
+    optionsY -= 6;
 
-    drawText(page3, "Recent related projects", MARGIN, optionsY - 10, 13, COLORS.textDark, "F2");
+    if (quoteSignal) {
+      const trustH = 86;
+      drawCard(page3, MARGIN, optionsY - trustH, CONTENT_WIDTH, trustH, COLORS.cardSoft);
+      drawText(page3, quoteSignal.heading, MARGIN + 12, optionsY - 22, 12, COLORS.textDark, "F2");
+      drawMultiline(page3, quoteSignal.subtext, MARGIN + 12, optionsY - 36, CONTENT_WIDTH - 220, 8.4, 10.5, COLORS.textMid);
+      drawRoundedBox(page3, MARGIN + CONTENT_WIDTH - 204, optionsY - trustH + 12, 192, 62, COLORS.cardBg, COLORS.border);
+      drawText(page3, `${quoteSignal.quoteSignalCount} recent ${quoteSignal.serviceType.toLowerCase()} signals`, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 56, 8.2, COLORS.textDark, "F2");
+      drawText(page3, quoteSignal.geographyLabel, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 43, 8.1, COLORS.textSub);
+      drawText(page3, `Modeled range: ${fmtCurrency(quoteSignal.rangeMin)} - ${fmtCurrency(quoteSignal.rangeMax)}`, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 29, 8.2, COLORS.navy, "F2");
+      optionsY -= trustH + SECTION_GAP_Y;
+    }
+
+    drawText(page3, "Related projects", MARGIN, optionsY - 10, 13, COLORS.textDark, "F2");
     optionsY -= 24;
 
     if (projects.length === 0) {
@@ -1025,11 +1096,11 @@ export async function POST(request: Request) {
       addLink(builder, page3, MARGIN + 12, optionsY - 56, 140, 18, canonicalUrl("/projects"));
     } else {
       const cardWidth = (CONTENT_WIDTH - GRID_GAP_X * 2) / 3;
-      const cardHeight = 196;
+      const cardHeight = 204;
       for (let i = 0; i < projects.length; i += 1) {
         const project = projects[i];
         const x = MARGIN + i * (cardWidth + GRID_GAP_X);
-        const y = optionsY - 214;
+        const y = optionsY - 218;
         const imageBuffer = await fetchBuffer(project.imageUrl);
         const imageRef = imageBuffer ? addImageObject(builder, page3, `Proj${i + 1}`, imageBuffer) : null;
         drawProjectCard(
@@ -1042,29 +1113,82 @@ export async function POST(request: Request) {
             title: project.title,
             summary: project.summary?.trim() ? project.summary : "See this recent project example.",
             href: project.href,
-            image: imageRef
+            image: imageRef,
+            location: project.locationLabel,
+            serviceBadge: project.serviceBadge,
+            ctaLabel: project.ctaLabel
           },
           builder
         );
       }
     }
 
-    drawCard(page3, MARGIN, 58, (CONTENT_WIDTH - 14) / 2, 48, COLORS.cardSoft);
-    drawText(page3, "Useful Links", MARGIN + 12, 88, 12, COLORS.textDark, "F2");
-    drawText(page3, "→ Request full proposal", MARGIN + 12, 74, 9.5, COLORS.blueText);
-    drawText(page3, "→ See recent project photos", MARGIN + 12, 62, 9.5, COLORS.blueText);
-    addLink(builder, page3, MARGIN + 10, 70, 160, 12, proposalUrl);
-    addLink(builder, page3, MARGIN + 10, 58, 172, 12, canonicalUrl("/projects"));
-
-    const ctaX = MARGIN + (CONTENT_WIDTH - 14) / 2 + 14;
-    drawRoundedBox(page3, ctaX, 58, (CONTENT_WIDTH - 14) / 2, 48, COLORS.navy, COLORS.navy);
-    drawText(page3, "Want a locked-in scope?", ctaX + 12, 88, 12, "1 1 1");
-    drawRoundedBox(page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, COLORS.accentGold, COLORS.accentGold);
-    drawTextCentered(page3, "Request a full proposal →", ctaX + 12 + ((CONTENT_WIDTH - 14) / 2 - 24) / 2, 70.5, 9, COLORS.navy, "F2");
-    addLink(builder, page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, proposalUrl);
+    drawCard(page3, MARGIN, 92, CONTENT_WIDTH, 64, COLORS.cardSoft);
+    drawRoundedBox(page3, MARGIN + 12, 130, 166, 14, COLORS.badgeAmberBg, COLORS.badgeAmberBg);
+    drawTextCentered(page3, "SOLAR SNAPSHOT", MARGIN + 95, 134.5, 7.2, COLORS.badgeAmberFg, "F2");
+    drawText(page3, solarSnapshot.teaserTitle, MARGIN + 12, 116, 12.5, COLORS.textDark, "F2");
+    drawMultiline(page3, solarSnapshot.teaserBody, MARGIN + 12, 103, CONTENT_WIDTH - 24, 8.4, 10.4, COLORS.textMid);
+    drawText(page3, includeSolarPage ? solarSnapshot.teaserNextPage : "Solar snapshot appears when stronger rooftop model data is available.", MARGIN + 12, 70, 8.8, COLORS.navy, "F2");
+    drawRoundedBox(page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, COLORS.navy, COLORS.navy);
+    drawTextCentered(page3, "View solar overview →", MARGIN + CONTENT_WIDTH - 94, 72, 8.6, COLORS.white, "F2");
+    addLink(builder, page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, solarSnapshot.ctaUrl);
     drawFooter(page3);
 
-    const pdf = finalizeDocument(builder, [page1, page2, page3]);
+    if (includeSolarPage) {
+      const headerLogo4 = logoBuffer ? addImageObject(builder, page4, "Logo4", logoBuffer) : null;
+      drawHeader(page4, {
+        title: "Solar potential snapshot",
+        subtitle: "Modeled from Google Solar API data for this property",
+        logo: headerLogo4,
+        badge: "Planning Snapshot"
+      });
+    drawCard(page4, MARGIN, PAGE_TOP_START - 84, CONTENT_WIDTH, 72, COLORS.cardSoft);
+    drawText(page4, "Solar is not included in this estimate. This page is a planning snapshot only.", MARGIN + 12, PAGE_TOP_START - 38, 9.2, COLORS.textMid);
+    drawText(page4, solarSnapshot.disclaimer, MARGIN + 12, PAGE_TOP_START - 52, 8.8, COLORS.textSub);
+    drawText(page4, solarSnapshot.sourceNote, MARGIN + 12, PAGE_TOP_START - 64, 8.2, COLORS.navy, "F2");
+
+    const statY = PAGE_TOP_START - 180;
+    const statW = (CONTENT_WIDTH - 12) / 2;
+    const statH = 44;
+    const statValues = [
+      { label: "Max panel count", value: solarSnapshot.maxPanels !== null ? `${solarSnapshot.maxPanels} panels` : "n/a" },
+      { label: "Usable array area", value: solarSnapshot.maxArrayAreaM2 !== null ? `${solarSnapshot.maxArrayAreaM2.toFixed(1)} m²` : "n/a" },
+      { label: "Annual sunshine", value: solarSnapshot.maxSunHoursYear !== null ? `${Math.round(solarSnapshot.maxSunHoursYear).toLocaleString()} sun-hours/year` : "n/a" },
+      { label: "Imagery quality", value: solarSnapshot.imageryQuality ? `${solarSnapshot.imageryQuality} roof imagery model` : "Not available" }
+    ];
+    statValues.forEach((item, index) => {
+      const row = Math.floor(index / 2);
+      const col = index % 2;
+      const x = MARGIN + col * (statW + 12);
+      const y = statY - row * (statH + 10);
+      drawCard(page4, x, y, statW, statH, COLORS.cardBg);
+      drawText(page4, item.label.toUpperCase(), x + 10, y + statH - 14, 6.8, COLORS.textSub, "F1");
+      drawText(page4, item.value, x + 10, y + 11, 10.2, COLORS.textDark, "F2");
+    });
+
+    const chartY = PAGE_TOP_START - 380;
+    drawSolarChart(page4, MARGIN, chartY, CONTENT_WIDTH, 140, solarSnapshot);
+
+    const interpY = chartY - 122;
+    drawCard(page4, MARGIN, interpY, CONTENT_WIDTH, 112, COLORS.cardSoft);
+    drawText(page4, "What this means", MARGIN + 12, interpY + 90, 11.6, COLORS.textDark, "F2");
+    const interpLines = clampTextLines(solarSnapshot.interpretation, 8.5, CONTENT_WIDTH - 24, 4);
+    interpLines.forEach((line, index) => drawText(page4, line, MARGIN + 12, interpY + 74 - index * 12, 8.5, COLORS.textMid));
+    drawText(page4, "Why it may be worth reviewing:", MARGIN + 12, interpY + 24, 8.6, COLORS.textDark, "F2");
+    solarSnapshot.benefits.slice(0, 3).forEach((benefit, index) => {
+      drawText(page4, `• ${benefit}`, MARGIN + 16, interpY + 12 - index * 10, 8, COLORS.textMid);
+    });
+    if (solarSnapshot.imageryProcessedDate) {
+      drawText(page4, `Imagery processed ${solarSnapshot.imageryProcessedDate}`, MARGIN + CONTENT_WIDTH - 170, interpY + 12, 7.6, COLORS.textSub);
+    }
+
+    drawRoundedBox(page4, MARGIN, 58, CONTENT_WIDTH, 34, COLORS.navy, COLORS.navy);
+    drawTextCentered(page4, solarSnapshot.ctaLabel, PAGE_WIDTH / 2, 70, 10, COLORS.white, "F2");
+    addLink(builder, page4, MARGIN, 58, CONTENT_WIDTH, 34, solarSnapshot.ctaUrl);
+      drawFooter(page4);
+    }
+
+    const pdf = finalizeDocument(builder, includeSolarPage ? [page1, page2, page3, page4] : [page1, page2, page3]);
 
     return new Response(pdf, {
       headers: {
