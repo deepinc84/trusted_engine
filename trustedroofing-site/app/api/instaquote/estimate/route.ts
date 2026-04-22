@@ -15,6 +15,7 @@ type EstimateBody = {
   lat?: number | null;
   lng?: number | null;
   testMode?: boolean;
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
   serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
 };
 
@@ -25,27 +26,105 @@ type TestDiagnostics = {
   maximumSidingCap: number;
   sidingFloorApplied: boolean;
   sidingFloorSource: "roof_area" | "ground_area" | "legacy" | null;
+=======
+  benchmarkQuotedAmount?: number | null;
+  benchmarkLabel?: string | null;
+  serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
+};
+
+type ComplexityBand = "simple" | "moderate" | "complex";
+
+type SolarSegmentSummary = {
+  areaSqft: number;
+  groundAreaSqft: number;
+  pitchDegrees: number;
+  planeHeightFt: number;
+};
+
+type EstimateCore = {
+  roofAreaSqft: number;
+  pitchDegrees: number;
+  complexityBand: ComplexityBand;
+  dataSource: string;
+  areaSource: "solar" | "regional";
+  roofGroundAreaSqft?: number;
+  roofHeightDeltaFt?: number;
+  dominantPitchDegrees?: number;
+  weightedPitchDegrees?: number;
+  segmentCount?: number;
+  roofSegmentsSummary?: SolarSegmentSummary[];
+};
+
+type EstimateRanges = ReturnType<typeof buildEstimateRanges>;
+
+type QuoteExtras = {
+  assumedStories: 2;
+  eavesLf: number;
+  eaves: { low: number; high: number };
+  sidingSqft: number;
+  sidingVinyl: { low: number; high: number };
+  sidingHardie: { low: number; high: number };
+};
+
+type QuoteModel = {
+  ranges: EstimateRanges;
+  extras: QuoteExtras;
+  shouldApplyMinimumPricingFloor: boolean;
+  areaAdjustedToMinimum: boolean;
+  pricingRoofAreaSqft: number;
+};
+
+type ExperimentalDiagnostics = {
+  roofGroundAreaSqft: number;
+  roofHeightDeltaFt: number;
+  weightedPitchDegrees: number;
+  estimatedWallHeightFt: number;
+  sidingPerimeterLf: number;
+  segmentCount: number;
+  sidingModel: string;
+  hardieModel: string;
+  sidingConfidence: "low" | "medium" | "high";
+>>>>>>> main
   hardieComplexityTier: "simple" | "moderate" | "complex" | "very_complex";
   hardieComplexityScore: number;
   estimatedWindowDoorCount: number;
   estimatedCornerLf: number;
   estimatedFasciaLf: number;
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
   adjustedHardieRateLow: number;
   adjustedHardieRateHigh: number;
   simpleHomeProtectionApplied: boolean;
   highDetailProtectionApplied: boolean;
+=======
+  eavesModel: string;
+  roofModel: string;
+  isValid: boolean;
+  fallbackReason: string | null;
+  roofAreaSqft: number;
+  experimentalEavesLf: number;
+  experimentalSidingSqft: number;
+  adjustedHardieRateLow: number;
+  adjustedHardieRateHigh: number;
+  impliedLowRate: number;
+  impliedHighRate: number;
+  benchmarkLabel?: string;
+  benchmarkQuotedAmount?: number;
+  benchmarkImpliedRate?: number;
+  benchmarkVarianceLow?: number;
+  benchmarkVarianceHigh?: number;
+  benchmarkPctLow?: number;
+  benchmarkPctHigh?: number;
+};
+
+type ExperimentalBuildResult = {
+  isUsable: boolean;
+  value: QuoteModel | null;
+  diagnostics: ExperimentalDiagnostics;
+>>>>>>> main
 };
 
 type SolarEstimateResult = {
-  result:
-    | {
-        roofAreaSqft: number;
-        pitchDegrees: number;
-        complexityBand: "simple" | "moderate" | "complex";
-        dataSource: string;
-        areaSource: "solar";
-      }
-    | null;
+  result: EstimateCore | null;
   debugReason: string | null;
   diagnostics: {
     requestId: string;
@@ -60,7 +139,6 @@ type SolarEstimateResult = {
     }>;
   };
 };
-
 
 type GoogleAddressComponent = { long_name: string; short_name: string; types: string[] };
 
@@ -183,7 +261,6 @@ const SIDING_VINYL_RATE_HIGH = 9.5;
 const EAVES_RATIO_BASELINE = 0.109;
 const SIDING_RATIO_BASELINE = 1.55;
 
-
 function mapScopeToRequestedScopes(scope: EstimateBody["serviceScope"]) {
   if (scope === "all") return ["roof", "eavestrough", "siding_vinyl", "siding_hardie"];
   if (scope === "vinyl_siding") return ["siding_vinyl"];
@@ -200,10 +277,409 @@ function mapScopeToServiceType(scope: EstimateBody["serviceScope"]) {
   return "InstantQuote:Roof";
 }
 
-function eavesComplexityMultiplier(complexityBand: "simple" | "moderate" | "complex") {
+function eavesComplexityMultiplier(complexityBand: ComplexityBand) {
   if (complexityBand === "simple") return 0.95;
   if (complexityBand === "complex") return 1.08;
   return 1;
+}
+
+function perimeterComplexityMultiplier(complexityBand: ComplexityBand) {
+  if (complexityBand === "simple") return 1;
+  if (complexityBand === "complex") return 1.16;
+  return 1.08;
+}
+
+function gableComplexityMultiplier(complexityBand: ComplexityBand) {
+  if (complexityBand === "simple") return 0.95;
+  if (complexityBand === "complex") return 1.08;
+  return 1;
+}
+
+function estimatePerimeterFromFootprint(footprintSqft: number, complexityBand: ComplexityBand) {
+  const basePerimeter = 4 * Math.sqrt(Math.max(footprintSqft, 100));
+  return Math.round(basePerimeter * perimeterComplexityMultiplier(complexityBand));
+}
+
+function estimateWallHeightFt(roofGroundAreaSqft: number) {
+  if (roofGroundAreaSqft < 900) return 8.5;
+  if (roofGroundAreaSqft < 1600) return 9;
+  if (roofGroundAreaSqft < 2400) return 9.5;
+  return 10;
+}
+
+function estimateGableBonusSqft(perimeterLf: number, roofHeightDeltaFt: number, complexityBand: ComplexityBand) {
+  const clampedRoofHeightDeltaFt = Math.max(0, Math.min(12, roofHeightDeltaFt));
+  const gableBonus = perimeterLf * clampedRoofHeightDeltaFt * 0.12;
+  return Math.round(gableBonus * gableComplexityMultiplier(complexityBand));
+}
+
+function estimateWindowDoorCount(input: {
+  experimentalSidingSqft: number;
+  complexityBand: ComplexityBand;
+  segmentCount: number;
+}) {
+  const baseCount = input.experimentalSidingSqft < 1400
+    ? 8
+    : input.experimentalSidingSqft < 2200
+      ? 12
+      : input.experimentalSidingSqft < 3000
+        ? 16
+        : 22;
+  const complexityAdd = input.complexityBand === "complex" ? 6 : input.complexityBand === "moderate" ? 3 : 0;
+  const segmentAdd = (input.segmentCount >= 10 ? 5 : input.segmentCount >= 6 ? 2 : 0);
+  return Math.max(6, baseCount + complexityAdd + segmentAdd);
+}
+
+function estimateCornerLf(input: { sidingPerimeterLf: number; complexityBand: ComplexityBand; segmentCount: number }) {
+  const multiplier = input.complexityBand === "complex" ? 1.35 : input.complexityBand === "moderate" ? 1.15 : 1;
+  const segmentMultiplier = input.segmentCount >= 12 ? 1.2 : input.segmentCount >= 8 ? 1.1 : 1;
+  return Math.round(input.sidingPerimeterLf * 0.45 * multiplier * segmentMultiplier);
+}
+
+function estimateFasciaLf(input: {
+  eavesLf: number;
+  roofAreaSqft: number;
+  complexityBand: ComplexityBand;
+}) {
+  const baseline = input.complexityBand === "complex"
+    ? input.roofAreaSqft * 0.17
+    : input.complexityBand === "moderate"
+      ? input.roofAreaSqft * 0.14
+      : input.roofAreaSqft * 0.11;
+  return Math.round(Math.max(input.eavesLf, baseline));
+}
+
+function buildHardieComplexityScore(input: {
+  experimentalSidingSqft: number;
+  roofHeightDeltaFt: number;
+  estimatedWallHeightFt: number;
+  segmentCount: number;
+  estimatedWindowDoorCount: number;
+  estimatedCornerLf: number;
+  estimatedFasciaLf: number;
+}) {
+  const openingScore = input.estimatedWindowDoorCount * 1.5;
+  const cornerScore = input.estimatedCornerLf / 20;
+  const fasciaScore = input.estimatedFasciaLf / 30;
+  const heightScore = (input.estimatedWallHeightFt >= 9.5 ? 2 : 0)
+    + (input.estimatedWallHeightFt >= 10 ? 2 : 0)
+    + (input.roofHeightDeltaFt >= 8 ? 2 : 0)
+    + (input.roofHeightDeltaFt >= 14 ? 2 : 0);
+  const segmentScore = (input.segmentCount >= 6 ? 2 : 0)
+    + (input.segmentCount >= 10 ? 3 : 0)
+    + (input.segmentCount >= 14 ? 3 : 0);
+  const wallAreaScore = (input.experimentalSidingSqft >= 1400 ? 2 : 0)
+    + (input.experimentalSidingSqft >= 2200 ? 3 : 0)
+    + (input.experimentalSidingSqft >= 3000 ? 3 : 0);
+
+  return openingScore + cornerScore + fasciaScore + heightScore + segmentScore + wallAreaScore;
+}
+
+function getHardieComplexityTier(score: number): "simple" | "moderate" | "complex" | "very_complex" {
+  if (score < 18) return "simple";
+  if (score < 28) return "moderate";
+  if (score < 40) return "complex";
+  return "very_complex";
+}
+
+function getHardieRateBandForTier(tier: "simple" | "moderate" | "complex" | "very_complex") {
+  if (tier === "simple") return { low: 9.25, high: 10.75 };
+  if (tier === "moderate") return { low: 11.25, high: 13.25 };
+  if (tier === "complex") return { low: 13.75, high: 15.75 };
+  return { low: 15.25, high: 17.75 };
+}
+
+function scoreOverflowAdjustment(score: number, tier: "simple" | "moderate" | "complex" | "very_complex") {
+  if (tier === "moderate") return Math.max(0, score - 18) * 0.08;
+  if (tier === "complex") return Math.max(0, score - 28) * 0.06;
+  if (tier === "very_complex") return Math.max(0, score - 40) * 0.04;
+  return 0;
+}
+
+function trimIntensityAdjustment(estimatedWindowDoorCount: number, estimatedCornerLf: number, estimatedFasciaLf: number) {
+  return (estimatedWindowDoorCount >= 16 ? 0.35 : 0)
+    + (estimatedWindowDoorCount >= 24 ? 0.35 : 0)
+    + (estimatedCornerLf >= 160 ? 0.35 : 0)
+    + (estimatedFasciaLf >= 250 ? 0.25 : 0)
+    + (estimatedFasciaLf >= 350 ? 0.25 : 0);
+}
+
+function getSidingConfidence(input: {
+  roofHeightDeltaFt: number;
+  segmentCount: number;
+  experimentalSidingSqft: number;
+  legacySidingSqft: number;
+  inferredHeightAggressively: boolean;
+}): "low" | "medium" | "high" {
+  const ratioDiff = Math.abs(input.experimentalSidingSqft - input.legacySidingSqft) / Math.max(input.legacySidingSqft, 1);
+  if (input.roofHeightDeltaFt < 2 && ratioDiff > 0.35) return "low";
+  if (input.inferredHeightAggressively && ratioDiff > 0.25) return "low";
+  if (input.segmentCount >= 10 && input.roofHeightDeltaFt >= 7 && ratioDiff <= 0.3) return "high";
+  if (input.segmentCount >= 8 && input.roofHeightDeltaFt >= 6) return "medium";
+  return ratioDiff <= 0.2 ? "medium" : "low";
+}
+
+function buildExtrasFromInputs(roofAreaSqft: number, complexityBand: ComplexityBand, eavesLfOverride?: number, sidingSqftOverride?: number): QuoteExtras {
+  const complexityMultiplier = eavesComplexityMultiplier(complexityBand);
+  const eavesLf = eavesLfOverride ?? Math.round(roofAreaSqft * EAVES_RATIO_BASELINE * complexityMultiplier);
+  const sidingSqft = sidingSqftOverride ?? Math.round(roofAreaSqft * SIDING_RATIO_BASELINE);
+
+  return {
+    assumedStories: 2 as const,
+    eavesLf,
+    eaves: {
+      low: Math.round(eavesLf * EAVES_RATE_LOW),
+      high: Math.round(eavesLf * EAVES_RATE_HIGH)
+    },
+    sidingSqft,
+    sidingVinyl: {
+      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW),
+      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH)
+    },
+    sidingHardie: {
+      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW * 2),
+      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH * 2)
+    }
+  };
+}
+
+function buildLegacyQuoteModel(estimateResult: EstimateCore): QuoteModel {
+  const shouldApplyMinimumPricingFloor = estimateResult.areaSource !== "solar";
+  const pricingRoofAreaSqft = shouldApplyMinimumPricingFloor
+    ? Math.max(MINIMUM_PRICING_ROOF_AREA_SQFT, estimateResult.roofAreaSqft)
+    : estimateResult.roofAreaSqft;
+
+  const ranges = buildEstimateRanges({
+    roofAreaSqft: pricingRoofAreaSqft,
+    pitchDegrees: estimateResult.pitchDegrees,
+    complexityBand: estimateResult.complexityBand,
+    areaSource: estimateResult.areaSource
+  });
+
+  return {
+    ranges,
+    extras: buildExtrasFromInputs(ranges.roofAreaSqft, ranges.complexityBand),
+    shouldApplyMinimumPricingFloor,
+    areaAdjustedToMinimum: pricingRoofAreaSqft !== estimateResult.roofAreaSqft,
+    pricingRoofAreaSqft
+  };
+}
+
+function isFinitePositive(value: number | undefined) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function buildExperimentalTestQuoteModel(
+  estimateResult: EstimateCore,
+  legacyModel: QuoteModel,
+  benchmarkQuotedAmount?: number,
+  benchmarkLabel?: string
+): ExperimentalBuildResult {
+  const fallbackDiagnostics: ExperimentalDiagnostics = {
+    roofGroundAreaSqft: estimateResult.roofGroundAreaSqft ?? 0,
+    roofHeightDeltaFt: estimateResult.roofHeightDeltaFt ?? 0,
+    weightedPitchDegrees: estimateResult.weightedPitchDegrees ?? estimateResult.dominantPitchDegrees ?? estimateResult.pitchDegrees,
+    estimatedWallHeightFt: 0,
+    sidingPerimeterLf: 0,
+    segmentCount: estimateResult.segmentCount ?? 0,
+    sidingModel: "existing_experimental_siding_v1",
+    hardieModel: "scored_hardie_complexity_v2",
+    sidingConfidence: "low",
+    hardieComplexityTier: "simple",
+    hardieComplexityScore: 0,
+    estimatedWindowDoorCount: 0,
+    estimatedCornerLf: 0,
+    estimatedFasciaLf: 0,
+    eavesModel: "solar_footprint_perimeter_v1",
+    roofModel: "solar_weighted_pitch_v1",
+    isValid: false,
+    fallbackReason: "experimental model not initialized",
+    roofAreaSqft: estimateResult.roofAreaSqft,
+    experimentalEavesLf: legacyModel.extras.eavesLf,
+    experimentalSidingSqft: legacyModel.extras.sidingSqft,
+    adjustedHardieRateLow: 0,
+    adjustedHardieRateHigh: 0,
+    impliedLowRate: 0,
+    impliedHighRate: 0,
+    ...(benchmarkLabel ? { benchmarkLabel } : {}),
+    ...(typeof benchmarkQuotedAmount === "number" ? { benchmarkQuotedAmount } : {})
+  };
+
+  if (!isFinitePositive(estimateResult.roofGroundAreaSqft)) {
+    return {
+      isUsable: false,
+      value: null,
+      diagnostics: { ...fallbackDiagnostics, fallbackReason: "missing roofGroundAreaSqft" }
+    };
+  }
+
+  const weightedPitchDegrees = estimateResult.weightedPitchDegrees ?? estimateResult.dominantPitchDegrees ?? estimateResult.pitchDegrees;
+  if (!Number.isFinite(weightedPitchDegrees) || weightedPitchDegrees < 0 || weightedPitchDegrees > 90) {
+    return {
+      isUsable: false,
+      value: null,
+      diagnostics: { ...fallbackDiagnostics, fallbackReason: "weighted pitch is invalid" }
+    };
+  }
+
+  const shouldApplyMinimumPricingFloor = estimateResult.areaSource !== "solar";
+  const pricingRoofAreaSqft = shouldApplyMinimumPricingFloor
+    ? Math.max(MINIMUM_PRICING_ROOF_AREA_SQFT, estimateResult.roofAreaSqft)
+    : estimateResult.roofAreaSqft;
+
+  const ranges = buildEstimateRanges({
+    roofAreaSqft: pricingRoofAreaSqft,
+    pitchDegrees: weightedPitchDegrees,
+    complexityBand: estimateResult.complexityBand,
+    areaSource: estimateResult.areaSource
+  });
+
+  const roofGroundAreaSqft = estimateResult.roofGroundAreaSqft as number;
+  const roofHeightDeltaFt = estimateResult.roofHeightDeltaFt ?? 0;
+  const sidingPerimeterLf = estimatePerimeterFromFootprint(roofGroundAreaSqft, ranges.complexityBand);
+  const estimatedWallHeightFt = estimateWallHeightFt(roofGroundAreaSqft);
+  const baseWallAreaSqft = Math.round(sidingPerimeterLf * estimatedWallHeightFt);
+  const gableBonusSqft = estimateGableBonusSqft(sidingPerimeterLf, roofHeightDeltaFt, ranges.complexityBand);
+  const experimentalSidingSqft = Math.max(350, Math.round(baseWallAreaSqft + gableBonusSqft));
+  const experimentalEavesLf = estimatePerimeterFromFootprint(roofGroundAreaSqft, ranges.complexityBand);
+  const estimatedWindowDoorCount = estimateWindowDoorCount({
+    experimentalSidingSqft,
+    complexityBand: ranges.complexityBand,
+    segmentCount: estimateResult.segmentCount ?? 0
+  });
+  const estimatedCornerLf = estimateCornerLf({
+    sidingPerimeterLf,
+    complexityBand: ranges.complexityBand,
+    segmentCount: estimateResult.segmentCount ?? 0
+  });
+  const estimatedFasciaLf = estimateFasciaLf({
+    eavesLf: experimentalEavesLf,
+    roofAreaSqft: ranges.roofAreaSqft,
+    complexityBand: ranges.complexityBand
+  });
+  const hardieComplexityScore = buildHardieComplexityScore({
+    experimentalSidingSqft,
+    roofHeightDeltaFt,
+    estimatedWallHeightFt,
+    segmentCount: estimateResult.segmentCount ?? 0,
+    estimatedWindowDoorCount,
+    estimatedCornerLf,
+    estimatedFasciaLf
+  });
+  const hardieComplexityTier = getHardieComplexityTier(hardieComplexityScore);
+  const tierBand = getHardieRateBandForTier(hardieComplexityTier);
+  const scoreOverflowAdj = scoreOverflowAdjustment(hardieComplexityScore, hardieComplexityTier);
+  const trimIntensityAdj = trimIntensityAdjustment(estimatedWindowDoorCount, estimatedCornerLf, estimatedFasciaLf);
+  const adjustedHardieRateLow = Math.round((tierBand.low + scoreOverflowAdj + trimIntensityAdj) * 100) / 100;
+  const adjustedHardieRateHigh = Math.round((tierBand.high + scoreOverflowAdj + trimIntensityAdj) * 100) / 100;
+  const hardieLow = Math.round(experimentalSidingSqft * adjustedHardieRateLow);
+  const hardieHigh = Math.round(experimentalSidingSqft * adjustedHardieRateHigh);
+  const sidingConfidence = getSidingConfidence({
+    roofHeightDeltaFt,
+    segmentCount: estimateResult.segmentCount ?? 0,
+    experimentalSidingSqft,
+    legacySidingSqft: legacyModel.extras.sidingSqft,
+    inferredHeightAggressively: roofHeightDeltaFt <= 0.5
+  });
+
+  const eavesMin = legacyModel.extras.eavesLf * 0.5;
+  const eavesMax = legacyModel.extras.eavesLf * 2.5;
+  const sidingMin = roofGroundAreaSqft * 0.35;
+  const sidingMax = roofGroundAreaSqft * 3.25;
+
+  let fallbackReason: string | null = null;
+  const validNumbers = ([
+    ranges.roofAreaSqft,
+    ranges.pitchDegrees,
+    experimentalEavesLf,
+    experimentalSidingSqft,
+    roofGroundAreaSqft
+  ] as number[]).every((value) => Number.isFinite(value) && value > 0);
+
+  if (!validNumbers) {
+    fallbackReason = "experimental values are non-finite";
+  } else if (experimentalEavesLf < eavesMin || experimentalEavesLf > eavesMax) {
+    fallbackReason = "experimental eaves outside sanity range";
+  } else if (experimentalSidingSqft < sidingMin || experimentalSidingSqft > sidingMax) {
+    fallbackReason = "experimental siding outside sanity range";
+  } else if (!Number.isFinite(adjustedHardieRateLow) || !Number.isFinite(adjustedHardieRateHigh) || adjustedHardieRateLow <= 0 || adjustedHardieRateHigh <= adjustedHardieRateLow) {
+    fallbackReason = "experimental hardie rates are invalid";
+  } else if (adjustedHardieRateLow < 8.5 || adjustedHardieRateHigh > 19.5) {
+    fallbackReason = "experimental hardie rates outside safety band";
+  } else if (!Number.isFinite(hardieLow) || !Number.isFinite(hardieHigh) || hardieLow <= 0 || hardieHigh <= hardieLow) {
+    fallbackReason = "experimental hardie range is invalid";
+  }
+
+  const impliedLowRate = hardieLow / experimentalSidingSqft;
+  const impliedHighRate = hardieHigh / experimentalSidingSqft;
+  const hasBenchmark = typeof benchmarkQuotedAmount === "number" && Number.isFinite(benchmarkQuotedAmount) && benchmarkQuotedAmount > 0;
+  const benchmarkVarianceLow = hasBenchmark ? hardieLow - benchmarkQuotedAmount : undefined;
+  const benchmarkVarianceHigh = hasBenchmark ? hardieHigh - benchmarkQuotedAmount : undefined;
+  const benchmarkPctLow = hasBenchmark ? ((hardieLow - benchmarkQuotedAmount) / benchmarkQuotedAmount) * 100 : undefined;
+  const benchmarkPctHigh = hasBenchmark ? ((hardieHigh - benchmarkQuotedAmount) / benchmarkQuotedAmount) * 100 : undefined;
+  const benchmarkImpliedRate = hasBenchmark ? benchmarkQuotedAmount / experimentalSidingSqft : undefined;
+
+  const diagnostics: ExperimentalDiagnostics = {
+    roofGroundAreaSqft,
+    roofHeightDeltaFt,
+    weightedPitchDegrees,
+    estimatedWallHeightFt,
+    sidingPerimeterLf,
+    segmentCount: estimateResult.segmentCount ?? 0,
+    sidingModel: "existing_experimental_siding_v1",
+    hardieModel: "scored_hardie_complexity_v2",
+    sidingConfidence,
+    hardieComplexityTier,
+    hardieComplexityScore: Math.round(hardieComplexityScore * 10) / 10,
+    estimatedWindowDoorCount,
+    estimatedCornerLf,
+    estimatedFasciaLf,
+    eavesModel: "solar_footprint_perimeter_v1",
+    roofModel: "solar_weighted_pitch_v1",
+    isValid: fallbackReason === null,
+    fallbackReason,
+    roofAreaSqft: ranges.roofAreaSqft,
+    experimentalEavesLf,
+    experimentalSidingSqft,
+    adjustedHardieRateLow,
+    adjustedHardieRateHigh,
+    impliedLowRate: Math.round(impliedLowRate * 100) / 100,
+    impliedHighRate: Math.round(impliedHighRate * 100) / 100,
+    ...(benchmarkLabel ? { benchmarkLabel } : {}),
+    ...(hasBenchmark
+      ? {
+        benchmarkQuotedAmount,
+        benchmarkImpliedRate: Math.round((benchmarkImpliedRate ?? 0) * 100) / 100,
+        benchmarkVarianceLow,
+        benchmarkVarianceHigh,
+        benchmarkPctLow: Math.round((benchmarkPctLow ?? 0) * 10) / 10,
+        benchmarkPctHigh: Math.round((benchmarkPctHigh ?? 0) * 10) / 10
+      }
+      : {})
+  };
+
+  if (fallbackReason) {
+    return { isUsable: false, value: null, diagnostics };
+  }
+
+  const baseExtras = buildExtrasFromInputs(ranges.roofAreaSqft, ranges.complexityBand, experimentalEavesLf, experimentalSidingSqft);
+  return {
+    isUsable: true,
+    value: {
+      ranges,
+      extras: {
+        ...baseExtras,
+        sidingHardie: {
+          low: hardieLow,
+          high: hardieHigh
+        }
+      },
+      shouldApplyMinimumPricingFloor,
+      areaAdjustedToMinimum: pricingRoofAreaSqft !== estimateResult.roofAreaSqft,
+      pricingRoofAreaSqft
+    },
+    diagnostics
+  };
 }
 
 async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateResult> {
@@ -244,8 +720,12 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
 
     const data = (await response.json()) as {
       solarPotential?: {
-        wholeRoofStats?: { areaMeters2?: number; pitchDegrees?: number };
-        roofSegmentStats?: Array<{ pitchDegrees?: number }>;
+        wholeRoofStats?: { areaMeters2?: number; groundAreaMeters2?: number; pitchDegrees?: number };
+        roofSegmentStats?: Array<{
+          pitchDegrees?: number;
+          planeHeightAtCenterMeters?: number;
+          stats?: { areaMeters2?: number; groundAreaMeters2?: number };
+        }>;
       };
       imageryQuality?: string;
       name?: string;
@@ -281,15 +761,47 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
     };
   }
 
-  const areaSqft = Math.round(roof.areaMeters2 * 10.7639);
+  const roofAreaSqft = Math.round(roof.areaMeters2 * 10.7639);
+  const roofGroundAreaSqft = Number.isFinite(roof.groundAreaMeters2)
+    ? Math.round((roof.groundAreaMeters2 ?? 0) * 10.7639)
+    : Math.round(roofAreaSqft * 0.92);
+
+  const segmentSummaries: SolarSegmentSummary[] = segments.map((segment) => ({
+    areaSqft: (segment.stats?.areaMeters2 ?? 0) * 10.7639,
+    groundAreaSqft: (segment.stats?.groundAreaMeters2 ?? 0) * 10.7639,
+    pitchDegrees: segment.pitchDegrees ?? roof.pitchDegrees ?? 25,
+    planeHeightFt: (segment.planeHeightAtCenterMeters ?? Number.NaN) * 3.28084
+  }));
+
+  const validHeights = segmentSummaries
+    .map((segment) => segment.planeHeightFt)
+    .filter((value) => Number.isFinite(value));
+  const roofHeightDeltaFt = validHeights.length >= 2
+    ? Math.max(...validHeights) - Math.min(...validHeights)
+    : 0;
+
+  const validSegments = segmentSummaries.filter((segment) => Number.isFinite(segment.areaSqft) && segment.areaSqft > 0);
+  const segmentCount = validSegments.length;
+
   const avgPitch =
     segments.length > 0
       ? segments.reduce((sum, seg) => sum + (seg.pitchDegrees ?? 25), 0) / segments.length
       : (roof.pitchDegrees ?? 25);
 
+  const weightedPitchDegrees = validSegments.length > 0
+    ? validSegments.reduce((sum, segment) => sum + (segment.pitchDegrees * segment.areaSqft), 0)
+      / validSegments.reduce((sum, segment) => sum + segment.areaSqft, 0)
+    : avgPitch;
+
   return {
     result: {
-      roofAreaSqft: areaSqft,
+      roofAreaSqft,
+      roofGroundAreaSqft,
+      roofHeightDeltaFt: Math.round(roofHeightDeltaFt * 10) / 10,
+      dominantPitchDegrees: Math.round((roof.pitchDegrees ?? avgPitch) * 10) / 10,
+      weightedPitchDegrees: Math.round(weightedPitchDegrees * 10) / 10,
+      segmentCount,
+      roofSegmentsSummary: segmentSummaries,
       pitchDegrees: Math.round(avgPitch * 10) / 10,
       complexityBand: complexityBandFromSegments(segments.length || 4),
       dataSource: "internal_model_solar",
@@ -320,6 +832,13 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as EstimateBody;
   const testMode = body.testMode === true || request.headers.get("x-instaquote-test-mode") === "1";
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
+=======
+  const benchmarkQuotedAmount = typeof body.benchmarkQuotedAmount === "number" ? body.benchmarkQuotedAmount : undefined;
+  const benchmarkLabel = typeof body.benchmarkLabel === "string" && body.benchmarkLabel.trim()
+    ? body.benchmarkLabel.trim()
+    : undefined;
+>>>>>>> main
   if (!body.address && (body.lat === null || body.lat === undefined || body.lng === null || body.lng === undefined)) {
     return NextResponse.json({ error: "address or lat/lng is required" }, { status: 400 });
   }
@@ -370,15 +889,7 @@ export async function POST(request: Request) {
 
   neighborhood = neighborhood ?? normalizeNeighborhood(extractNeighborhood(normalizedAddress));
 
-  let estimateResult:
-    | {
-        roofAreaSqft: number;
-        pitchDegrees: number;
-        complexityBand: "simple" | "moderate" | "complex";
-        dataSource: string;
-        areaSource: "solar" | "regional";
-      }
-    | null = null;
+  let estimateResult: EstimateCore | null = null;
   let historicalProfileMatch: Awaited<ReturnType<typeof findHistoricalRoofProfile>> = null;
 
   let solarDebug: string | null = null;
@@ -430,52 +941,34 @@ export async function POST(request: Request) {
     };
   }
 
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
   const shouldApplyMinimumPricingFloor = estimateResult.areaSource !== "solar";
   const pricingRoofAreaSqft = shouldApplyMinimumPricingFloor
     ? Math.max(MINIMUM_PRICING_ROOF_AREA_SQFT, estimateResult.roofAreaSqft)
     : estimateResult.roofAreaSqft;
   const areaAdjustedToMinimum = pricingRoofAreaSqft !== estimateResult.roofAreaSqft;
+=======
+  const legacyModel = buildLegacyQuoteModel(estimateResult);
+>>>>>>> main
 
-  if (areaAdjustedToMinimum) {
+  if (legacyModel.areaAdjustedToMinimum) {
     console.info("[instaquote][minimum_area_floor_applied]", {
       address: normalizedAddress || "Calgary, AB",
       service_type: serviceType,
       requested_scopes: requestedScopes,
       originalRoofAreaSqft: estimateResult.roofAreaSqft,
-      adjustedRoofAreaSqft: pricingRoofAreaSqft,
+      adjustedRoofAreaSqft: legacyModel.pricingRoofAreaSqft,
       minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
       dataSource: estimateResult.dataSource,
       areaSource: estimateResult.areaSource
     });
   }
 
-  const ranges = buildEstimateRanges({
-    roofAreaSqft: pricingRoofAreaSqft,
-    pitchDegrees: estimateResult.pitchDegrees,
-    complexityBand: estimateResult.complexityBand,
-    areaSource: estimateResult.areaSource
-  });
-
-  const complexityMultiplier = eavesComplexityMultiplier(ranges.complexityBand);
-  const eavesLf = Math.round(ranges.roofAreaSqft * EAVES_RATIO_BASELINE * complexityMultiplier);
-  const sidingSqft = Math.round(ranges.roofAreaSqft * SIDING_RATIO_BASELINE);
-  const extras = {
-    assumedStories: 2 as const,
-    eavesLf,
-    eaves: {
-      low: Math.round(eavesLf * EAVES_RATE_LOW),
-      high: Math.round(eavesLf * EAVES_RATE_HIGH)
-    },
-    sidingSqft,
-    sidingVinyl: {
-      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW),
-      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH)
-    },
-    sidingHardie: {
-      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW * 2),
-      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH * 2)
-    }
-  };
+  const experimentalModel = testMode
+    ? buildExperimentalTestQuoteModel(estimateResult, legacyModel, benchmarkQuotedAmount, benchmarkLabel)
+    : null;
+  const usingExperimental = Boolean(testMode && experimentalModel?.isUsable && experimentalModel.value);
+  const finalModel = usingExperimental ? experimentalModel!.value! : legacyModel;
 
   let testDiagnostics: TestDiagnostics | null = null;
   if (testMode) {
@@ -619,21 +1112,22 @@ export async function POST(request: Request) {
   }
 
   const selectedQuotedRange = serviceScope === "vinyl_siding"
-    ? extras.sidingVinyl
+    ? finalModel.extras.sidingVinyl
     : serviceScope === "hardie_siding"
-      ? extras.sidingHardie
+      ? finalModel.extras.sidingHardie
       : serviceScope === "eavestrough"
-        ? extras.eaves
+        ? finalModel.extras.eaves
         : serviceScope === "all"
           ? {
-            low: ranges.good.low + extras.eaves.low + extras.sidingVinyl.low,
-            high: ranges.good.high + extras.eaves.high + extras.sidingVinyl.high
+            low: finalModel.ranges.good.low + finalModel.extras.eaves.low + finalModel.extras.sidingVinyl.low,
+            high: finalModel.ranges.good.high + finalModel.extras.eaves.high + finalModel.extras.sidingVinyl.high
           }
-          : ranges.good;
+          : finalModel.ranges.good;
 
   let addressQueryId = testMode ? `test_${crypto.randomUUID()}` : crypto.randomUUID();
   if (!testMode) {
     try {
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
     const queryPayload = {
       address: normalizedAddress || "Calgary, AB",
       neighborhood,
@@ -668,25 +1162,62 @@ export async function POST(request: Request) {
       notesExtras: {
         ...extras,
         serviceScope,
+=======
+      const queryPayload = {
+        address: normalizedAddress || "Calgary, AB",
+        neighborhood,
+        service_type: serviceType,
+        requested_scopes: requestedScopes,
+        place_id: placeId,
+        lat,
+        lng,
+        roof_area_sqft: finalModel.ranges.roofAreaSqft,
+        pitch_degrees: finalModel.ranges.pitchDegrees,
+        complexity_band: finalModel.ranges.complexityBand,
+        area_source: estimateResult.areaSource,
+        data_source: estimateResult.dataSource,
+        estimate_low: selectedQuotedRange.low,
+        estimate_high: selectedQuotedRange.high,
+        solar_status: estimateResult.areaSource === "solar" ? "success" : "fallback",
+        solar_debug: {
+          geocodeSource,
+          geocodeDebug,
+          reason: solarDebug,
+          requestId: solarDiagnostics.requestId,
+          keyPresent: solarDiagnostics.keyPresent,
+          attempts: solarDiagnostics.attempts,
+          minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
+          areaAdjustedToMinimum: finalModel.areaAdjustedToMinimum,
+          originalRoofAreaSqft: estimateResult.roofAreaSqft,
+          pricingRoofAreaSqft: finalModel.pricingRoofAreaSqft,
+          shouldApplyMinimumPricingFloor: finalModel.shouldApplyMinimumPricingFloor
+        }
+      };
+      const queryOptions = {
+        notesExtras: {
+          ...finalModel.extras,
+          serviceScope,
+          requestedScopes,
+          selectedQuotedRange,
+          roofRange: finalModel.ranges.good
+        },
+>>>>>>> main
         requestedScopes,
-        selectedQuotedRange,
-        roofRange: ranges.good
-      },
-      requestedScopes,
-      serviceType
-    };
+        serviceType
+      };
 
-    if (historicalProfileMatch) {
-      if (estimateResult.dataSource.startsWith("internal_model_historical_")) {
-        addressQueryId = historicalProfileMatch.queryId;
-        await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, queryOptions);
+      if (historicalProfileMatch) {
+        if (estimateResult.dataSource.startsWith("internal_model_historical_")) {
+          addressQueryId = historicalProfileMatch.queryId;
+          await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, queryOptions);
+        } else {
+          addressQueryId = await createInstaquoteAddressQuery(queryPayload, queryOptions);
+        }
       } else {
         addressQueryId = await createInstaquoteAddressQuery(queryPayload, queryOptions);
       }
-    } else {
-      addressQueryId = await createInstaquoteAddressQuery(queryPayload, queryOptions);
-    }
 
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
     await upsertInstantQuoteFromAddressQuery({
       legacy_address_query_id: addressQueryId,
       address: normalizedAddress || "Calgary, AB",
@@ -694,6 +1225,15 @@ export async function POST(request: Request) {
       quote_low: selectedQuotedRange.low,
       quote_high: selectedQuotedRange.high
     });
+=======
+      await upsertInstantQuoteFromAddressQuery({
+        legacy_address_query_id: addressQueryId,
+        address: normalizedAddress || "Calgary, AB",
+        service_type: serviceType,
+        quote_low: selectedQuotedRange.low,
+        quote_high: selectedQuotedRange.high
+      });
+>>>>>>> main
     } catch (error) {
       console.error("instaquote estimate query insert failed", error);
     }
@@ -716,27 +1256,94 @@ export async function POST(request: Request) {
     placeId,
     lat,
     lng,
-    roofAreaSqft: ranges.roofAreaSqft,
-    roofSquares: ranges.roofSquares,
-    pitchDegrees: ranges.pitchDegrees,
-    pitchRatio: degreesToPitchRatio(ranges.pitchDegrees),
+    roofAreaSqft: finalModel.ranges.roofAreaSqft,
+    roofSquares: finalModel.ranges.roofSquares,
+    pitchDegrees: finalModel.ranges.pitchDegrees,
+    pitchRatio: degreesToPitchRatio(finalModel.ranges.pitchDegrees),
     dataSource: estimateResult.dataSource,
     dataSourceLabel: dataSourceLabel(estimateResult.dataSource),
     areaSource: estimateResult.areaSource,
-    complexityBand: ranges.complexityBand,
-    complexityScore: ranges.complexityScore,
-    ranges,
+    complexityBand: finalModel.ranges.complexityBand,
+    complexityScore: finalModel.ranges.complexityScore,
+    ranges: finalModel.ranges,
     solarDebug,
     solarRequestId: solarDiagnostics.requestId,
     geocodeSource,
     geocodeDebug,
     solarAttempts: solarDiagnostics.attempts,
     minimumPricingRoofAreaSqft: MINIMUM_PRICING_ROOF_AREA_SQFT,
-    areaAdjustedToMinimum,
+    areaAdjustedToMinimum: finalModel.areaAdjustedToMinimum,
     originalRoofAreaSqft: estimateResult.roofAreaSqft,
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
     pricingRoofAreaSqft,
     shouldApplyMinimumPricingFloor,
     extras,
     testDiagnostics
+=======
+    pricingRoofAreaSqft: finalModel.pricingRoofAreaSqft,
+    shouldApplyMinimumPricingFloor: finalModel.shouldApplyMinimumPricingFloor,
+    extras: finalModel.extras,
+    ...(testMode
+      ? {
+        pricingModel: usingExperimental ? "experimental_test" : "legacy",
+        pricingFallbackUsed: !usingExperimental,
+        legacyComparison: {
+          roofAreaSqft: legacyModel.ranges.roofAreaSqft,
+          pitchDegrees: legacyModel.ranges.pitchDegrees,
+          eavesLf: legacyModel.extras.eavesLf,
+          sidingSqft: legacyModel.extras.sidingSqft,
+          hardieLow: legacyModel.extras.sidingHardie.low,
+          hardieHigh: legacyModel.extras.sidingHardie.high,
+          low: serviceScope === "all"
+            ? legacyModel.ranges.good.low + legacyModel.extras.eaves.low + legacyModel.extras.sidingVinyl.low
+            : serviceScope === "eavestrough"
+              ? legacyModel.extras.eaves.low
+              : serviceScope === "vinyl_siding"
+                ? legacyModel.extras.sidingVinyl.low
+                : serviceScope === "hardie_siding"
+                  ? legacyModel.extras.sidingHardie.low
+                  : legacyModel.ranges.good.low,
+          high: serviceScope === "all"
+            ? legacyModel.ranges.good.high + legacyModel.extras.eaves.high + legacyModel.extras.sidingVinyl.high
+            : serviceScope === "eavestrough"
+              ? legacyModel.extras.eaves.high
+              : serviceScope === "vinyl_siding"
+                ? legacyModel.extras.sidingVinyl.high
+                : serviceScope === "hardie_siding"
+                  ? legacyModel.extras.sidingHardie.high
+                  : legacyModel.ranges.good.high
+        },
+        experimentalDiagnostics: experimentalModel?.diagnostics ?? {
+          roofGroundAreaSqft: estimateResult.roofGroundAreaSqft ?? 0,
+          roofHeightDeltaFt: estimateResult.roofHeightDeltaFt ?? 0,
+          weightedPitchDegrees: estimateResult.weightedPitchDegrees ?? estimateResult.dominantPitchDegrees ?? estimateResult.pitchDegrees,
+          estimatedWallHeightFt: 0,
+          sidingPerimeterLf: 0,
+          segmentCount: estimateResult.segmentCount ?? 0,
+          sidingModel: "existing_experimental_siding_v1",
+          hardieModel: "scored_hardie_complexity_v2",
+          sidingConfidence: "low",
+          hardieComplexityTier: "simple",
+          hardieComplexityScore: 0,
+          estimatedWindowDoorCount: 0,
+          estimatedCornerLf: 0,
+          estimatedFasciaLf: 0,
+          eavesModel: "solar_footprint_perimeter_v1",
+          roofModel: "solar_weighted_pitch_v1",
+          isValid: false,
+          fallbackReason: "experimental model unavailable",
+          roofAreaSqft: legacyModel.ranges.roofAreaSqft,
+          experimentalEavesLf: legacyModel.extras.eavesLf,
+          experimentalSidingSqft: legacyModel.extras.sidingSqft,
+          adjustedHardieRateLow: 0,
+          adjustedHardieRateHigh: 0,
+          impliedLowRate: 0,
+          impliedHighRate: 0,
+          ...(benchmarkLabel ? { benchmarkLabel } : {}),
+          ...(typeof benchmarkQuotedAmount === "number" ? { benchmarkQuotedAmount } : {})
+        }
+      }
+      : {})
+>>>>>>> main
   });
 }

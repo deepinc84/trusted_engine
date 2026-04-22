@@ -10,8 +10,11 @@ function focusHashTarget(rawHash: string) {
   if (!target) return;
 
   target.scrollIntoView({ behavior: "smooth", block: "start" });
-  target.classList.add("quote-card--flash");
-  window.setTimeout(() => target.classList.remove("quote-card--flash"), 1800);
+  const flashTarget = target.classList.contains("quote-card")
+    ? target
+    : target.closest(".quote-card");
+  flashTarget?.classList.add("quote-card--flash");
+  window.setTimeout(() => flashTarget?.classList.remove("quote-card--flash"), 1800);
 }
 
 export default function QuoteArchiveHashHandler() {
