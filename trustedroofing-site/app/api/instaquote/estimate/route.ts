@@ -14,7 +14,26 @@ type EstimateBody = {
   placeId?: string;
   lat?: number | null;
   lng?: number | null;
+  testMode?: boolean;
   serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
+};
+
+type TestDiagnostics = {
+  rawExperimentalSidingSqft: number;
+  finalExperimentalSidingSqft: number;
+  minimumSidingFloor: number;
+  maximumSidingCap: number;
+  sidingFloorApplied: boolean;
+  sidingFloorSource: "roof_area" | "ground_area" | "legacy" | null;
+  hardieComplexityTier: "simple" | "moderate" | "complex" | "very_complex";
+  hardieComplexityScore: number;
+  estimatedWindowDoorCount: number;
+  estimatedCornerLf: number;
+  estimatedFasciaLf: number;
+  adjustedHardieRateLow: number;
+  adjustedHardieRateHigh: number;
+  simpleHomeProtectionApplied: boolean;
+  highDetailProtectionApplied: boolean;
 };
 
 type SolarEstimateResult = {
@@ -300,6 +319,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as EstimateBody;
+  const testMode = body.testMode === true || request.headers.get("x-instaquote-test-mode") === "1";
   if (!body.address && (body.lat === null || body.lat === undefined || body.lng === null || body.lng === undefined)) {
     return NextResponse.json({ error: "address or lat/lng is required" }, { status: 400 });
   }
@@ -377,7 +397,7 @@ export async function POST(request: Request) {
     solarDebug = "no lat/lng available for solar lookup";
   }
 
-  if (!estimateResult) {
+  if (!estimateResult && !testMode) {
     historicalProfileMatch = await findHistoricalRoofProfile({
       placeId,
       address: normalizedAddress,
@@ -396,16 +416,18 @@ export async function POST(request: Request) {
       solarDebug = [solarDebug, `using historical profile matched by ${historicalProfileMatch.matchedBy} (${historicalProfileMatch.queriedAt})`]
         .filter(Boolean)
         .join(" | ");
-    } else {
-      const regional = regionalRoofEstimate({ address: normalizedAddress, lat, lng });
-      estimateResult = {
-        roofAreaSqft: regional.roofAreaSqft,
-        pitchDegrees: 25,
-        complexityBand: "moderate",
-        dataSource: "internal_model_regional",
-        areaSource: "regional"
-      };
     }
+  }
+
+  if (!estimateResult) {
+    const regional = regionalRoofEstimate({ address: normalizedAddress, lat, lng });
+    estimateResult = {
+      roofAreaSqft: regional.roofAreaSqft,
+      pitchDegrees: 25,
+      complexityBand: "moderate",
+      dataSource: "internal_model_regional",
+      areaSource: "regional"
+    };
   }
 
   const shouldApplyMinimumPricingFloor = estimateResult.areaSource !== "solar";
@@ -455,6 +477,147 @@ export async function POST(request: Request) {
     }
   };
 
+  let testDiagnostics: TestDiagnostics | null = null;
+  if (testMode) {
+    const hardieComplexityScore = ranges.complexityScore;
+    const hardieComplexityTier: TestDiagnostics["hardieComplexityTier"] = hardieComplexityScore >= 40
+      ? "very_complex"
+      : hardieComplexityScore >= 28
+        ? "complex"
+        : hardieComplexityScore >= 18
+          ? "moderate"
+          : "simple";
+    const estimatedWindowDoorCount = Math.round(
+      Math.max(6, Math.min(42, ranges.roofAreaSqft / 220 + hardieComplexityScore * 0.45))
+    );
+    const estimatedCornerLf = Math.round(
+      Math.max(24, Math.min(260, ranges.roofAreaSqft * 0.045 + hardieComplexityScore * 1.8))
+    );
+    const estimatedFasciaLf = Math.round(
+      Math.max(90, Math.min(420, eavesLf * (0.88 + hardieComplexityScore * 0.01)))
+    );
+    const segmentCount = Math.round(Math.max(4, Math.min(24, hardieComplexityScore / 2 + 2)));
+
+    const baseRates: Record<TestDiagnostics["hardieComplexityTier"], { low: number; high: number }> = {
+      simple: { low: 13.25, high: 14.75 },
+      moderate: { low: 14.75, high: 16.5 },
+      complex: { low: 16.0, high: 18.25 },
+      very_complex: { low: 17.0, high: 19.5 }
+    };
+    const selectedBase = baseRates[hardieComplexityTier];
+
+    const overflowAdj = hardieComplexityTier === "moderate"
+      ? Math.max(0, hardieComplexityScore - 18) * 0.1
+      : hardieComplexityTier === "complex"
+        ? Math.max(0, hardieComplexityScore - 28) * 0.08
+        : hardieComplexityTier === "very_complex"
+          ? Math.max(0, hardieComplexityScore - 40) * 0.06
+          : 0;
+
+    let trimIntensityAdj = 0;
+    if (estimatedWindowDoorCount >= 9) trimIntensityAdj += 0.3;
+    if (estimatedWindowDoorCount >= 12) trimIntensityAdj += 0.4;
+    if (estimatedWindowDoorCount >= 18) trimIntensityAdj += 0.5;
+    if (estimatedWindowDoorCount >= 24) trimIntensityAdj += 0.5;
+    if (estimatedCornerLf >= 50) trimIntensityAdj += 0.3;
+    if (estimatedCornerLf >= 80) trimIntensityAdj += 0.35;
+    if (estimatedCornerLf >= 120) trimIntensityAdj += 0.4;
+    if (estimatedFasciaLf >= 140) trimIntensityAdj += 0.2;
+    if (estimatedFasciaLf >= 220) trimIntensityAdj += 0.3;
+    if (estimatedFasciaLf >= 320) trimIntensityAdj += 0.35;
+
+    let adjustedHardieRateLow = selectedBase.low + overflowAdj + trimIntensityAdj;
+    let adjustedHardieRateHigh = selectedBase.high + overflowAdj + trimIntensityAdj;
+
+    const simpleHomeProtectionApplied = estimatedWindowDoorCount <= 10
+      && estimatedCornerLf <= 60
+      && estimatedFasciaLf <= 150
+      && hardieComplexityTier === "moderate";
+    if (simpleHomeProtectionApplied) {
+      adjustedHardieRateLow = Math.max(adjustedHardieRateLow, 13.75);
+      adjustedHardieRateHigh = Math.max(adjustedHardieRateHigh, 15.25);
+    }
+
+    const highDetailProtectionApplied = estimatedWindowDoorCount >= 20
+      || estimatedCornerLf >= 100
+      || estimatedFasciaLf >= 300
+      || segmentCount >= 12;
+    if (highDetailProtectionApplied) {
+      adjustedHardieRateLow = Math.max(adjustedHardieRateLow, 16.5);
+      adjustedHardieRateHigh = Math.max(adjustedHardieRateHigh, 18.5);
+    }
+
+    const legacySidingSqft = extras.sidingSqft;
+    const pitchRadians = (ranges.pitchDegrees * Math.PI) / 180;
+    const roofGroundAreaSqft = Math.round(Math.max(1, ranges.roofAreaSqft * Math.cos(pitchRadians)));
+    const isTwoStorey = extras.assumedStories >= 2;
+    const roofToWallFloor = ranges.roofAreaSqft * (isTwoStorey ? 1.35 : 1.1);
+    const groundToWallFloor = roofGroundAreaSqft * (isTwoStorey ? 1.45 : 1.15);
+    const legacyFloor = legacySidingSqft * 0.8;
+    const minimumSidingFloor = Math.max(roofToWallFloor, groundToWallFloor, legacyFloor);
+    const sidingFloorSource: TestDiagnostics["sidingFloorSource"] = minimumSidingFloor === roofToWallFloor
+      ? "roof_area"
+      : minimumSidingFloor === groundToWallFloor
+        ? "ground_area"
+        : "legacy";
+
+    const rawExperimentalSidingSqft = Math.round(
+      Math.max(1, ranges.roofAreaSqft * (0.86 + hardieComplexityScore * 0.012) + estimatedCornerLf * 2.1)
+    );
+    const maximumSidingCap = legacySidingSqft * 1.35;
+    const floored = Math.max(rawExperimentalSidingSqft, minimumSidingFloor);
+    let finalExperimentalSidingSqft = Math.min(floored, maximumSidingCap);
+    const sidingFloorApplied = rawExperimentalSidingSqft < minimumSidingFloor;
+
+    const sidingSqftInvalid = !Number.isFinite(finalExperimentalSidingSqft) || finalExperimentalSidingSqft <= 0;
+    if (sidingSqftInvalid) {
+      finalExperimentalSidingSqft = legacySidingSqft;
+    }
+
+    const ratesInvalid = !Number.isFinite(adjustedHardieRateLow)
+      || !Number.isFinite(adjustedHardieRateHigh)
+      || adjustedHardieRateLow < 10
+      || adjustedHardieRateHigh > 21
+      || adjustedHardieRateLow > adjustedHardieRateHigh;
+
+    if (!sidingSqftInvalid) {
+      extras.sidingSqft = Math.round(finalExperimentalSidingSqft);
+      extras.sidingVinyl = {
+        low: Math.round(extras.sidingSqft * SIDING_VINYL_RATE_LOW),
+        high: Math.round(extras.sidingSqft * SIDING_VINYL_RATE_HIGH)
+      };
+      if (!ratesInvalid) {
+        extras.sidingHardie = {
+          low: Math.round(extras.sidingSqft * adjustedHardieRateLow),
+          high: Math.round(extras.sidingSqft * adjustedHardieRateHigh)
+        };
+      }
+    }
+
+    if (ratesInvalid) {
+      adjustedHardieRateLow = extras.sidingHardie.low / Math.max(1, legacySidingSqft);
+      adjustedHardieRateHigh = extras.sidingHardie.high / Math.max(1, legacySidingSqft);
+    }
+
+    testDiagnostics = {
+      rawExperimentalSidingSqft,
+      finalExperimentalSidingSqft: Math.round(finalExperimentalSidingSqft),
+      minimumSidingFloor: Math.round(minimumSidingFloor),
+      maximumSidingCap: Math.round(maximumSidingCap),
+      sidingFloorApplied,
+      sidingFloorSource: sidingFloorApplied ? sidingFloorSource : null,
+      hardieComplexityTier,
+      hardieComplexityScore,
+      estimatedWindowDoorCount,
+      estimatedCornerLf,
+      estimatedFasciaLf,
+      adjustedHardieRateLow: Math.round(adjustedHardieRateLow * 100) / 100,
+      adjustedHardieRateHigh: Math.round(adjustedHardieRateHigh * 100) / 100,
+      simpleHomeProtectionApplied,
+      highDetailProtectionApplied
+    };
+  }
+
   const selectedQuotedRange = serviceScope === "vinyl_siding"
     ? extras.sidingVinyl
     : serviceScope === "hardie_siding"
@@ -468,8 +631,9 @@ export async function POST(request: Request) {
           }
           : ranges.good;
 
-  let addressQueryId = crypto.randomUUID();
-  try {
+  let addressQueryId = testMode ? `test_${crypto.randomUUID()}` : crypto.randomUUID();
+  if (!testMode) {
+    try {
     const queryPayload = {
       address: normalizedAddress || "Calgary, AB",
       neighborhood,
@@ -530,8 +694,9 @@ export async function POST(request: Request) {
       quote_low: selectedQuotedRange.low,
       quote_high: selectedQuotedRange.high
     });
-  } catch (error) {
-    console.error("instaquote estimate query insert failed", error);
+    } catch (error) {
+      console.error("instaquote estimate query insert failed", error);
+    }
   }
 
   if (estimateResult.areaSource !== "solar") {
@@ -571,6 +736,7 @@ export async function POST(request: Request) {
     originalRoofAreaSqft: estimateResult.roofAreaSqft,
     pricingRoofAreaSqft,
     shouldApplyMinimumPricingFloor,
-    extras
+    extras,
+    testDiagnostics
   });
 }
