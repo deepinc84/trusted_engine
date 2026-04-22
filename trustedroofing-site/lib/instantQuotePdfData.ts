@@ -1,4 +1,4 @@
-import { listProjects, listRecentInstaquoteAddressQueries, type InstaquoteAddressQuery } from "@/lib/db";
+import { listProjects, listRecentInstaquoteAddressQueries } from "@/lib/db";
 import { canonicalUrl } from "@/lib/seo";
 import { quoteMaterialLabel, resolvePublicLocation } from "@/lib/serviceAreas";
 
@@ -23,19 +23,34 @@ export type RelatedProjectCard = {
   ctaLabel: string;
 };
 
-export type SolarLeadGenData = {
-  enabled: boolean;
-  heading: string;
-  intro: string;
-  suitabilityLine: string;
-  teaserLabel: string;
+export type SolarChartDatum = {
+  label: string;
+  value: number;
+  normalized: number;
+  emphasis?: boolean;
+};
+
+export type SolarSnapshotData = {
+  hasSolarData: boolean;
+  hasFinancialData: boolean;
+  maxPanels: number | null;
+  maxArrayAreaM2: number | null;
+  maxSunHoursYear: number | null;
+  imageryQuality: string | null;
+  imageryDate: string | null;
+  imageryProcessedDate: string | null;
+  roofSegmentSummary: Array<{ label: string; areaM2: number | null; sunshine: number | null }>;
+  panelConfigSummary: Array<{ label: string; panelCount: number; yearlyKwh: number | null }>;
+  chartType: "panel_config" | "roof_segment" | "readiness";
+  chartData: SolarChartDatum[];
+  interpretation: string;
+  disclaimer: string;
+  sourceNote: string;
+  hasStrongData: boolean;
   teaserTitle: string;
   teaserBody: string;
-  teaserSupport: string;
   teaserNextPage: string;
-  facts: string[];
   benefits: string[];
-  nextSteps: string[];
   ctaLabel: string;
   ctaUrl: string;
 };
@@ -44,6 +59,19 @@ type ServiceFamily = "roofing" | "siding" | "eavestrough" | "soffit_fascia";
 
 function normalize(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
+}
+
+function toTitle(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return "";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatIsoDate(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function clampSummary(value: string, maxLength = 180) {
@@ -65,8 +93,8 @@ function serviceLabelForFamily(family: ServiceFamily, scope: string) {
   return "Roofing";
 }
 
-function rowMatchesService(row: InstaquoteAddressQuery, family: ServiceFamily) {
-  const material = quoteMaterialLabel(row.service_type, row.requested_scopes).toLowerCase();
+function rowMatchesService(serviceType: string | null, requestedScopes: string[] | null, family: ServiceFamily) {
+  const material = quoteMaterialLabel(serviceType, requestedScopes).toLowerCase();
   if (family === "roofing") return material.includes("roofing");
   if (family === "siding") return material.includes("siding");
   if (family === "eavestrough") return material.includes("eaves");
@@ -90,7 +118,6 @@ export async function getServiceSpecificQuoteSignals(input: {
   const rows = await listRecentInstaquoteAddressQueries(1200);
   const family = serviceFamilyFromScope(input.serviceType);
   const serviceLabel = serviceLabelForFamily(family, input.serviceType);
-
   const location = resolvePublicLocation({
     address: input.address,
     city: input.city,
@@ -100,7 +127,7 @@ export async function getServiceSpecificQuoteSignals(input: {
 
   const filtered = rows
     .filter((row) => row.estimate_low !== null && row.estimate_high !== null)
-    .filter((row) => rowMatchesService(row, family))
+    .filter((row) => rowMatchesService(row.service_type, row.requested_scopes, family))
     .map((row) => ({ row, location: resolvePublicLocation({ address: row.address, neighborhood: row.neighborhood }) }))
     .sort((a, b) => new Date(b.row.queried_at).getTime() - new Date(a.row.queried_at).getTime());
 
@@ -161,7 +188,7 @@ export async function getRelatedProjects(input: {
   const fallback = await listProjects({ include_unpublished: false, limit: 80 });
 
   const normalizedAddress = normalize(input.address);
-  const unique = [...preferred, ...fallback]
+  return [...preferred, ...fallback]
     .filter((project, index, list) => list.findIndex((candidate) => candidate.id === project.id) === index)
     .filter((project) => project.is_published)
     .filter((project) => (project.photos?.[0]?.public_url ?? "").length > 0)
@@ -191,55 +218,162 @@ export async function getRelatedProjects(input: {
       serviceBadge,
       ctaLabel: index % 2 === 0 ? "See similar project" : "Explore this project"
     })) satisfies RelatedProjectCard[];
-
-  return unique;
 }
 
-export function getSolarLeadGenData(input: {
-  address?: string;
-  serviceType?: string;
-  roofArea?: number;
-  roofPitch?: number;
-  roofPlanes?: number;
-  solarData?: Record<string, unknown> | null;
-}): SolarLeadGenData {
-  const facts: string[] = [];
-  if (typeof input.roofArea === "number" && Number.isFinite(input.roofArea)) {
-    facts.push(`Modeled roof area: ~${Math.round(input.roofArea).toLocaleString()} sq ft`);
-  }
-  if (typeof input.roofPitch === "number" && Number.isFinite(input.roofPitch)) {
-    facts.push(`Modeled roof pitch: ~${Math.round(input.roofPitch)}°`);
-  }
-  if (typeof input.roofPlanes === "number" && Number.isFinite(input.roofPlanes)) {
-    facts.push(`Roof planes noted: ${Math.max(1, Math.round(input.roofPlanes))}`);
-  }
-  if (facts.length === 0) {
-    facts.push("Property geometry can be reviewed for usable roof area and sun exposure.");
+export function getSolarSnapshotData(input: {
+  buildingInsights?: Record<string, unknown> | null;
+  dataLayers?: Record<string, unknown> | null;
+  quoteContext?: { serviceType?: string | null };
+  propertyContext?: { roofAreaSqft?: number | null };
+}): SolarSnapshotData {
+  const building = (input.buildingInsights ?? {}) as Record<string, unknown>;
+  const solarPotential = (building.solarPotential ?? {}) as Record<string, unknown>;
+  const wholeRoofStats = (solarPotential.wholeRoofStats ?? {}) as Record<string, unknown>;
+
+  const maxPanels = typeof solarPotential.maxArrayPanelsCount === "number" ? Math.round(solarPotential.maxArrayPanelsCount) : null;
+  const maxArrayAreaM2 = typeof solarPotential.maxArrayAreaMeters2 === "number"
+    ? solarPotential.maxArrayAreaMeters2
+    : typeof wholeRoofStats.areaMeters2 === "number"
+      ? wholeRoofStats.areaMeters2
+      : null;
+  const maxSunHoursYear = typeof solarPotential.maxSunshineHoursPerYear === "number" ? solarPotential.maxSunshineHoursPerYear : null;
+
+  const imageryQualityRaw = typeof building.imageryQuality === "string" ? building.imageryQuality : null;
+  const imageryQuality = imageryQualityRaw ? toTitle(imageryQualityRaw) : null;
+  const imageryDate = formatIsoDate(typeof building.imageryDate === "string" ? building.imageryDate : null);
+  const imageryProcessedDate = formatIsoDate(typeof building.imageryProcessedDate === "string" ? building.imageryProcessedDate : null);
+
+  const panelConfigs = Array.isArray(solarPotential.solarPanelConfigs)
+    ? solarPotential.solarPanelConfigs as Array<Record<string, unknown>>
+    : [];
+
+  const panelConfigSummary = panelConfigs
+    .map((config, index) => ({
+      label: `Config ${index + 1}`,
+      panelCount: typeof config.panelsCount === "number" ? Math.round(config.panelsCount) : 0,
+      yearlyKwh: typeof config.yearlyEnergyDcKwh === "number" ? config.yearlyEnergyDcKwh : null
+    }))
+    .filter((row) => row.panelCount > 0)
+    .sort((a, b) => a.panelCount - b.panelCount)
+    .slice(-5);
+
+  const roofSegments = Array.isArray(solarPotential.roofSegmentStats)
+    ? solarPotential.roofSegmentStats as Array<Record<string, unknown>>
+    : [];
+
+  const roofSegmentSummary = roofSegments
+    .map((segment, index) => {
+      const stats = (segment.stats ?? {}) as Record<string, unknown>;
+      return {
+        label: `Segment ${index + 1}`,
+        areaM2: typeof stats.areaMeters2 === "number" ? stats.areaMeters2 : null,
+        sunshine: typeof stats.sunshineQuantiles === "number"
+          ? stats.sunshineQuantiles
+          : typeof segment.azimuthDegrees === "number"
+            ? 180 - Math.abs(180 - Math.min(360, Math.max(0, Number(segment.azimuthDegrees))))
+            : null
+      };
+    })
+    .filter((row) => row.areaM2 !== null)
+    .slice(0, 6);
+
+  const financialAnalyses = Array.isArray(solarPotential.financialAnalyses)
+    ? solarPotential.financialAnalyses
+    : Array.isArray(building.financialAnalyses)
+      ? building.financialAnalyses
+      : [];
+
+  const hasSolarData = [maxPanels, maxArrayAreaM2, maxSunHoursYear].some((value) => typeof value === "number");
+  const hasStrongData = hasSolarData || panelConfigSummary.length > 0 || roofSegmentSummary.length > 0;
+
+  const chartFromPanelConfig: SolarChartDatum[] = panelConfigSummary.map((row) => ({
+    label: `${row.panelCount}p`,
+    value: row.yearlyKwh ?? row.panelCount,
+    normalized: 0,
+    emphasis: row.panelCount === Math.max(...panelConfigSummary.map((item) => item.panelCount))
+  }));
+
+  const chartFromSegments: SolarChartDatum[] = roofSegmentSummary.map((row) => ({
+    label: row.label.replace("Segment ", "S"),
+    value: row.areaM2 ?? 0,
+    normalized: 0,
+    emphasis: false
+  }));
+
+  const readinessBase = [
+    { label: "Panels", value: maxPanels ?? 0 },
+    { label: "Array area", value: maxArrayAreaM2 ?? 0 },
+    { label: "Sun hours", value: maxSunHoursYear ?? 0 }
+  ];
+  const readinessMax = Math.max(...readinessBase.map((item) => item.value), 1);
+  const readinessChart: SolarChartDatum[] = readinessBase.map((item) => ({
+    label: item.label,
+    value: item.value,
+    normalized: item.value / readinessMax,
+    emphasis: item.label === "Sun hours"
+  }));
+
+  let chartType: SolarSnapshotData["chartType"] = "readiness";
+  let chartData = readinessChart;
+  if (chartFromPanelConfig.length >= 2) {
+    chartType = "panel_config";
+    chartData = chartFromPanelConfig;
+  } else if (chartFromSegments.length >= 2) {
+    chartType = "roof_segment";
+    chartData = chartFromSegments;
   }
 
+  const maxChartValue = Math.max(...chartData.map((item) => item.value), 1);
+  chartData = chartData.map((item) => ({
+    ...item,
+    normalized: item.normalized > 0 ? item.normalized : item.value / maxChartValue
+  }));
+
+  const interpretationParts: string[] = [];
+  if (typeof maxArrayAreaM2 === "number") {
+    interpretationParts.push(`Modeled usable array area is about ${maxArrayAreaM2.toFixed(1)} m²`);
+  }
+  if (typeof maxPanels === "number") {
+    interpretationParts.push(`with capacity for up to ${maxPanels} panels`);
+  }
+  if (typeof maxSunHoursYear === "number") {
+    interpretationParts.push(`and roughly ${Math.round(maxSunHoursYear).toLocaleString()} annual sun-hours`);
+  }
+  const interpretation = interpretationParts.length > 0
+    ? `${interpretationParts.join(" ")}. This suggests the property is worth a focused solar suitability review before any final system recommendation.`
+    : "Solar API detail is limited for this address, but modeled roof and sun inputs still suggest a solar suitability review could be worthwhile.";
+
+  const teaserTitle = hasStrongData ? "Solar potential snapshot available" : "Solar planning snapshot";
+  const teaserBody = hasStrongData
+    ? "This property returned modeled solar capacity data during estimate generation."
+    : "Solar suitability data was limited in this run, but roof and sun exposure can still be reviewed.";
+
   return {
-    enabled: true,
-    heading: "A quick look at solar potential",
-    intro: "Solar is not included in this estimate. This page is an experimental planning insight only.",
-    suitabilityLine: "If roof layout and sun exposure are suitable, solar may be worth a closer review as a future upgrade.",
-    teaserLabel: "Experimental planning feature",
-    teaserTitle: "Curious about solar potential?",
-    teaserBody: "If your property has the right roof exposure and usable roof area, solar may be worth exploring as part of a future upgrade plan.",
-    teaserSupport: "This is a test feature and not part of your current quoted scope.",
-    teaserNextPage: "See page 4 for a quick solar potential overview.",
-    facts,
+    hasSolarData,
+    hasFinancialData: financialAnalyses.length > 0,
+    maxPanels,
+    maxArrayAreaM2,
+    maxSunHoursYear,
+    imageryQuality,
+    imageryDate,
+    imageryProcessedDate,
+    roofSegmentSummary,
+    panelConfigSummary,
+    chartType,
+    chartData,
+    interpretation,
+    disclaimer: "This solar snapshot is an early planning aid and not part of the quoted scope.",
+    sourceNote: "Modeled from Google Solar API rooftop analysis",
+    hasStrongData,
+    teaserTitle,
+    teaserBody,
+    teaserNextPage: "See page 4 for a quick planning view based on roof and sun exposure metrics.",
     benefits: [
-      "Can help offset part of household electrical usage.",
-      "May add long-term value depending on roof layout and consumption profile.",
-      "Works best when paired with a roof that still has good remaining life.",
-      "Can be worth reviewing during larger exterior planning."
+      "May offset a portion of household electricity use.",
+      "Easier to evaluate while planning major exterior work.",
+      "Best reviewed alongside roof age, usable planes, and electrical goals."
     ],
-    nextSteps: [
-      "Review roof suitability",
-      "Confirm usable roof area and constraints",
-      "Prepare a more accurate solar review"
-    ],
-    ctaLabel: "Explore solar potential at trustedroofingcalgary.com/solar",
+    ctaLabel: "Explore solar potential",
     ctaUrl: canonicalUrl("/solar")
   };
 }

@@ -6,7 +6,8 @@ import { resolvePublicLocation } from "@/lib/serviceAreas";
 import {
   getRelatedProjects,
   getServiceSpecificQuoteSignals,
-  getSolarLeadGenData,
+  getSolarSnapshotData,
+  type SolarSnapshotData,
   type RelatedProjectCard,
   type ServiceSpecificQuoteSignal
 } from "@/lib/instantQuotePdfData";
@@ -35,6 +36,10 @@ type EstimatePayload = {
     good?: { low?: number; high?: number };
     eaves?: { low?: number; high?: number };
   };
+  solarSnapshot?: {
+    buildingInsights?: Record<string, unknown> | null;
+    dataLayers?: Record<string, unknown> | null;
+  } | null;
 };
 
 type PdfImageRef = { name: string; width: number; height: number };
@@ -524,6 +529,40 @@ function drawImageCover(page: PdfPageDraft, image: PdfImageRef, x: number, y: nu
   );
 }
 
+function drawSolarChart(page: PdfPageDraft, x: number, y: number, w: number, h: number, snapshot: SolarSnapshotData) {
+  drawRoundedBox(page, x, y, w, h, COLORS.cardBg, COLORS.border);
+  drawText(page, "Solar opportunity chart", x + 12, y + h - 18, 11.2, COLORS.textDark, "F2");
+  const chartX = x + 14;
+  const chartY = y + 18;
+  const chartW = w - 28;
+  const chartH = h - 46;
+  drawRect(page, chartX, chartY, chartW, 0.5, COLORS.border);
+  const bars = snapshot.chartData.slice(0, 5);
+  const maxBars = Math.max(bars.length, 1);
+  const barW = chartW / maxBars - 10;
+  bars.forEach((bar, index) => {
+    const barH = Math.max(8, bar.normalized * (chartH - 16));
+    const bx = chartX + index * (barW + 10) + 4;
+    const by = chartY + 1;
+    drawRoundedBox(
+      page,
+      bx,
+      by,
+      barW,
+      barH,
+      bar.emphasis ? COLORS.navy : COLORS.badgeBlueBg,
+      bar.emphasis ? COLORS.navy : COLORS.badgeBlueBg
+    );
+    drawTextCentered(page, bar.label, bx + barW / 2, chartY - 10, 7.2, COLORS.textSub, "F2");
+    const valueLabel = snapshot.chartType === "panel_config"
+      ? `${Math.round(bar.value).toLocaleString()} kWh`
+      : snapshot.chartType === "roof_segment"
+        ? `${bar.value.toFixed(1)} m²`
+        : `${Math.round(bar.value).toLocaleString()}`;
+    drawTextCentered(page, valueLabel, bx + barW / 2, by + barH + 3, 6.8, COLORS.textMid);
+  });
+}
+
 function drawHeader(
   page: PdfPageDraft,
   input: {
@@ -849,14 +888,13 @@ export async function POST(request: Request) {
           serviceType: requestedScope
         })
       ]);
-    const solarLeadGen = getSolarLeadGenData({
-      address: estimate.address,
-      serviceType: requestedScope,
-      roofArea: estimate.roofAreaSqft,
-      roofPitch: estimate.pitchDegrees,
-      roofPlanes: estimate.complexityBand === "complex" ? 8 : estimate.complexityBand === "moderate" ? 6 : 4,
-      solarData: null
+    const solarSnapshot = getSolarSnapshotData({
+      buildingInsights: estimate.solarSnapshot?.buildingInsights ?? null,
+      dataLayers: estimate.solarSnapshot?.dataLayers ?? null,
+      quoteContext: { serviceType: requestedScope },
+      propertyContext: { roofAreaSqft: estimate.roofAreaSqft }
     });
+    const includeSolarPage = requestedScope === "roofing" || requestedScope === "all" || solarSnapshot.hasStrongData;
     const [propertyImages, logoBuffer] = await Promise.all([
       fetchPropertyImages({ lat: estimate.lat, lng: estimate.lng, address: estimate.address }),
       loadLogo()
@@ -1086,67 +1124,71 @@ export async function POST(request: Request) {
     }
 
     drawCard(page3, MARGIN, 92, CONTENT_WIDTH, 64, COLORS.cardSoft);
-    drawRoundedBox(page3, MARGIN + 12, 130, 126, 14, COLORS.badgeAmberBg, COLORS.badgeAmberBg);
-    drawTextCentered(page3, solarLeadGen.teaserLabel, MARGIN + 75, 134.5, 7.2, COLORS.badgeAmberFg, "F2");
-    drawText(page3, solarLeadGen.teaserTitle, MARGIN + 12, 116, 12.5, COLORS.textDark, "F2");
-    drawMultiline(page3, solarLeadGen.teaserBody, MARGIN + 12, 103, CONTENT_WIDTH - 24, 8.4, 10.4, COLORS.textMid);
-    drawText(page3, solarLeadGen.teaserSupport, MARGIN + 12, 82, 8.2, COLORS.textSub);
-    drawText(page3, solarLeadGen.teaserNextPage, MARGIN + 12, 70, 8.8, COLORS.navy, "F2");
+    drawRoundedBox(page3, MARGIN + 12, 130, 166, 14, COLORS.badgeAmberBg, COLORS.badgeAmberBg);
+    drawTextCentered(page3, "SOLAR SNAPSHOT", MARGIN + 95, 134.5, 7.2, COLORS.badgeAmberFg, "F2");
+    drawText(page3, solarSnapshot.teaserTitle, MARGIN + 12, 116, 12.5, COLORS.textDark, "F2");
+    drawMultiline(page3, solarSnapshot.teaserBody, MARGIN + 12, 103, CONTENT_WIDTH - 24, 8.4, 10.4, COLORS.textMid);
+    drawText(page3, includeSolarPage ? solarSnapshot.teaserNextPage : "Solar snapshot appears when stronger rooftop model data is available.", MARGIN + 12, 70, 8.8, COLORS.navy, "F2");
     drawRoundedBox(page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, COLORS.navy, COLORS.navy);
     drawTextCentered(page3, "View solar overview →", MARGIN + CONTENT_WIDTH - 94, 72, 8.6, COLORS.white, "F2");
-    addLink(builder, page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, solarLeadGen.ctaUrl);
+    addLink(builder, page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, solarSnapshot.ctaUrl);
     drawFooter(page3);
 
-    const headerLogo4 = logoBuffer ? addImageObject(builder, page4, "Logo4", logoBuffer) : null;
-    drawHeader(page4, {
-      title: solarLeadGen.heading,
-      subtitle: "Experimental add-on insight — not included in this estimate scope",
-      logo: headerLogo4,
-      badge: "Solar Test"
-    });
-    drawCard(page4, MARGIN, PAGE_TOP_START - 96, CONTENT_WIDTH, 86, COLORS.cardSoft);
-    drawText(page4, "Exploring solar as a future upgrade", MARGIN + 12, PAGE_TOP_START - 34, 14, COLORS.textDark, "F2");
-    drawText(page4, solarLeadGen.intro, MARGIN + 12, PAGE_TOP_START - 52, 9, COLORS.textMid);
-    drawText(page4, solarLeadGen.suitabilityLine, MARGIN + 12, PAGE_TOP_START - 65, 9, COLORS.textMid);
+    if (includeSolarPage) {
+      const headerLogo4 = logoBuffer ? addImageObject(builder, page4, "Logo4", logoBuffer) : null;
+      drawHeader(page4, {
+        title: "Solar potential snapshot",
+        subtitle: "Modeled from Google Solar API data for this property",
+        logo: headerLogo4,
+        badge: "Planning Snapshot"
+      });
+    drawCard(page4, MARGIN, PAGE_TOP_START - 84, CONTENT_WIDTH, 72, COLORS.cardSoft);
+    drawText(page4, "Solar is not included in this estimate. This page is a planning snapshot only.", MARGIN + 12, PAGE_TOP_START - 38, 9.2, COLORS.textMid);
+    drawText(page4, solarSnapshot.disclaimer, MARGIN + 12, PAGE_TOP_START - 52, 8.8, COLORS.textSub);
+    drawText(page4, solarSnapshot.sourceNote, MARGIN + 12, PAGE_TOP_START - 64, 8.2, COLORS.navy, "F2");
 
-    const visualY = PAGE_TOP_START - 300;
-    drawCard(page4, MARGIN, visualY, CONTENT_WIDTH, 186, COLORS.cardBg);
-    if (propertyImages.aerial) {
-      const aerial4 = addImageObject(builder, page4, "AerialSolar", propertyImages.aerial);
-      if (aerial4) drawImageCover(page4, aerial4, MARGIN + 6, visualY + 54, CONTENT_WIDTH - 12, 126);
-    } else if (propertyImages.street) {
-      const street4 = addImageObject(builder, page4, "StreetSolar", propertyImages.street);
-      if (street4) drawImageCover(page4, street4, MARGIN + 6, visualY + 54, CONTENT_WIDTH - 12, 126);
-    } else {
-      drawRect(page4, MARGIN + 6, visualY + 54, CONTENT_WIDTH - 12, 126, COLORS.cardSoft, COLORS.border);
-      drawText(page4, "Solar planning visual placeholder", MARGIN + 20, visualY + 116, 10, COLORS.navy, "F2");
-      drawText(page4, "Property-specific visuals will be used when available.", MARGIN + 20, visualY + 100, 8.6, COLORS.textSub);
+    const statY = PAGE_TOP_START - 180;
+    const statW = (CONTENT_WIDTH - 12) / 2;
+    const statH = 44;
+    const statValues = [
+      { label: "Max panel count", value: solarSnapshot.maxPanels !== null ? `${solarSnapshot.maxPanels} panels` : "n/a" },
+      { label: "Usable array area", value: solarSnapshot.maxArrayAreaM2 !== null ? `${solarSnapshot.maxArrayAreaM2.toFixed(1)} m²` : "n/a" },
+      { label: "Annual sunshine", value: solarSnapshot.maxSunHoursYear !== null ? `${Math.round(solarSnapshot.maxSunHoursYear).toLocaleString()} sun-hours/year` : "n/a" },
+      { label: "Imagery quality", value: solarSnapshot.imageryQuality ? `${solarSnapshot.imageryQuality} roof imagery model` : "Not available" }
+    ];
+    statValues.forEach((item, index) => {
+      const row = Math.floor(index / 2);
+      const col = index % 2;
+      const x = MARGIN + col * (statW + 12);
+      const y = statY - row * (statH + 10);
+      drawCard(page4, x, y, statW, statH, COLORS.cardBg);
+      drawText(page4, item.label.toUpperCase(), x + 10, y + statH - 14, 6.8, COLORS.textSub, "F1");
+      drawText(page4, item.value, x + 10, y + 11, 10.2, COLORS.textDark, "F2");
+    });
+
+    const chartY = PAGE_TOP_START - 380;
+    drawSolarChart(page4, MARGIN, chartY, CONTENT_WIDTH, 140, solarSnapshot);
+
+    const interpY = chartY - 122;
+    drawCard(page4, MARGIN, interpY, CONTENT_WIDTH, 112, COLORS.cardSoft);
+    drawText(page4, "What this means", MARGIN + 12, interpY + 90, 11.6, COLORS.textDark, "F2");
+    const interpLines = clampTextLines(solarSnapshot.interpretation, 8.5, CONTENT_WIDTH - 24, 4);
+    interpLines.forEach((line, index) => drawText(page4, line, MARGIN + 12, interpY + 74 - index * 12, 8.5, COLORS.textMid));
+    drawText(page4, "Why it may be worth reviewing:", MARGIN + 12, interpY + 24, 8.6, COLORS.textDark, "F2");
+    solarSnapshot.benefits.slice(0, 3).forEach((benefit, index) => {
+      drawText(page4, `• ${benefit}`, MARGIN + 16, interpY + 12 - index * 10, 8, COLORS.textMid);
+    });
+    if (solarSnapshot.imageryProcessedDate) {
+      drawText(page4, `Imagery processed ${solarSnapshot.imageryProcessedDate}`, MARGIN + CONTENT_WIDTH - 170, interpY + 12, 7.6, COLORS.textSub);
     }
-    solarLeadGen.facts.slice(0, 3).forEach((fact, index) => {
-      drawRoundedBox(page4, MARGIN + 10 + index * ((CONTENT_WIDTH - 28) / 3), visualY + 14, (CONTENT_WIDTH - 32) / 3, 28, COLORS.cardSoft, COLORS.border);
-      drawTextCentered(page4, fact, MARGIN + 10 + index * ((CONTENT_WIDTH - 28) / 3) + ((CONTENT_WIDTH - 32) / 6), visualY + 26, 7.4, COLORS.textMid, "F2");
-    });
-
-    const benefitsY = visualY - 114;
-    drawCard(page4, MARGIN, benefitsY, CONTENT_WIDTH, 102, COLORS.cardSoft);
-    drawText(page4, "Practical benefits to review", MARGIN + 12, benefitsY + 82, 11.8, COLORS.textDark, "F2");
-    solarLeadGen.benefits.slice(0, 4).forEach((benefit, index) => {
-      drawText(page4, `• ${benefit}`, MARGIN + 16, benefitsY + 66 - index * 14, 8.6, COLORS.textMid);
-    });
-
-    const nextY = benefitsY - 80;
-    drawRoundedBox(page4, MARGIN, nextY, CONTENT_WIDTH, 66, COLORS.cardBg, COLORS.border);
-    drawText(page4, "What would happen next", MARGIN + 12, nextY + 44, 11.5, COLORS.textDark, "F2");
-    solarLeadGen.nextSteps.slice(0, 3).forEach((step, index) => {
-      drawText(page4, `${index + 1}. ${step}`, MARGIN + 16 + index * 180, nextY + 26, 8.4, COLORS.textMid);
-    });
 
     drawRoundedBox(page4, MARGIN, 58, CONTENT_WIDTH, 34, COLORS.navy, COLORS.navy);
-    drawTextCentered(page4, solarLeadGen.ctaLabel, PAGE_WIDTH / 2, 70, 10, COLORS.white, "F2");
-    addLink(builder, page4, MARGIN, 58, CONTENT_WIDTH, 34, solarLeadGen.ctaUrl);
-    drawFooter(page4);
+    drawTextCentered(page4, solarSnapshot.ctaLabel, PAGE_WIDTH / 2, 70, 10, COLORS.white, "F2");
+    addLink(builder, page4, MARGIN, 58, CONTENT_WIDTH, 34, solarSnapshot.ctaUrl);
+      drawFooter(page4);
+    }
 
-    const pdf = finalizeDocument(builder, [page1, page2, page3, page4]);
+    const pdf = finalizeDocument(builder, includeSolarPage ? [page1, page2, page3, page4] : [page1, page2, page3]);
 
     return new Response(pdf, {
       headers: {
