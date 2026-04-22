@@ -346,22 +346,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
           "Content-Type": "application/json",
           ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
         },
-<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
         body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode })
-=======
-        body: JSON.stringify({
-          address,
-          placeId,
-          lat,
-          lng,
-          serviceScope: selectedScope,
-          testMode,
-          ...(testMode && benchmarkQuotedAmount.trim()
-            ? { benchmarkQuotedAmount: Number(benchmarkQuotedAmount) }
-            : {}),
-          ...(testMode && benchmarkLabel.trim() ? { benchmarkLabel: benchmarkLabel.trim() } : {})
-        })
->>>>>>> main
       });
 
       const text = await res.text();
@@ -696,7 +681,6 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
                 </div>
               ))}
             </div>
-<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
             {testMode && estimate.testDiagnostics ? (
               <div className="ui-card" style={{ marginTop: 12, padding: 12, display: "grid", gap: 6 }}>
                 <p style={{ margin: 0, fontWeight: 700 }}>Test diagnostics (experimental siding + Hardie)</p>
@@ -711,44 +695,6 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
                 <p style={{ margin: 0 }}>
                   Protection rules: simple-home={estimate.testDiagnostics.simpleHomeProtectionApplied ? "on" : "off"}, high-detail={estimate.testDiagnostics.highDetailProtectionApplied ? "on" : "off"}
                 </p>
-=======
-            {testMode ? (
-              <div style={{ marginTop: 12, border: "1px solid rgba(30,58,138,0.2)", borderRadius: 10, padding: 12, background: "rgba(239,246,255,0.55)" }}>
-                <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 13 }}>Test pricing diagnostics</p>
-                <div style={{ display: "grid", gap: 4, fontSize: 13 }}>
-                  <p style={{ margin: 0 }}>Model: <strong>{estimate.pricingModel ?? "legacy"}</strong></p>
-                  <p style={{ margin: 0 }}>Fallback used: <strong>{estimate.pricingFallbackUsed ? "yes" : "no"}</strong></p>
-                  <p style={{ margin: 0 }}>Roof area sqft (final): <strong>{estimate.roofAreaSqft}</strong></p>
-                  <p style={{ margin: 0 }}>Roof ground area sqft: <strong>{estimate.experimentalDiagnostics?.roofGroundAreaSqft ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Pitch (legacy vs weighted): <strong>{estimate.legacyComparison?.pitchDegrees ?? estimate.pitchDegrees}</strong> vs <strong>{estimate.experimentalDiagnostics?.weightedPitchDegrees ?? estimate.pitchDegrees}</strong></p>
-                  <p style={{ margin: 0 }}>Roof height delta ft: <strong>{estimate.experimentalDiagnostics?.roofHeightDeltaFt ?? 0}</strong></p>
-                  <p style={{ margin: 0 }}>Eaves LF (legacy vs experimental): <strong>{estimate.legacyComparison?.eavesLf ?? estimate.extras.eavesLf}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalEavesLf ?? estimate.extras.eavesLf}</strong></p>
-                  <p style={{ margin: 0 }}>Siding sqft (legacy vs experimental): <strong>{estimate.legacyComparison?.sidingSqft ?? estimate.extras.sidingSqft}</strong> vs <strong>{estimate.experimentalDiagnostics?.experimentalSidingSqft ?? estimate.extras.sidingSqft}</strong></p>
-                  <p style={{ margin: 0 }}>Estimated wall height ft: <strong>{estimate.experimentalDiagnostics?.estimatedWallHeightFt ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Siding confidence: <strong>{estimate.experimentalDiagnostics?.sidingConfidence ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Hardie complexity tier: <strong>{estimate.experimentalDiagnostics?.hardieComplexityTier ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Hardie complexity score: <strong>{estimate.experimentalDiagnostics?.hardieComplexityScore ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Estimated openings: <strong>{estimate.experimentalDiagnostics?.estimatedWindowDoorCount ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Estimated corner LF: <strong>{estimate.experimentalDiagnostics?.estimatedCornerLf ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Estimated fascia LF: <strong>{estimate.experimentalDiagnostics?.estimatedFasciaLf ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Hardie rate low/high used: <strong>${estimate.experimentalDiagnostics?.adjustedHardieRateLow ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.adjustedHardieRateHigh ?? "n/a"}</strong></p>
-                  <p style={{ margin: 0 }}>Hardie low/high (final): <strong>${estimate.extras.sidingHardie.low.toLocaleString()}</strong> / <strong>${estimate.extras.sidingHardie.high.toLocaleString()}</strong></p>
-                  <p style={{ margin: 0 }}>Implied low/high rate: <strong>${estimate.experimentalDiagnostics?.impliedLowRate ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.impliedHighRate ?? "n/a"}</strong></p>
-                  {typeof estimate.experimentalDiagnostics?.benchmarkQuotedAmount === "number" ? (
-                    <>
-                      <p style={{ margin: 0 }}>Benchmark label: <strong>{estimate.experimentalDiagnostics?.benchmarkLabel ?? "n/a"}</strong></p>
-                      <p style={{ margin: 0 }}>Benchmark quoted amount: <strong>${estimate.experimentalDiagnostics.benchmarkQuotedAmount.toLocaleString()}</strong></p>
-                      <p style={{ margin: 0 }}>Benchmark implied rate: <strong>${estimate.experimentalDiagnostics?.benchmarkImpliedRate ?? "n/a"}</strong></p>
-                      <p style={{ margin: 0 }}>Variance low/high: <strong>${estimate.experimentalDiagnostics?.benchmarkVarianceLow?.toLocaleString() ?? "n/a"}</strong> / <strong>${estimate.experimentalDiagnostics?.benchmarkVarianceHigh?.toLocaleString() ?? "n/a"}</strong></p>
-                      <p style={{ margin: 0 }}>Variance % low/high: <strong>{estimate.experimentalDiagnostics?.benchmarkPctLow ?? "n/a"}%</strong> / <strong>{estimate.experimentalDiagnostics?.benchmarkPctHigh ?? "n/a"}%</strong></p>
-                    </>
-                  ) : null}
-                  <p style={{ margin: 0 }}>Final range used: <strong>${primaryRange?.low.toLocaleString()} - ${primaryRange?.high.toLocaleString()}</strong></p>
-                  {estimate.experimentalDiagnostics?.fallbackReason ? (
-                    <p style={{ margin: 0 }}>Fallback reason: <strong>{estimate.experimentalDiagnostics.fallbackReason}</strong></p>
-                  ) : null}
-                </div>
->>>>>>> main
               </div>
             ) : null}
           </div>
