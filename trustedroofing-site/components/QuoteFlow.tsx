@@ -93,6 +93,23 @@ type EstimateResult = {
     eaves: { low: number; high: number };
     siding: { low: number; high: number };
   };
+  testDiagnostics?: {
+    rawExperimentalSidingSqft: number;
+    finalExperimentalSidingSqft: number;
+    minimumSidingFloor: number;
+    maximumSidingCap: number;
+    sidingFloorApplied: boolean;
+    sidingFloorSource: "roof_area" | "ground_area" | "legacy" | null;
+    hardieComplexityTier: "simple" | "moderate" | "complex" | "very_complex";
+    hardieComplexityScore: number;
+    estimatedWindowDoorCount: number;
+    estimatedCornerLf: number;
+    estimatedFasciaLf: number;
+    adjustedHardieRateLow: number;
+    adjustedHardieRateHigh: number;
+    simpleHomeProtectionApplied: boolean;
+    highDetailProtectionApplied: boolean;
+  } | null;
 };
 
 const quoteHeadlineByScope: Record<QuoteScope, string> = {
@@ -329,6 +346,9 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
           "Content-Type": "application/json",
           ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
         },
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode })
+=======
         body: JSON.stringify({
           address,
           placeId,
@@ -341,6 +361,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
             : {}),
           ...(testMode && benchmarkLabel.trim() ? { benchmarkLabel: benchmarkLabel.trim() } : {})
         })
+>>>>>>> main
       });
 
       const text = await res.text();
@@ -675,6 +696,22 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
                 </div>
               ))}
             </div>
+<<<<<<< codex/create-instant-quote-test-pipeline-p5a6ni
+            {testMode && estimate.testDiagnostics ? (
+              <div className="ui-card" style={{ marginTop: 12, padding: 12, display: "grid", gap: 6 }}>
+                <p style={{ margin: 0, fontWeight: 700 }}>Test diagnostics (experimental siding + Hardie)</p>
+                <p style={{ margin: 0 }}>Raw siding sqft: {estimate.testDiagnostics.rawExperimentalSidingSqft}</p>
+                <p style={{ margin: 0 }}>Final siding sqft: {estimate.testDiagnostics.finalExperimentalSidingSqft}</p>
+                <p style={{ margin: 0 }}>Minimum siding floor: {estimate.testDiagnostics.minimumSidingFloor}</p>
+                <p style={{ margin: 0 }}>Floor applied: {estimate.testDiagnostics.sidingFloorApplied ? "yes" : "no"}</p>
+                <p style={{ margin: 0 }}>Floor source: {estimate.testDiagnostics.sidingFloorSource ?? "n/a"}</p>
+                <p style={{ margin: 0 }}>
+                  Hardie rate after enforcement: {estimate.testDiagnostics.adjustedHardieRateLow.toFixed(2)} - {estimate.testDiagnostics.adjustedHardieRateHigh.toFixed(2)}
+                </p>
+                <p style={{ margin: 0 }}>
+                  Protection rules: simple-home={estimate.testDiagnostics.simpleHomeProtectionApplied ? "on" : "off"}, high-detail={estimate.testDiagnostics.highDetailProtectionApplied ? "on" : "off"}
+                </p>
+=======
             {testMode ? (
               <div style={{ marginTop: 12, border: "1px solid rgba(30,58,138,0.2)", borderRadius: 10, padding: 12, background: "rgba(239,246,255,0.55)" }}>
                 <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 13 }}>Test pricing diagnostics</p>
@@ -711,6 +748,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
                     <p style={{ margin: 0 }}>Fallback reason: <strong>{estimate.experimentalDiagnostics.fallbackReason}</strong></p>
                   ) : null}
                 </div>
+>>>>>>> main
               </div>
             ) : null}
           </div>
