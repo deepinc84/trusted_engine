@@ -32,6 +32,10 @@ type EstimateResult = {
   complexityScore: number;
   solarDebug?: string | null;
   solarRequestId?: string;
+  solarSnapshot?: {
+    buildingInsights?: Record<string, unknown> | null;
+    dataLayers?: Record<string, unknown> | null;
+  } | null;
   extras: {
     assumedStories: 2;
     eavesLf: number;

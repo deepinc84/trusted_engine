@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
-import { listProjects, type Project } from "@/lib/db";
 import { buildPublicQuoteDisplay } from "@/lib/publicQuoteDisplay";
 import { canonicalUrl } from "@/lib/seo";
 import { createQuoteResumeToken } from "@/lib/quoteResumeToken";
+import { resolvePublicLocation } from "@/lib/serviceAreas";
+import {
+  getRelatedProjects,
+  getServiceSpecificQuoteSignals,
+  getSolarSnapshotData,
+  type SolarSnapshotData,
+  type RelatedProjectCard,
+  type ServiceSpecificQuoteSignal
+} from "@/lib/instantQuotePdfData";
 import { promises as fs } from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -28,13 +36,10 @@ type EstimatePayload = {
     good?: { low?: number; high?: number };
     eaves?: { low?: number; high?: number };
   };
-};
-
-type ProjectCard = {
-  title: string;
-  summary: string;
-  imageUrl: string;
-  href: string;
+  solarSnapshot?: {
+    buildingInsights?: Record<string, unknown> | null;
+    dataLayers?: Record<string, unknown> | null;
+  } | null;
 };
 
 type PdfImageRef = { name: string; width: number; height: number };
@@ -110,12 +115,6 @@ function serviceLabelFromScope(scope: string) {
   if (scope === "eavestrough") return "Eavestrough";
   if (scope === "all") return "Full exterior";
   return "Roofing";
-}
-
-function serviceSlugFromScope(scope: string) {
-  if (scope.includes("siding")) return "siding";
-  if (scope === "eavestrough") return "gutters";
-  return "roofing";
 }
 
 function materialConfig(scope: string, sidingMaterial: "vinyl" | "hardie") {
@@ -530,6 +529,28 @@ function drawImageCover(page: PdfPageDraft, image: PdfImageRef, x: number, y: nu
   );
 }
 
+function drawProductionRangeChart(page: PdfPageDraft, x: number, y: number, w: number, h: number, snapshot: SolarSnapshotData) {
+  drawRoundedBox(page, x, y, w, h, COLORS.cardBg, COLORS.border);
+  drawText(page, "Estimated annual production range", x + 12, y + h - 18, 11.2, COLORS.textDark, "F2");
+  const low = snapshot.estimatedProductionLowKwh ?? 0;
+  const likely = snapshot.estimatedProductionLikelyKwh ?? 0;
+  const high = snapshot.estimatedProductionHighKwh ?? Math.max(low, likely, 1);
+  const scaleMax = Math.max(high, 1);
+  const railX = x + 20;
+  const railY = y + 36;
+  const railW = w - 40;
+  drawRoundedBox(page, railX, railY, railW, 10, COLORS.badgeBlueBg, COLORS.badgeBlueBg);
+  const lowX = railX + (low / scaleMax) * railW;
+  const likelyX = railX + (likely / scaleMax) * railW;
+  const highX = railX + (high / scaleMax) * railW;
+  drawRoundedBox(page, lowX, railY, Math.max(10, highX - lowX), 10, COLORS.navy, COLORS.navy);
+  drawRect(page, likelyX - 1, railY - 4, 2, 18, COLORS.accentGold);
+  drawText(page, `Low: ${Math.round(low).toLocaleString()} kWh`, railX, railY - 12, 7.2, COLORS.textSub);
+  drawTextCentered(page, `Likely: ${Math.round(likely).toLocaleString()} kWh`, x + w / 2, railY - 12, 7.2, COLORS.textSub, "F2");
+  drawText(page, `High: ${Math.round(high).toLocaleString()} kWh`, railX + railW - 88, railY - 12, 7.2, COLORS.textSub);
+  drawText(page, "Final production depends on layout, usable roof planes, system design, and actual household usage.", x + 12, y + 12, 7.6, COLORS.textMid);
+}
+
 function drawHeader(
   page: PdfPageDraft,
   input: {
@@ -541,10 +562,11 @@ function drawHeader(
 ) {
   const headerTop = PAGE_HEIGHT - HEADER_H;
   drawRect(page, 0, headerTop, PAGE_WIDTH, HEADER_H, COLORS.navyDark);
+  drawRect(page, 0, headerTop + HEADER_H - 20, PAGE_WIDTH, 20, COLORS.navy);
   drawRect(page, 0, headerTop - 2, PAGE_WIDTH, 2, COLORS.accentGold);
   if (input.logo) {
-    const logoMaxWidth = 104;
-    const logoMaxHeight = 42;
+    const logoMaxWidth = 118;
+    const logoMaxHeight = 46;
     const widthRatio = logoMaxWidth / input.logo.width;
     const heightRatio = logoMaxHeight / input.logo.height;
     const scale = Math.min(widthRatio, heightRatio);
@@ -552,6 +574,7 @@ function drawHeader(
     const logoHeight = input.logo.height * scale;
     drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
   }
+  drawText(page, "TRUSTED ESTIMATE SUMMARY", MARGIN + 124, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
   drawText(page, input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
   drawText(page, input.subtitle, MARGIN + 124, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
   drawRoundedBox(page, PAGE_WIDTH - MARGIN - 124, PAGE_HEIGHT - 72, 124, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
@@ -563,6 +586,7 @@ function drawFooter(page: PdfPageDraft) {
   drawRect(page, 0, FOOTER_H - 1, PAGE_WIDTH, 1, COLORS.accentGold);
   drawText(page, "Trusted Roofing & Exteriors", MARGIN, 16, 9.5, "0.84 0.9 0.98");
   drawText(page, "trustedroofingcalgary.com", PAGE_WIDTH - MARGIN - 150, 16, 9.5, "0.84 0.9 0.98");
+  drawText(page, "Estimate planning document", PAGE_WIDTH / 2 - 55, 16, 8.4, "0.7 0.78 0.9");
 }
 
 function drawIntroCard(page: PdfPageDraft, yTop: number, title: string, description: string) {
@@ -597,12 +621,12 @@ function drawProjectCard(
   y: number,
   w: number,
   h: number,
-  input: { title: string; summary: string; href: string; image?: PdfImageRef | null },
+  input: { title: string; summary: string; href: string; image?: PdfImageRef | null; location: string; serviceBadge: string; ctaLabel: string },
   builder: PdfBuilder
 ) {
   const PROJECT_IMAGE_H = 92;
   const PROJECT_TITLE_MAX_LINES = 2;
-  const PROJECT_DESC_MAX_LINES = 3;
+  const PROJECT_DESC_MAX_LINES = 2;
   const PROJECT_LINK_BOTTOM_OFFSET = 12;
   drawCard(page, x, y, w, h, COLORS.cardBg);
   const imageY = y + h - PROJECT_IMAGE_H - 6;
@@ -611,12 +635,15 @@ function drawProjectCard(
     drawRect(page, x + 6, imageY, w - 12, PROJECT_IMAGE_H, "0.9 0.93 0.97");
     drawText(page, "Image unavailable", x + 16, imageY + PROJECT_IMAGE_H / 2, 8, "0.4 0.47 0.58");
   }
+  drawRoundedBox(page, x + CARD_PADDING_X, imageY - 14, 74, 12, COLORS.badgeBlueBg, COLORS.badgeBlueBg);
+  drawTextCentered(page, input.serviceBadge, x + CARD_PADDING_X + 37, imageY - 10.5, 6.5, COLORS.badgeBlueFg, "F2");
   const textW = w - CARD_PADDING_X * 2;
   const titleLines = clampTextLines(input.title, 9.8, textW, PROJECT_TITLE_MAX_LINES);
   titleLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + 76 - i * 11, 9.8, COLORS.navyText));
+  drawText(page, input.location, x + CARD_PADDING_X, y + 56, 7.8, COLORS.textSub);
   const descLines = clampTextLines(input.summary, 8.4, textW, PROJECT_DESC_MAX_LINES);
-  descLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + 50 - i * 10, 8.4, COLORS.blueText));
-  drawText(page, "View project →", x + CARD_PADDING_X, y + PROJECT_LINK_BOTTOM_OFFSET, 9, "0.13 0.38 0.72");
+  descLines.forEach((line, i) => drawText(page, line, x + CARD_PADDING_X, y + 42 - i * 10, 8.4, COLORS.blueText));
+  drawText(page, `${input.ctaLabel} →`, x + CARD_PADDING_X, y + PROJECT_LINK_BOTTOM_OFFSET, 9, "0.13 0.38 0.72");
   addLink(builder, page, x + 2, y + 2, w - 4, h - 4, input.href);
 }
 
@@ -710,27 +737,6 @@ async function fetchPropertyImages(input: { lat?: number | null; lng?: number | 
   const aerial = aerialPrimary;
   const street = streetPrimary ?? streetFallback;
   return { aerial, street };
-}
-
-function projectHasImage(project: Project) {
-  return Boolean(project.photos?.[0]?.public_url);
-}
-
-async function selectRelatedProjects(scope: string): Promise<ProjectCard[]> {
-  const primaryService = serviceSlugFromScope(scope);
-  const primary = await listProjects({ service_slug: primaryService, include_unpublished: false, limit: 8 });
-  const secondary = await listProjects({ include_unpublished: false, limit: 20 });
-
-  const combined = [...primary, ...secondary]
-    .filter((project, index, array) => array.findIndex((candidate) => candidate.id === project.id) === index)
-    .filter((project) => project.is_published && projectHasImage(project));
-
-  return combined.slice(0, 3).map((project) => ({
-    title: project.title,
-    summary: project.summary,
-    imageUrl: project.photos?.[0]?.public_url ?? "",
-    href: canonicalUrl(`/projects/${project.slug}`)
-  }));
 }
 
 function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
@@ -850,7 +856,33 @@ export async function POST(request: Request) {
     });
 
     const proposalUrl = canonicalUrl(`/online-estimate?resume=${encodeURIComponent(quoteResumeToken)}`);
-    const projects = testMode ? [] : await selectRelatedProjects(requestedScope);
+    const locationContext = resolvePublicLocation({ address: estimate.address });
+    const [projects, quoteSignal] = testMode
+      ? [[], null] as [RelatedProjectCard[], ServiceSpecificQuoteSignal | null]
+      : await Promise.all([
+        getRelatedProjects({
+          serviceType: requestedScope,
+          address: estimate.address,
+          city: locationContext?.city ?? null,
+          quadrant: locationContext?.quadrant ?? null,
+          neighborhood: locationContext?.locality ?? null,
+          limit: 3
+        }),
+        getServiceSpecificQuoteSignals({
+          address: estimate.address,
+          city: locationContext?.city ?? null,
+          quadrant: locationContext?.quadrant ?? null,
+          neighborhood: locationContext?.locality ?? null,
+          serviceType: requestedScope
+        })
+      ]);
+    const solarSnapshot = getSolarSnapshotData({
+      buildingInsights: estimate.solarSnapshot?.buildingInsights ?? null,
+      dataLayers: estimate.solarSnapshot?.dataLayers ?? null,
+      quoteContext: { serviceType: requestedScope },
+      propertyContext: { roofAreaSqft: estimate.roofAreaSqft }
+    });
+    const includeSolarPage = requestedScope === "roofing" || requestedScope === "all" || solarSnapshot.hasStrongData;
     const [propertyImages, logoBuffer] = await Promise.all([
       fetchPropertyImages({ lat: estimate.lat, lng: estimate.lng, address: estimate.address }),
       loadLogo()
@@ -860,6 +892,7 @@ export async function POST(request: Request) {
     const page1 = beginPage();
     const page2 = beginPage();
     const page3 = beginPage();
+    const page4 = beginPage();
 
     const headerLogo = logoBuffer ? addImageObject(builder, page1, "Logo", logoBuffer) : null;
     drawHeader(page1, {
@@ -930,6 +963,17 @@ export async function POST(request: Request) {
     drawText(page1, "Important note", MARGIN + CARD_PADDING_X, cursorTop - 20, 11, COLORS.textDark, "F2");
     noteLines.forEach((line, i) => drawText(page1, line, MARGIN + CARD_PADDING_X, cursorTop - 33 - i * 10.5, 8.5, COLORS.textMid));
     addLink(builder, page1, MARGIN, cursorTop - 56, CONTENT_WIDTH, 56, proposalUrl);
+    drawCard(page1, MARGIN, 50, CONTENT_WIDTH, 52, COLORS.cardSoft);
+    const trustPills = [
+      "Local estimate intelligence",
+      "Proposal-aligned pricing logic",
+      "Calgary-focused exterior scope planning"
+    ];
+    trustPills.forEach((pill, index) => {
+      const x = MARGIN + CARD_PADDING_X + index * ((CONTENT_WIDTH - 32) / 3);
+      drawRoundedBox(page1, x, 62, ((CONTENT_WIDTH - 50) / 3), 14, COLORS.badgeBlueBg, COLORS.badgeBlueBg);
+      drawTextCentered(page1, pill, x + ((CONTENT_WIDTH - 50) / 6), 66.5, 6.6, COLORS.badgeBlueFg, "F2");
+    });
     drawFooter(page1);
 
     const headerLogo2 = logoBuffer ? addImageObject(builder, page2, "Logo2", logoBuffer) : null;
@@ -1001,21 +1045,36 @@ export async function POST(request: Request) {
 
     const headerLogo3 = logoBuffer ? addImageObject(builder, page3, "Logo3", logoBuffer) : null;
     drawHeader(page3, {
-      title: "Other Exterior Options",
-      subtitle: "Secondary planning ranges for the same property",
+      title: "Planning Support & Similar Scope Signals",
+      subtitle: "Additional quoted items, local quote activity, and related projects",
       logo: headerLogo3,
       badge: "Customer Estimate"
     });
 
     let optionsY = PAGE_TOP_START - 8;
+    drawText(page3, "Additional quoted items", MARGIN, optionsY - 8, 12.5, COLORS.textDark, "F2");
+    optionsY -= 16;
     otherOptions(requestedScope, estimate).forEach((option) => {
       drawCard(page3, MARGIN, optionsY - 40, CONTENT_WIDTH, 34, COLORS.cardSoft);
       drawText(page3, option.title, MARGIN + CARD_PADDING_X, optionsY - 20, 10.5, COLORS.textDark, "F2");
       drawText(page3, option.value, MARGIN + 330, optionsY - 20, 10.5, COLORS.navy, "F2");
       optionsY -= 34 + SECTION_GAP_Y;
     });
+    optionsY -= 6;
 
-    drawText(page3, "Recent related projects", MARGIN, optionsY - 10, 13, COLORS.textDark, "F2");
+    if (quoteSignal) {
+      const trustH = 86;
+      drawCard(page3, MARGIN, optionsY - trustH, CONTENT_WIDTH, trustH, COLORS.cardSoft);
+      drawText(page3, quoteSignal.heading, MARGIN + 12, optionsY - 22, 12, COLORS.textDark, "F2");
+      drawMultiline(page3, quoteSignal.subtext, MARGIN + 12, optionsY - 36, CONTENT_WIDTH - 220, 8.4, 10.5, COLORS.textMid);
+      drawRoundedBox(page3, MARGIN + CONTENT_WIDTH - 204, optionsY - trustH + 12, 192, 62, COLORS.cardBg, COLORS.border);
+      drawText(page3, `${quoteSignal.quoteSignalCount} recent ${quoteSignal.serviceType.toLowerCase()} signals`, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 56, 8.2, COLORS.textDark, "F2");
+      drawText(page3, quoteSignal.geographyLabel, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 43, 8.1, COLORS.textSub);
+      drawText(page3, `Modeled range: ${fmtCurrency(quoteSignal.rangeMin)} - ${fmtCurrency(quoteSignal.rangeMax)}`, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 29, 8.2, COLORS.navy, "F2");
+      optionsY -= trustH + SECTION_GAP_Y;
+    }
+
+    drawText(page3, "Related projects", MARGIN, optionsY - 10, 13, COLORS.textDark, "F2");
     optionsY -= 24;
 
     if (projects.length === 0) {
@@ -1025,11 +1084,11 @@ export async function POST(request: Request) {
       addLink(builder, page3, MARGIN + 12, optionsY - 56, 140, 18, canonicalUrl("/projects"));
     } else {
       const cardWidth = (CONTENT_WIDTH - GRID_GAP_X * 2) / 3;
-      const cardHeight = 196;
+      const cardHeight = 204;
       for (let i = 0; i < projects.length; i += 1) {
         const project = projects[i];
         const x = MARGIN + i * (cardWidth + GRID_GAP_X);
-        const y = optionsY - 214;
+        const y = optionsY - 218;
         const imageBuffer = await fetchBuffer(project.imageUrl);
         const imageRef = imageBuffer ? addImageObject(builder, page3, `Proj${i + 1}`, imageBuffer) : null;
         drawProjectCard(
@@ -1042,29 +1101,100 @@ export async function POST(request: Request) {
             title: project.title,
             summary: project.summary?.trim() ? project.summary : "See this recent project example.",
             href: project.href,
-            image: imageRef
+            image: imageRef,
+            location: project.locationLabel,
+            serviceBadge: project.serviceBadge,
+            ctaLabel: project.ctaLabel
           },
           builder
         );
       }
     }
 
-    drawCard(page3, MARGIN, 58, (CONTENT_WIDTH - 14) / 2, 48, COLORS.cardSoft);
-    drawText(page3, "Useful Links", MARGIN + 12, 88, 12, COLORS.textDark, "F2");
-    drawText(page3, "→ Request full proposal", MARGIN + 12, 74, 9.5, COLORS.blueText);
-    drawText(page3, "→ See recent project photos", MARGIN + 12, 62, 9.5, COLORS.blueText);
-    addLink(builder, page3, MARGIN + 10, 70, 160, 12, proposalUrl);
-    addLink(builder, page3, MARGIN + 10, 58, 172, 12, canonicalUrl("/projects"));
-
-    const ctaX = MARGIN + (CONTENT_WIDTH - 14) / 2 + 14;
-    drawRoundedBox(page3, ctaX, 58, (CONTENT_WIDTH - 14) / 2, 48, COLORS.navy, COLORS.navy);
-    drawText(page3, "Want a locked-in scope?", ctaX + 12, 88, 12, "1 1 1");
-    drawRoundedBox(page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, COLORS.accentGold, COLORS.accentGold);
-    drawTextCentered(page3, "Request a full proposal →", ctaX + 12 + ((CONTENT_WIDTH - 14) / 2 - 24) / 2, 70.5, 9, COLORS.navy, "F2");
-    addLink(builder, page3, ctaX + 12, 66, (CONTENT_WIDTH - 14) / 2 - 24, 14, proposalUrl);
+    drawCard(page3, MARGIN, 92, CONTENT_WIDTH, 64, COLORS.cardSoft);
+    drawRoundedBox(page3, MARGIN + 12, 130, 166, 14, COLORS.badgeAmberBg, COLORS.badgeAmberBg);
+    drawTextCentered(page3, "SOLAR SNAPSHOT", MARGIN + 95, 134.5, 7.2, COLORS.badgeAmberFg, "F2");
+    drawText(page3, solarSnapshot.teaserTitle, MARGIN + 12, 116, 12.5, COLORS.textDark, "F2");
+    drawMultiline(page3, solarSnapshot.teaserBody, MARGIN + 12, 103, CONTENT_WIDTH - 24, 8.4, 10.4, COLORS.textMid);
+    drawText(page3, includeSolarPage ? solarSnapshot.teaserNextPage : "Solar snapshot appears when stronger rooftop model data is available.", MARGIN + 12, 70, 8.8, COLORS.navy, "F2");
+    drawRoundedBox(page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, COLORS.navy, COLORS.navy);
+    drawTextCentered(page3, "View solar overview →", MARGIN + CONTENT_WIDTH - 94, 72, 8.6, COLORS.white, "F2");
+    addLink(builder, page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, solarSnapshot.ctaUrl);
     drawFooter(page3);
 
-    const pdf = finalizeDocument(builder, [page1, page2, page3]);
+    if (includeSolarPage) {
+      const headerLogo4 = logoBuffer ? addImageObject(builder, page4, "Logo4", logoBuffer) : null;
+      drawHeader(page4, {
+        title: "Solar suitability snapshot",
+        subtitle: "Modeled from rooftop and sun exposure data for this property",
+        logo: headerLogo4,
+        badge: "Planning Snapshot"
+      });
+      drawCard(page4, MARGIN, PAGE_TOP_START - 72, CONTENT_WIDTH, 60, COLORS.cardSoft);
+      drawText(page4, "Planning snapshot only, not part of the quoted scope.", MARGIN + 12, PAGE_TOP_START - 36, 9.2, COLORS.textMid);
+      drawText(page4, solarSnapshot.sourceNote, MARGIN + 12, PAGE_TOP_START - 50, 8.2, COLORS.navy, "F2");
+
+      const verdictY = PAGE_TOP_START - 166;
+      drawCard(page4, MARGIN, verdictY, CONTENT_WIDTH, 82, COLORS.cardBg);
+      drawText(page4, `Solar suitability: ${solarSnapshot.suitabilityVerdict}`, MARGIN + 12, verdictY + 60, 14, COLORS.textDark, "F2");
+      drawText(page4, `Modeled capacity: Up to ${solarSnapshot.maxPanels ?? "n/a"} panels`, MARGIN + 12, verdictY + 43, 9.2, COLORS.textMid);
+      drawText(page4, `Annual solar exposure: ~${solarSnapshot.maxSunHoursYear ? Math.round(solarSnapshot.maxSunHoursYear).toLocaleString() : "n/a"} sun-hours/year`, MARGIN + 12, verdictY + 30, 9.2, COLORS.textMid);
+      drawText(page4, `Estimated annual production: ~${solarSnapshot.estimatedProductionLowKwh ? Math.round(solarSnapshot.estimatedProductionLowKwh).toLocaleString() : "n/a"} to ${solarSnapshot.estimatedProductionHighKwh ? Math.round(solarSnapshot.estimatedProductionHighKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, verdictY + 17, 9.2, COLORS.textMid);
+
+      const visualY = verdictY - 146;
+      drawCard(page4, MARGIN, visualY, CONTENT_WIDTH, 136, COLORS.cardBg);
+      if (propertyImages.aerial) {
+        const aerial4 = addImageObject(builder, page4, "AerialSolar", propertyImages.aerial);
+        if (aerial4) drawImageCover(page4, aerial4, MARGIN + 6, visualY + 24, CONTENT_WIDTH - 12, 104);
+      } else if (propertyImages.street) {
+        const street4 = addImageObject(builder, page4, "StreetSolar", propertyImages.street);
+        if (street4) drawImageCover(page4, street4, MARGIN + 6, visualY + 24, CONTENT_WIDTH - 12, 104);
+      } else {
+        drawRect(page4, MARGIN + 6, visualY + 24, CONTENT_WIDTH - 12, 104, COLORS.cardSoft, COLORS.border);
+        drawText(page4, "Modeled roof view used for planning review", MARGIN + 16, visualY + 74, 9, COLORS.textSub);
+      }
+      drawText(page4, "Highlighted roof areas represent sections most likely to support panel placement based on modeled rooftop data.", MARGIN + 10, visualY + 10, 7.6, COLORS.textSub);
+
+      const chartY = visualY - 96;
+      drawProductionRangeChart(page4, MARGIN, chartY, CONTENT_WIDTH, 86, solarSnapshot);
+
+      const interpretY = chartY - 62;
+      drawCard(page4, MARGIN, interpretY, CONTENT_WIDTH, 52, COLORS.cardSoft);
+      drawText(page4, "What this means", MARGIN + 12, interpretY + 35, 11, COLORS.textDark, "F2");
+      const meaning = `Based on modeled roof area, panel capacity, and sun exposure, this property appears to be a ${solarSnapshot.suitabilityVerdict.toLowerCase()} for a solar review. A full review can confirm usable roof planes, expected production, and whether the system could offset a meaningful portion of annual electricity usage.`;
+      const meaningLines = clampTextLines(meaning, 8.2, CONTENT_WIDTH - 24, 2);
+      meaningLines.forEach((line, index) => drawText(page4, line, MARGIN + 12, interpretY + 22 - index * 10, 8.2, COLORS.textMid));
+
+      const contextY = interpretY - 68;
+      drawCard(page4, MARGIN, contextY, CONTENT_WIDTH, 58, COLORS.cardBg);
+      drawText(page4, "How solar projects are often structured", MARGIN + 12, contextY + 40, 10.5, COLORS.textDark, "F2");
+      const contextLines = clampTextLines("Many homeowners size solar around annual electricity usage rather than roof size alone. Systems are often designed to offset a large portion of yearly consumption, with summer production balancing lower winter output. Some municipalities offer property-related financing structures where eligible.", 7.7, CONTENT_WIDTH - 24, 3);
+      contextLines.forEach((line, idx) => drawText(page4, line, MARGIN + 12, contextY + 27 - idx * 9, 7.7, COLORS.textMid));
+
+      const whyY = contextY - 70;
+      drawCard(page4, MARGIN, whyY, CONTENT_WIDTH, 62, COLORS.cardSoft);
+      drawText(page4, "Why review now", MARGIN + 12, whyY + 33, 10.2, COLORS.textDark, "F2");
+      drawText(page4, "• Easier to assess while planning roofing or exterior work.", MARGIN + 12, whyY + 21, 7.8, COLORS.textMid);
+      drawText(page4, "• Panel layout should be reviewed alongside roof condition and usable planes.", MARGIN + 12, whyY + 11, 7.8, COLORS.textMid);
+      drawText(page4, "• Helps confirm if this property is worth deeper design review before decisions.", MARGIN + 12, whyY + 1, 7.8, COLORS.textMid);
+      drawText(page4, "What happens next: no commitment, no-cost initial review, and bill-based system sizing.", MARGIN + 12, whyY - 9, 7.8, COLORS.navy, "F2");
+
+      drawText(page4, "Official program resources", MARGIN + 12, 99, 7.2, COLORS.textSub, "F2");
+      drawText(page4, "• Calgary CEIP", MARGIN + 12, 90, 7.2, "0.13 0.38 0.72");
+      drawText(page4, "• Solar Club information", MARGIN + 112, 90, 7.2, "0.13 0.38 0.72");
+      drawText(page4, "• Additional eligibility resources", MARGIN + 236, 90, 7.2, "0.13 0.38 0.72");
+      addLink(builder, page4, MARGIN + 12, 86, 86, 8, "https://www.calgary.ca/environment/programs/climate-equity-incentive-program.html");
+      addLink(builder, page4, MARGIN + 112, 86, 116, 8, "https://www.alberta.ca/solar-club");
+      addLink(builder, page4, MARGIN + 236, 86, 138, 8, "https://natural-resources.canada.ca/energy-efficiency/homes/make-your-home-more-energy-efficient");
+
+      drawRoundedBox(page4, MARGIN, 58, CONTENT_WIDTH, 34, COLORS.navy, COLORS.navy);
+      drawTextCentered(page4, solarSnapshot.ctaLabel, PAGE_WIDTH / 2, 70, 10, COLORS.white, "F2");
+      drawTextCentered(page4, solarSnapshot.ctaSupport, PAGE_WIDTH / 2, 58.8, 6.8, "0.82 0.89 0.98");
+      addLink(builder, page4, MARGIN, 58, CONTENT_WIDTH, 34, solarSnapshot.ctaUrl);
+      drawFooter(page4);
+    }
+
+    const pdf = finalizeDocument(builder, includeSolarPage ? [page1, page2, page3, page4] : [page1, page2, page3]);
 
     return new Response(pdf, {
       headers: {
