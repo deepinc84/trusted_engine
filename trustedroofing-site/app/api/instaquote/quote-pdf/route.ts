@@ -1130,67 +1130,75 @@ export async function POST(request: Request) {
         logo: headerLogo4,
         badge: "Planning Snapshot"
       });
-      drawCard(page4, MARGIN, PAGE_TOP_START - 72, CONTENT_WIDTH, 60, COLORS.cardSoft);
-      drawText(page4, "Planning snapshot only, not part of the quoted scope.", MARGIN + 12, PAGE_TOP_START - 36, 9.2, COLORS.textMid);
-      drawText(page4, solarSnapshot.sourceNote, MARGIN + 12, PAGE_TOP_START - 50, 8.2, COLORS.navy, "F2");
+      drawCard(page4, MARGIN, PAGE_TOP_START - 62, CONTENT_WIDTH, 50, COLORS.cardSoft);
+      drawText(page4, "Planning snapshot only, not part of the quoted scope.", MARGIN + 12, PAGE_TOP_START - 34, 8.8, COLORS.textMid);
+      drawText(page4, "Solar is not included in this estimate.", MARGIN + 12, PAGE_TOP_START - 46, 8.8, COLORS.textMid);
+      drawText(page4, solarSnapshot.sourceNote, MARGIN + 12, PAGE_TOP_START - 57, 8, COLORS.navy, "F2");
 
-      const verdictY = PAGE_TOP_START - 166;
-      drawCard(page4, MARGIN, verdictY, CONTENT_WIDTH, 82, COLORS.cardBg);
-      drawText(page4, `Solar suitability: ${solarSnapshot.suitabilityVerdict}`, MARGIN + 12, verdictY + 60, 14, COLORS.textDark, "F2");
-      drawText(page4, `Modeled capacity: Up to ${solarSnapshot.maxPanels ?? "n/a"} panels`, MARGIN + 12, verdictY + 43, 9.2, COLORS.textMid);
-      drawText(page4, `Annual solar exposure: ~${solarSnapshot.maxSunHoursYear ? Math.round(solarSnapshot.maxSunHoursYear).toLocaleString() : "n/a"} sun-hours/year`, MARGIN + 12, verdictY + 30, 9.2, COLORS.textMid);
-      drawText(page4, `Estimated annual production: ~${solarSnapshot.estimatedProductionLowKwh ? Math.round(solarSnapshot.estimatedProductionLowKwh).toLocaleString() : "n/a"} to ${solarSnapshot.estimatedProductionHighKwh ? Math.round(solarSnapshot.estimatedProductionHighKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, verdictY + 17, 9.2, COLORS.textMid);
+      const verdictY = PAGE_TOP_START - 146;
+      drawCard(page4, MARGIN, verdictY, CONTENT_WIDTH, 76, COLORS.cardBg);
+      drawText(page4, `Solar suitability: ${solarSnapshot.suitabilityVerdict}`, MARGIN + 12, verdictY + 53, 13.5, COLORS.textDark, "F2");
+      drawText(page4, `Modeled capacity: Up to ${solarSnapshot.maxPanels ?? "n/a"} panels`, MARGIN + 12, verdictY + 38, 8.8, COLORS.textMid);
+      drawText(page4, `Annual solar exposure: ~${solarSnapshot.maxSunHoursYear ? Math.round(solarSnapshot.maxSunHoursYear).toLocaleString() : "n/a"} sun-hours/year`, MARGIN + 12, verdictY + 26, 8.8, COLORS.textMid);
+      drawText(page4, `Estimated annual production range: ~${solarSnapshot.estimatedProductionLowKwh ? Math.round(solarSnapshot.estimatedProductionLowKwh).toLocaleString() : "n/a"} to ${solarSnapshot.estimatedProductionHighKwh ? Math.round(solarSnapshot.estimatedProductionHighKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, verdictY + 14, 8.8, COLORS.textMid);
+      if (solarSnapshot.imageryQuality) drawText(page4, `Imagery quality: ${solarSnapshot.imageryQuality}`, MARGIN + CONTENT_WIDTH - 122, verdictY + 6, 6.8, COLORS.textSub);
 
-      const visualY = verdictY - 146;
-      drawCard(page4, MARGIN, visualY, CONTENT_WIDTH, 136, COLORS.cardBg);
+      const visualY = verdictY - 130;
+      drawCard(page4, MARGIN, visualY, CONTENT_WIDTH, 120, COLORS.cardBg);
       if (propertyImages.aerial) {
         const aerial4 = addImageObject(builder, page4, "AerialSolar", propertyImages.aerial);
-        if (aerial4) drawImageCover(page4, aerial4, MARGIN + 6, visualY + 24, CONTENT_WIDTH - 12, 104);
+        if (aerial4) drawImageCover(page4, aerial4, MARGIN + 6, visualY + 18, CONTENT_WIDTH - 12, 96);
       } else if (propertyImages.street) {
         const street4 = addImageObject(builder, page4, "StreetSolar", propertyImages.street);
-        if (street4) drawImageCover(page4, street4, MARGIN + 6, visualY + 24, CONTENT_WIDTH - 12, 104);
+        if (street4) drawImageCover(page4, street4, MARGIN + 6, visualY + 18, CONTENT_WIDTH - 12, 96);
       } else {
-        drawRect(page4, MARGIN + 6, visualY + 24, CONTENT_WIDTH - 12, 104, COLORS.cardSoft, COLORS.border);
-        drawText(page4, "Modeled roof view used for planning review", MARGIN + 16, visualY + 74, 9, COLORS.textSub);
+        drawRect(page4, MARGIN + 6, visualY + 18, CONTENT_WIDTH - 12, 96, COLORS.cardSoft, COLORS.border);
+        drawText(page4, "Modeled roof view used for planning review", MARGIN + 16, visualY + 66, 8.8, COLORS.textSub);
       }
-      drawText(page4, "Highlighted roof areas represent sections most likely to support panel placement based on modeled rooftop data.", MARGIN + 10, visualY + 10, 7.6, COLORS.textSub);
+      drawText(page4, "Highlighted roof areas represent sections most likely to support panel placement based on modeled rooftop data.", MARGIN + 10, visualY + 8, 7.4, COLORS.textSub);
 
-      const chartY = visualY - 96;
-      drawProductionRangeChart(page4, MARGIN, chartY, CONTENT_WIDTH, 86, solarSnapshot);
+      const chartY = visualY - 78;
+      drawProductionRangeChart(page4, MARGIN, chartY, CONTENT_WIDTH, 68, solarSnapshot);
 
-      const interpretY = chartY - 62;
-      drawCard(page4, MARGIN, interpretY, CONTENT_WIDTH, 52, COLORS.cardSoft);
-      drawText(page4, "What this means", MARGIN + 12, interpretY + 35, 11, COLORS.textDark, "F2");
-      const meaning = `Based on modeled roof area, panel capacity, and sun exposure, this property appears to be a ${solarSnapshot.suitabilityVerdict.toLowerCase()} for a solar review. A full review can confirm usable roof planes, expected production, and whether the system could offset a meaningful portion of annual electricity usage.`;
-      const meaningLines = clampTextLines(meaning, 8.2, CONTENT_WIDTH - 24, 2);
-      meaningLines.forEach((line, index) => drawText(page4, line, MARGIN + 12, interpretY + 22 - index * 10, 8.2, COLORS.textMid));
+      const meaningY = chartY - 52;
+      drawCard(page4, MARGIN, meaningY, CONTENT_WIDTH, 44, COLORS.cardSoft);
+      drawText(page4, "What this means", MARGIN + 12, meaningY + 30, 10.6, COLORS.textDark, "F2");
+      const meaningLines = clampTextLines(
+        `Based on modeled roof area, panel capacity, and sun exposure, this property appears to be a ${solarSnapshot.suitabilityVerdict.toLowerCase()} for a solar review. A full review can confirm usable roof planes, expected production, and potential offset against annual usage.`,
+        7.8,
+        CONTENT_WIDTH - 24,
+        2
+      );
+      meaningLines.forEach((line, i) => drawText(page4, line, MARGIN + 12, meaningY + 18 - i * 9, 7.8, COLORS.textMid));
 
-      const contextY = interpretY - 68;
-      drawCard(page4, MARGIN, contextY, CONTENT_WIDTH, 58, COLORS.cardBg);
-      drawText(page4, "How solar projects are often structured", MARGIN + 12, contextY + 40, 10.5, COLORS.textDark, "F2");
-      const contextLines = clampTextLines("Many homeowners size solar around annual electricity usage rather than roof size alone. Systems are often designed to offset a large portion of yearly consumption, with summer production balancing lower winter output. Some municipalities offer property-related financing structures where eligible.", 7.7, CONTENT_WIDTH - 24, 3);
-      contextLines.forEach((line, idx) => drawText(page4, line, MARGIN + 12, contextY + 27 - idx * 9, 7.7, COLORS.textMid));
+      const structureY = meaningY - 52;
+      drawCard(page4, MARGIN, structureY, CONTENT_WIDTH, 44, COLORS.cardBg);
+      drawText(page4, "How solar projects are often structured", MARGIN + 12, structureY + 30, 10, COLORS.textDark, "F2");
+      const structureLines = clampTextLines(
+        "Many homeowners size systems around annual usage. Summer production can offset lower winter output, and some municipalities may offer property-related financing options where eligible.",
+        7.5,
+        CONTENT_WIDTH - 24,
+        2
+      );
+      structureLines.forEach((line, i) => drawText(page4, line, MARGIN + 12, structureY + 18 - i * 9, 7.5, COLORS.textMid));
 
-      const whyY = contextY - 70;
-      drawCard(page4, MARGIN, whyY, CONTENT_WIDTH, 62, COLORS.cardSoft);
-      drawText(page4, "Why review now", MARGIN + 12, whyY + 33, 10.2, COLORS.textDark, "F2");
-      drawText(page4, "• Easier to assess while planning roofing or exterior work.", MARGIN + 12, whyY + 21, 7.8, COLORS.textMid);
-      drawText(page4, "• Panel layout should be reviewed alongside roof condition and usable planes.", MARGIN + 12, whyY + 11, 7.8, COLORS.textMid);
-      drawText(page4, "• Helps confirm if this property is worth deeper design review before decisions.", MARGIN + 12, whyY + 1, 7.8, COLORS.textMid);
-      drawText(page4, "What happens next: no commitment, no-cost initial review, and bill-based system sizing.", MARGIN + 12, whyY - 9, 7.8, COLORS.navy, "F2");
+      const whyY = structureY - 34;
+      drawCard(page4, MARGIN, whyY, CONTENT_WIDTH, 28, COLORS.cardSoft);
+      drawText(page4, "Why review now: easier during exterior planning, layout should align with roof condition, and review confirms fit before decisions.", MARGIN + 12, whyY + 12, 7.4, COLORS.textMid);
 
-      drawText(page4, "Official program resources", MARGIN + 12, 99, 7.2, COLORS.textSub, "F2");
-      drawText(page4, "• Calgary CEIP", MARGIN + 12, 90, 7.2, "0.13 0.38 0.72");
-      drawText(page4, "• Solar Club information", MARGIN + 112, 90, 7.2, "0.13 0.38 0.72");
-      drawText(page4, "• Additional eligibility resources", MARGIN + 236, 90, 7.2, "0.13 0.38 0.72");
-      addLink(builder, page4, MARGIN + 12, 86, 86, 8, "https://www.calgary.ca/environment/programs/climate-equity-incentive-program.html");
-      addLink(builder, page4, MARGIN + 112, 86, 116, 8, "https://www.alberta.ca/solar-club");
-      addLink(builder, page4, MARGIN + 236, 86, 138, 8, "https://natural-resources.canada.ca/energy-efficiency/homes/make-your-home-more-energy-efficient");
+      const nextY = whyY - 30;
+      drawCard(page4, MARGIN, nextY, CONTENT_WIDTH, 24, COLORS.cardBg);
+      drawText(page4, "What happens next: no commitment, no-cost review, and electricity-bill-based sizing to verify if solar makes sense for this property.", MARGIN + 12, nextY + 9, 7.2, COLORS.navy, "F2");
 
-      drawRoundedBox(page4, MARGIN, 58, CONTENT_WIDTH, 34, COLORS.navy, COLORS.navy);
-      drawTextCentered(page4, solarSnapshot.ctaLabel, PAGE_WIDTH / 2, 70, 10, COLORS.white, "F2");
-      drawTextCentered(page4, solarSnapshot.ctaSupport, PAGE_WIDTH / 2, 58.8, 6.8, "0.82 0.89 0.98");
-      addLink(builder, page4, MARGIN, 58, CONTENT_WIDTH, 34, solarSnapshot.ctaUrl);
+      drawText(page4, "Official program resources: Calgary CEIP · Solar Club · Additional eligibility information", MARGIN + 12, 82, 6.8, COLORS.textSub);
+      addLink(builder, page4, MARGIN + 12, 78, 68, 8, "https://www.calgary.ca/environment/programs/climate-equity-incentive-program.html");
+      addLink(builder, page4, MARGIN + 90, 78, 54, 8, "https://www.solarclub.ca/");
+      addLink(builder, page4, MARGIN + 154, 78, 142, 8, "https://natural-resources.canada.ca/energy-efficiency/homes/make-your-home-more-energy-efficient");
+
+      drawRoundedBox(page4, MARGIN, 48, CONTENT_WIDTH, 28, COLORS.navy, COLORS.navy);
+      drawTextCentered(page4, solarSnapshot.ctaLabel, PAGE_WIDTH / 2, 58.8, 9.4, COLORS.white, "F2");
+      drawTextCentered(page4, solarSnapshot.ctaSupport, PAGE_WIDTH / 2, 50.5, 6.5, "0.82 0.89 0.98");
+      addLink(builder, page4, MARGIN, 48, CONTENT_WIDTH, 28, solarSnapshot.ctaUrl);
       drawFooter(page4);
     }
 
