@@ -1154,6 +1154,7 @@ export async function POST(request: Request) {
       drawText(page4, `Annual solar exposure: ~${solarSnapshot.maxSunHoursYear ? Math.round(solarSnapshot.maxSunHoursYear).toLocaleString() : "n/a"} sun-hours/year`, MARGIN + 12, verdictY + 26, 8.8, COLORS.textMid);
       drawText(page4, `Estimated annual production range: ~${solarSnapshot.estimatedProductionLowKwh ? Math.round(solarSnapshot.estimatedProductionLowKwh).toLocaleString() : "n/a"} to ${solarSnapshot.estimatedProductionHighKwh ? Math.round(solarSnapshot.estimatedProductionHighKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, verdictY + 14, 8.8, COLORS.textMid);
 
+<<<<<<< codex/enhance-instant-estimate-pdf-design-2sumq0
       const roofBlockY = verdictY - 140;
       drawCard(page4, MARGIN, roofBlockY, CONTENT_WIDTH, 132, COLORS.cardBg);
       drawText(page4, "Modeled roof context", MARGIN + 12, roofBlockY + 114, 10.5, COLORS.textDark, "F2");
@@ -1180,6 +1181,31 @@ export async function POST(request: Request) {
       drawText(page4, "Production is typically higher in spring and summer and lower in winter. Final system sizing depends on roof layout, usable planes, and actual electricity usage.", MARGIN + 12, chartY + 3, 7.1, COLORS.textMid);
 
       const meaningY = chartY - 50;
+=======
+      const roofBlockY = verdictY - 96;
+      drawCard(page4, MARGIN, roofBlockY, CONTENT_WIDTH, 88, COLORS.cardBg);
+      drawText(page4, "Modeled roof context", MARGIN + 12, roofBlockY + 72, 10, COLORS.textDark, "F2");
+      if (propertyImages.aerial) {
+        const aerial4 = addImageObject(builder, page4, "SolarRoofAerial", propertyImages.aerial);
+        if (aerial4) drawImageCover(page4, aerial4, MARGIN + 8, roofBlockY + 8, 180, 58);
+      } else if (propertyImages.street) {
+        const street4 = addImageObject(builder, page4, "SolarRoofStreet", propertyImages.street);
+        if (street4) drawImageCover(page4, street4, MARGIN + 8, roofBlockY + 8, 180, 58);
+      } else {
+        drawRect(page4, MARGIN + 8, roofBlockY + 8, 180, 58, COLORS.cardSoft, COLORS.border);
+        drawText(page4, "Property context image unavailable", MARGIN + 18, roofBlockY + 36, 7.2, COLORS.textSub);
+      }
+      drawMultiline(page4, "This planning view is property-specific and helps anchor the modeled solar production profile before a no-cost review.", MARGIN + 198, roofBlockY + 54, CONTENT_WIDTH - 210, 7.6, 9.2, COLORS.textMid);
+
+      const likelyAnnual = solarSnapshot.estimatedProductionLikelyKwh ?? solarSnapshot.estimatedProductionHighKwh ?? 0;
+      const monthlyProduction = buildMonthlySolarProductionSeries(likelyAnnual);
+      const chartY = roofBlockY - 108;
+      drawMonthlySolarLineChart(page4, MARGIN, chartY, CONTENT_WIDTH, 98, monthlyProduction);
+      drawText(page4, `Modeled annual production range: ${solarSnapshot.estimatedProductionLowKwh ? Math.round(solarSnapshot.estimatedProductionLowKwh).toLocaleString() : "n/a"} to ${solarSnapshot.estimatedProductionHighKwh ? Math.round(solarSnapshot.estimatedProductionHighKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, chartY + 10, 7.3, COLORS.textSub);
+      drawText(page4, "Modeled production is typically strongest in late spring and summer, with lower winter output. Final system sizing depends on roof layout, usable planes, and actual electricity usage.", MARGIN + 12, chartY + 1, 7.1, COLORS.textMid);
+
+      const meaningY = chartY - 52;
+>>>>>>> main
       drawCard(page4, MARGIN, meaningY, CONTENT_WIDTH, 42, COLORS.cardSoft);
       drawText(page4, "What this means", MARGIN + 12, meaningY + 30, 10.6, COLORS.textDark, "F2");
       const meaningLines = clampTextLines(
@@ -1190,6 +1216,7 @@ export async function POST(request: Request) {
       );
       meaningLines.forEach((line, i) => drawText(page4, line, MARGIN + 12, meaningY + 18 - i * 9, 7.8, COLORS.textMid));
 
+<<<<<<< codex/enhance-instant-estimate-pdf-design-2sumq0
       const structureY = meaningY - 54;
       const halfW = (CONTENT_WIDTH - 10) / 2;
       drawCard(page4, MARGIN, structureY, halfW, 50, COLORS.cardBg);
@@ -1210,16 +1237,45 @@ export async function POST(request: Request) {
 
       const nextY = structureY - 50;
       drawCard(page4, MARGIN, nextY, CONTENT_WIDTH, 44, COLORS.cardBg);
+=======
+      const structureY = meaningY - 48;
+      drawCard(page4, MARGIN, structureY, CONTENT_WIDTH, 42, COLORS.cardBg);
+      drawText(page4, "How solar projects are often structured", MARGIN + 12, structureY + 30, 10, COLORS.textDark, "F2");
+      const structureLines = clampTextLines(
+        "Many homeowners size systems around annual usage. Summer production can offset lower winter output, and some municipalities may offer property-related financing options where eligible.",
+        7.5,
+        CONTENT_WIDTH - 24,
+        2
+      );
+      structureLines.forEach((line, i) => drawText(page4, line, MARGIN + 12, structureY + 18 - i * 9, 7.5, COLORS.textMid));
+
+      const whyY = structureY - 54;
+      drawCard(page4, MARGIN, whyY, CONTENT_WIDTH, 42, COLORS.cardSoft);
+      drawText(page4, "Why it may be worth reviewing", MARGIN + 12, whyY + 34, 10, COLORS.textDark, "F2");
+      drawText(page4, "• May offset a meaningful portion of annual electricity usage", MARGIN + 12, whyY + 22, 7.4, COLORS.textMid);
+      drawText(page4, "• Best reviewed while planning roofing or exterior work", MARGIN + 12, whyY + 12, 7.4, COLORS.textMid);
+      drawText(page4, "• Helps confirm whether the property is worth deeper solar design review", MARGIN + 12, whyY + 2, 7.4, COLORS.textMid);
+
+      const nextY = whyY - 46;
+      drawCard(page4, MARGIN, nextY, CONTENT_WIDTH, 40, COLORS.cardBg);
+>>>>>>> main
       drawText(page4, "What happens next", MARGIN + 12, nextY + 31, 10, COLORS.textDark, "F2");
       drawText(page4, "• No commitment to proceed", MARGIN + 12, nextY + 20, 7.4, COLORS.textMid);
       drawText(page4, "• No cost for the initial review", MARGIN + 12, nextY + 11, 7.4, COLORS.textMid);
       drawText(page4, "• A recent electricity bill is used to size the system correctly", MARGIN + 212, nextY + 20, 7.4, COLORS.textMid);
       drawText(page4, "This step simply confirms whether solar makes sense for this property before any decisions are made.", MARGIN + 12, nextY + 2, 7.2, COLORS.navy, "F2");
 
+<<<<<<< codex/enhance-instant-estimate-pdf-design-2sumq0
       drawRoundedBox(page4, MARGIN, 46, CONTENT_WIDTH, 30, COLORS.navy, COLORS.navy);
       drawTextCentered(page4, "Request a solar review", PAGE_WIDTH / 2, 58.8, 9.6, COLORS.white, "F2");
       drawTextCentered(page4, "A recent electricity bill is required to prepare the review and size the system to actual usage.", PAGE_WIDTH / 2, 49.8, 6.6, "0.82 0.89 0.98");
       addLink(builder, page4, MARGIN, 46, CONTENT_WIDTH, 30, solarSnapshot.ctaUrl);
+=======
+      drawRoundedBox(page4, MARGIN, 48, CONTENT_WIDTH, 28, COLORS.navy, COLORS.navy);
+      drawTextCentered(page4, "Request a solar review", PAGE_WIDTH / 2, 58.8, 9.4, COLORS.white, "F2");
+      drawTextCentered(page4, "A recent electricity bill is required to prepare the review and size the system to actual usage.", PAGE_WIDTH / 2, 50.5, 6.5, "0.82 0.89 0.98");
+      addLink(builder, page4, MARGIN, 48, CONTENT_WIDTH, 28, solarSnapshot.ctaUrl);
+>>>>>>> main
       drawFooter(page4);
     }
 
