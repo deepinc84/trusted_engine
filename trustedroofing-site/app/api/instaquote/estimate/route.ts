@@ -778,6 +778,11 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
     dataLayers
   };
 
+  const solarSnapshot = {
+    buildingInsights: data as Record<string, unknown> | null,
+    dataLayers: null
+  };
+
   const roof = data?.solarPotential?.wholeRoofStats;
   const segments = data?.solarPotential?.roofSegmentStats ?? [];
 

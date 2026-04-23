@@ -60,6 +60,19 @@ export type SolarSnapshotData = {
   ctaSupport: string;
 };
 
+export const ALBERTA_MONTHLY_SOLAR_WEIGHTS = [0.038, 0.048, 0.072, 0.093, 0.112, 0.123, 0.126, 0.112, 0.096, 0.078, 0.054, 0.048];
+
+export function normalizeWeights(weights: number[], annualKwh: number) {
+  const safeAnnual = Number.isFinite(annualKwh) ? Math.max(0, annualKwh) : 0;
+  const total = weights.reduce((sum, value) => sum + (Number.isFinite(value) ? Math.max(0, value) : 0), 0);
+  if (total <= 0 || safeAnnual <= 0) return new Array(weights.length).fill(0);
+  return weights.map((value) => (Math.max(0, value) / total) * safeAnnual);
+}
+
+export function buildMonthlySolarProductionSeries(annualKwh: number) {
+  return normalizeWeights(ALBERTA_MONTHLY_SOLAR_WEIGHTS, annualKwh).map((value) => Math.round(value));
+}
+
 type ServiceFamily = "roofing" | "siding" | "eavestrough" | "soffit_fascia";
 
 function normalize(value: string | null | undefined) {
