@@ -757,6 +757,26 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
   const high = await call("HIGH");
   const medium = high.data ? null : await call("MEDIUM");
   const data = high.data ?? medium?.data ?? null;
+  const qualityUsed: "HIGH" | "MEDIUM" = high.data ? "HIGH" : "MEDIUM";
+
+  const dataLayerParams = new URLSearchParams({
+    key,
+    "location.latitude": String(lat),
+    "location.longitude": String(lng),
+    radiusMeters: "100",
+    pixelSizeMeters: "0.5",
+    view: "FULL_LAYERS",
+    requiredQuality: qualityUsed
+  });
+  const dataLayersUrl = `https://solar.googleapis.com/v1/dataLayers:get?${dataLayerParams.toString()}`;
+  const dataLayers = await fetch(dataLayersUrl, { cache: "no-store" })
+    .then(async (response) => response.ok ? await response.json() as Record<string, unknown> : null)
+    .catch(() => null);
+
+  const solarSnapshot = {
+    buildingInsights: data as Record<string, unknown> | null,
+    dataLayers
+  };
 
   const solarSnapshot = {
     buildingInsights: data as Record<string, unknown> | null,
