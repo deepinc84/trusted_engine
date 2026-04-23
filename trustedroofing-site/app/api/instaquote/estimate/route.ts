@@ -106,6 +106,10 @@ type ExperimentalBuildResult = {
 type SolarEstimateResult = {
   result: EstimateCore | null;
   debugReason: string | null;
+  solarSnapshot: {
+    buildingInsights: Record<string, unknown> | null;
+    dataLayers: Record<string, unknown> | null;
+  } | null;
   diagnostics: {
     requestId: string;
     keyPresent: boolean;
@@ -704,6 +708,7 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
     return {
       result: null,
       debugReason: "missing GOOGLE_SECRET_KEY",
+      solarSnapshot: null,
       diagnostics: {
         requestId,
         keyPresent: false,
@@ -752,6 +757,26 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
   const high = await call("HIGH");
   const medium = high.data ? null : await call("MEDIUM");
   const data = high.data ?? medium?.data ?? null;
+  const qualityUsed: "HIGH" | "MEDIUM" = high.data ? "HIGH" : "MEDIUM";
+
+  const dataLayerParams = new URLSearchParams({
+    key,
+    "location.latitude": String(lat),
+    "location.longitude": String(lng),
+    radiusMeters: "100",
+    pixelSizeMeters: "0.5",
+    view: "FULL_LAYERS",
+    requiredQuality: qualityUsed
+  });
+  const dataLayersUrl = `https://solar.googleapis.com/v1/dataLayers:get?${dataLayerParams.toString()}`;
+  const dataLayers = await fetch(dataLayersUrl, { cache: "no-store" })
+    .then(async (response) => response.ok ? await response.json() as Record<string, unknown> : null)
+    .catch(() => null);
+
+  const solarSnapshot = {
+    buildingInsights: data as Record<string, unknown> | null,
+    dataLayers
+  };
 
   const roof = data?.solarPotential?.wholeRoofStats;
   const segments = data?.solarPotential?.roofSegmentStats ?? [];
@@ -764,6 +789,7 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
     return {
       result: null,
       debugReason: reason,
+      solarSnapshot,
       diagnostics: {
         requestId,
         keyPresent: true,
@@ -827,6 +853,7 @@ async function solarEstimate(lat: number, lng: number): Promise<SolarEstimateRes
       areaSource: "solar"
     },
     debugReason: null,
+    solarSnapshot,
     diagnostics: {
       requestId,
       keyPresent: true,
@@ -915,6 +942,7 @@ export async function POST(request: Request) {
   let historicalProfileMatch: Awaited<ReturnType<typeof findHistoricalRoofProfile>> = null;
 
   let solarDebug: string | null = null;
+  let solarSnapshot: SolarEstimateResult["solarSnapshot"] = null;
   let solarDiagnostics: SolarEstimateResult["diagnostics"] = {
     requestId: crypto.randomUUID(),
     keyPresent: Boolean(process.env.GOOGLE_SECRET_KEY),
@@ -925,6 +953,7 @@ export async function POST(request: Request) {
     const solar = await solarEstimate(lat, lng);
     estimateResult = solar.result;
     solarDebug = solar.debugReason;
+    solarSnapshot = solar.solarSnapshot;
     solarDiagnostics = solar.diagnostics;
   } else {
     solarDebug = "no lat/lng available for solar lookup";
@@ -1098,6 +1127,7 @@ export async function POST(request: Request) {
     ranges: finalModel.ranges,
     solarDebug,
     solarRequestId: solarDiagnostics.requestId,
+    solarSnapshot,
     geocodeSource,
     geocodeDebug,
     solarAttempts: solarDiagnostics.attempts,
