@@ -862,11 +862,22 @@ function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: stri
 }
 
 async function loadLogo() {
-  try {
-    return await fs.readFile(path.join(process.cwd(), "public", "full_white_new2.png"));
-  } catch {
-    return null;
+  const logoCandidates = [
+    "full_white_new2.png",
+    "full_white_new.png",
+    "full_white_transparent.png",
+    "white-transparent-t.png"
+  ];
+
+  for (const filename of logoCandidates) {
+    try {
+      return await fs.readFile(path.join(process.cwd(), "public", filename));
+    } catch {
+      // continue to next candidate
+    }
   }
+
+  return null;
 }
 
 function beginPage(): PdfPageDraft {
@@ -1215,9 +1226,7 @@ export async function POST(request: Request) {
         badge: "Planning Snapshot"
       });
       drawCard(page4, MARGIN, PAGE_TOP_START - 62, CONTENT_WIDTH, 50, COLORS.cardSoft);
-      drawText(page4, "Planning snapshot only, not part of the quoted scope.", MARGIN + 12, PAGE_TOP_START - 34, 8.8, COLORS.textMid);
-      drawText(page4, "Solar is not included in this estimate.", MARGIN + 12, PAGE_TOP_START - 46, 8.8, COLORS.textMid);
-      drawText(page4, solarSnapshot.sourceNote, MARGIN + 12, PAGE_TOP_START - 57, 8, COLORS.navy, "F2");
+      drawText(page4, "Modeled from rooftop analysis.", MARGIN + 12, PAGE_TOP_START - 42, 9, COLORS.navy, "F2");
 
       const verdictY = PAGE_TOP_START - 146;
       drawCard(page4, MARGIN, verdictY, CONTENT_WIDTH, 76, COLORS.cardBg);
