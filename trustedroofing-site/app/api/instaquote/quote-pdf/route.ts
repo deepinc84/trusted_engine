@@ -536,31 +536,103 @@ function drawMonthlySolarLineChart(
   y: number,
   w: number,
   h: number,
-  monthlyKwh: number[]
+  monthlySolarKwh: number[],
+  monthlyUsageKwh: number[]
 ) {
-  drawCard(page, x, y, w, h, COLORS.cardBg);
-  drawText(page, "Estimated annual solar production", x + 12, y + h - 16, 11.2, COLORS.textDark, "F2");
-  const months = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-  const plotX = x + 18;
-  const plotY = y + 18;
-  const plotW = w - 30;
-  const plotH = h - 38;
-  drawRect(page, plotX, plotY, plotW, 0.6, COLORS.border);
-  const maxValue = Math.max(...monthlyKwh, 1);
-  const stepX = plotW / (months.length - 1);
-  const points = monthlyKwh.map((value, index) => ({
+  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const safeSolar = monthlySolarKwh.length === 12 ? monthlySolarKwh : new Array(12).fill(0);
+  const safeUsage = monthlyUsageKwh.length === 12 ? monthlyUsageKwh : new Array(12).fill(0);
+  const maxValue = Math.max(...safeSolar, ...safeUsage, 1);
+  const plotX = x + 24;
+  const plotY = y + 34;
+  const plotW = w - 48;
+  const plotH = h - 72;
+  const stepX = plotW / (monthLabels.length - 1);
+  const solarPoints = safeSolar.map((value, index) => ({
     x: plotX + index * stepX,
-    y: plotY + (value / maxValue) * (plotH - 10) + 2
+    y: plotY + (value / maxValue) * plotH
   }));
-  page.commands.push(`q ${COLORS.navy} RG 1.6 w`);
-  points.forEach((point, index) => {
-    page.commands.push(index === 0 ? `${point.x} ${point.y} m` : `${point.x} ${point.y} l`);
-  });
+  const usagePoints = safeUsage.map((value, index) => ({
+    x: plotX + index * stepX,
+    y: plotY + (value / maxValue) * plotH
+  }));
+
+  const appendSmoothPath = (points: Array<{ x: number; y: number }>, tension = 0.4) => {
+    const path: string[] = [];
+    if (points.length === 0) return path;
+    path.push(`${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)} m`);
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const p0 = points[i - 1] ?? points[i];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[i + 2] ?? p2;
+      const cp1x = p1.x + ((p2.x - p0.x) * tension) / 6;
+      const cp1y = p1.y + ((p2.y - p0.y) * tension) / 6;
+      const cp2x = p2.x - ((p3.x - p1.x) * tension) / 6;
+      const cp2y = p2.y - ((p3.y - p1.y) * tension) / 6;
+      path.push(
+        `${cp1x.toFixed(2)} ${cp1y.toFixed(2)} ${cp2x.toFixed(2)} ${cp2y.toFixed(2)} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} c`
+      );
+    }
+    return path;
+  };
+
+  const lerp = (from: number, to: number, amount: number) => from + (to - from) * amount;
+  const gradientBands = 14;
+  for (let i = 0; i < gradientBands; i += 1) {
+    const t = i / Math.max(gradientBands - 1, 1);
+    const left = plotX + (plotW * i) / gradientBands;
+    const bandW = plotW / gradientBands + 1.5;
+    const bandColor = `${(lerp(0.96, 0.99, t)).toFixed(3)} ${(lerp(0.53, 0.79, t)).toFixed(3)} ${(lerp(0.14, 0.22, t)).toFixed(3)}`;
+    page.commands.push("q");
+    page.commands.push(`${left.toFixed(2)} ${plotY.toFixed(2)} ${bandW.toFixed(2)} ${plotH.toFixed(2)} re W n`);
+    page.commands.push(`${bandColor} rg`);
+    page.commands.push(...appendSmoothPath(solarPoints, 0.4));
+    page.commands.push(`${plotX + plotW} ${plotY} l`);
+    page.commands.push(`${plotX} ${plotY} l`);
+    page.commands.push("h f");
+    page.commands.push("Q");
+  }
+
+  drawCard(page, x, y, w, h, COLORS.cardBg);
+  drawText(page, "Modeled monthly production vs. typical home usage", x + 12, y + h - 18, 12.3, COLORS.textDark, "F2");
+  drawText(page, "Primary graph: solar production curve", x + 12, y + h - 30, 8, COLORS.textSub);
+
+  for (let i = 0; i <= 4; i += 1) {
+    const gy = plotY + (plotH / 4) * i;
+    drawRect(page, plotX, gy, plotW, 0.4, "0.92 0.92 0.92");
+  }
+
+  const solarStroke = `${pdfRgbFromHex("#F59E0B")} RG 3.6 w`;
+  page.commands.push(`q ${solarStroke}`);
+  page.commands.push(...appendSmoothPath(solarPoints, 0.4));
   page.commands.push("S Q");
-  points.forEach((point, index) => {
-    drawRect(page, point.x - 1.6, point.y - 1.6, 3.2, 3.2, COLORS.navy);
-    if (index % 2 === 0) drawTextCentered(page, months[index], point.x, plotY - 10, 6.5, COLORS.textSub, "F1");
+
+  page.commands.push(`q ${pdfRgbFromHex("#7A7F87")} RG 2.1 w [7 5] 0 d`);
+  page.commands.push(...appendSmoothPath(usagePoints, 0.38));
+  page.commands.push("S Q");
+
+  drawRect(page, plotX, plotY, plotW, 0.8, COLORS.border);
+  drawRect(page, plotX, plotY, 0.8, plotH, COLORS.border);
+  drawRect(page, plotX + plotW, plotY, 0.8, plotH, COLORS.border);
+
+  monthLabels.forEach((month, index) => {
+    if (index % 2 === 0) drawTextCentered(page, month, plotX + index * stepX, plotY - 11, 6.8, COLORS.textSub, "F1");
   });
+
+  const legendY = y + 12;
+  drawRect(page, x + 12, legendY + 2, 16, 3.2, pdfRgbFromHex("#F59E0B"));
+  drawText(page, "Solar production", x + 32, legendY, 7.8, COLORS.textMid);
+  page.commands.push(`q ${pdfRgbFromHex("#7A7F87")} RG 1.8 w [5 4] 0 d ${x + 148} ${legendY + 3.6} m ${x + 168} ${legendY + 3.6} l S Q`);
+  drawText(page, "Typical home usage", x + 173, legendY, 7.8, COLORS.textMid);
+}
+
+function buildTypicalHomeUsageSeries(annualKwh: number) {
+  const usageWeights = [0.089, 0.087, 0.086, 0.083, 0.081, 0.079, 0.078, 0.079, 0.082, 0.085, 0.086, 0.085];
+  const safeAnnual = Number.isFinite(annualKwh) ? Math.max(0, annualKwh) : 0;
+  const total = usageWeights.reduce((sum, value) => sum + value, 0);
+  if (total <= 0 || safeAnnual <= 0) return new Array(12).fill(0);
+  return usageWeights.map((weight) => Math.round((weight / total) * safeAnnual));
 }
 
 function drawHeader(
@@ -790,11 +862,22 @@ function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: stri
 }
 
 async function loadLogo() {
-  try {
-    return await fs.readFile(path.join(process.cwd(), "public", "full_white_new2.png"));
-  } catch {
-    return null;
+  const logoCandidates = [
+    "full_white_new2.png",
+    "full_white_new.png",
+    "full_white_transparent.png",
+    "white-transparent-t.png"
+  ];
+
+  for (const filename of logoCandidates) {
+    try {
+      return await fs.readFile(path.join(process.cwd(), "public", filename));
+    } catch {
+      // continue to next candidate
+    }
   }
+
+  return null;
 }
 
 function beginPage(): PdfPageDraft {
@@ -1143,43 +1226,24 @@ export async function POST(request: Request) {
         badge: "Planning Snapshot"
       });
       drawCard(page4, MARGIN, PAGE_TOP_START - 62, CONTENT_WIDTH, 50, COLORS.cardSoft);
-      drawText(page4, "Planning snapshot only, not part of the quoted scope.", MARGIN + 12, PAGE_TOP_START - 34, 8.8, COLORS.textMid);
-      drawText(page4, "Solar is not included in this estimate.", MARGIN + 12, PAGE_TOP_START - 46, 8.8, COLORS.textMid);
-      drawText(page4, solarSnapshot.sourceNote, MARGIN + 12, PAGE_TOP_START - 57, 8, COLORS.navy, "F2");
+      drawText(page4, "Modeled from rooftop analysis.", MARGIN + 12, PAGE_TOP_START - 42, 9, COLORS.navy, "F2");
 
       const verdictY = PAGE_TOP_START - 146;
       drawCard(page4, MARGIN, verdictY, CONTENT_WIDTH, 76, COLORS.cardBg);
       drawText(page4, `Solar suitability: ${solarSnapshot.suitabilityVerdict}`, MARGIN + 12, verdictY + 53, 13.5, COLORS.textDark, "F2");
       drawText(page4, `Modeled capacity: Up to ${solarSnapshot.maxPanels ?? "n/a"} panels`, MARGIN + 12, verdictY + 38, 8.8, COLORS.textMid);
       drawText(page4, `Annual solar exposure: ~${solarSnapshot.maxSunHoursYear ? Math.round(solarSnapshot.maxSunHoursYear).toLocaleString() : "n/a"} sun-hours/year`, MARGIN + 12, verdictY + 26, 8.8, COLORS.textMid);
-      drawText(page4, `Estimated annual production range: ~${solarSnapshot.estimatedProductionLowKwh ? Math.round(solarSnapshot.estimatedProductionLowKwh).toLocaleString() : "n/a"} to ${solarSnapshot.estimatedProductionHighKwh ? Math.round(solarSnapshot.estimatedProductionHighKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, verdictY + 14, 8.8, COLORS.textMid);
-
-      const roofBlockY = verdictY - 140;
-      drawCard(page4, MARGIN, roofBlockY, CONTENT_WIDTH, 132, COLORS.cardBg);
-      drawText(page4, "Modeled roof context", MARGIN + 12, roofBlockY + 114, 10.5, COLORS.textDark, "F2");
-      const roofVisualW = 320;
-      const roofVisualH = 94;
-      if (propertyImages.aerial) {
-        const aerial4 = addImageObject(builder, page4, "SolarRoofAerial", propertyImages.aerial);
-        if (aerial4) drawImageCover(page4, aerial4, MARGIN + 8, roofBlockY + 14, roofVisualW, roofVisualH);
-      } else if (propertyImages.street) {
-        const street4 = addImageObject(builder, page4, "SolarRoofStreet", propertyImages.street);
-        if (street4) drawImageCover(page4, street4, MARGIN + 8, roofBlockY + 14, roofVisualW, roofVisualH);
-      } else {
-        drawRect(page4, MARGIN + 8, roofBlockY + 14, roofVisualW, roofVisualH, COLORS.cardSoft, COLORS.border);
-        drawText(page4, "Property context image unavailable", MARGIN + 18, roofBlockY + 58, 8.2, COLORS.textSub);
-      }
-      drawMultiline(page4, "Highlighted roof areas represent sections most likely to support panel placement based on modeled rooftop data.", MARGIN + 12, roofBlockY + 10, CONTENT_WIDTH - 24, 7.3, 9, COLORS.textSub);
-      drawMultiline(page4, "This property-specific view anchors the modeled solar performance profile before a no-cost review.", MARGIN + 340, roofBlockY + 88, CONTENT_WIDTH - 352, 8, 10.5, COLORS.textMid);
+      drawText(page4, `Modeled annual production: ~${solarSnapshot.estimatedProductionLikelyKwh ? Math.round(solarSnapshot.estimatedProductionLikelyKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, verdictY + 14, 8.8, COLORS.textMid);
 
       const likelyAnnual = solarSnapshot.estimatedProductionLikelyKwh ?? solarSnapshot.estimatedProductionHighKwh ?? 0;
+      const usageAnnual = likelyAnnual > 0 ? Math.round(likelyAnnual * 0.9) : 0;
       const monthlyProduction = buildMonthlySolarProductionSeries(likelyAnnual);
-      const chartY = roofBlockY - 126;
-      drawMonthlySolarLineChart(page4, MARGIN, chartY, CONTENT_WIDTH, 118, monthlyProduction);
-      drawText(page4, `Modeled annual production range: ${solarSnapshot.estimatedProductionLowKwh ? Math.round(solarSnapshot.estimatedProductionLowKwh).toLocaleString() : "n/a"} to ${solarSnapshot.estimatedProductionHighKwh ? Math.round(solarSnapshot.estimatedProductionHighKwh).toLocaleString() : "n/a"} kWh/year`, MARGIN + 12, chartY + 12, 7.4, COLORS.textSub, "F2");
-      drawText(page4, "Production is typically higher in spring and summer and lower in winter. Final system sizing depends on roof layout, usable planes, and actual electricity usage.", MARGIN + 12, chartY + 3, 7.1, COLORS.textMid);
+      const monthlyUsage = buildTypicalHomeUsageSeries(usageAnnual);
+      const chartY = verdictY - 222;
+      drawMonthlySolarLineChart(page4, MARGIN, chartY, CONTENT_WIDTH, 204, monthlyProduction, monthlyUsage);
+      drawText(page4, "Solar production is higher in summer and lower in winter. Excess summer generation can help offset lower winter output when systems are sized to annual usage.", MARGIN + 12, chartY + 8, 7.4, COLORS.textMid);
 
-      const meaningY = chartY - 50;
+      const meaningY = chartY - 52;
       drawCard(page4, MARGIN, meaningY, CONTENT_WIDTH, 42, COLORS.cardSoft);
       drawText(page4, "What this means", MARGIN + 12, meaningY + 30, 10.6, COLORS.textDark, "F2");
       const meaningLines = clampTextLines(
