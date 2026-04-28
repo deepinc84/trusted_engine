@@ -4,6 +4,7 @@ import PageContainer from "@/components/ui/PageContainer";
 import QuoteFlow from "@/components/QuoteFlow";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
+import Image from "next/image";
 
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
@@ -28,7 +29,8 @@ const quoteBenefits = [
 export const metadata = buildMetadata({
   title: "Instant quote",
   description: "Anonymous instant roofing, siding, and eavestrough estimates for Calgary homeowners.",
-  path: "/online-estimate"
+  path: "/online-estimate",
+  imagePath: "/Instant_estimate_hero.png"
 });
 
 export const dynamic = "force-dynamic";
@@ -59,6 +61,14 @@ export default function QuotePage() {
           <p className="homev3-copy">
             Address autocomplete, roof-data pricing, and nearby project proof in one flow.
           </p>
+          <Image
+            src="/Instant_estimate_hero.png"
+            alt="Trusted Roofing instant estimate roof measurement preview"
+            width={2048}
+            height={1116}
+            style={{ width: "100%", height: "auto", borderRadius: "1rem", marginTop: "1rem" }}
+            priority
+          />
         </PageContainer>
       </section>
       <section className="ui-page-section ui-page-section--soft ui-page-section--quote">
