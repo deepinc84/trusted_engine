@@ -10,14 +10,17 @@ export function buildMetadata({
   title,
   description,
   path = "",
-  robots
+  robots,
+  imagePath
 }: {
   title: string;
   description: string;
   path?: string;
   robots?: Metadata["robots"];
+  imagePath?: string;
 }): Metadata {
   const fullTitle = `${title} | Trusted Roofing & Exteriors`;
+  const imageUrl = imagePath ? canonicalUrl(imagePath) : undefined;
 
   return {
     title: fullTitle,
@@ -29,7 +32,14 @@ export function buildMetadata({
       title: fullTitle,
       description,
       url: canonicalUrl(path),
-      siteName: "Trusted Roofing & Exteriors"
+      siteName: "Trusted Roofing & Exteriors",
+      images: imageUrl ? [{ url: imageUrl }] : undefined
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title: fullTitle,
+      description,
+      images: imageUrl ? [imageUrl] : undefined
     }
   };
 }

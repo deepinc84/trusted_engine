@@ -2,8 +2,10 @@ import QuoteApplicationSchema, { quoteFaqItems } from "@/components/QuoteApplica
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import QuoteFlow from "@/components/QuoteFlow";
+import QuoteActivitySummary from "@/components/QuoteActivitySummary";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
+import Image from "next/image";
 
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
@@ -28,7 +30,8 @@ const quoteBenefits = [
 export const metadata = buildMetadata({
   title: "Instant quote",
   description: "Anonymous instant roofing, siding, and eavestrough estimates for Calgary homeowners.",
-  path: "/online-estimate"
+  path: "/online-estimate",
+  imagePath: "/Instant_estimate_hero.png"
 });
 
 export const dynamic = "force-dynamic";
@@ -55,10 +58,18 @@ export default function QuotePage() {
       <section className="ui-page-hero ui-page-hero--quote">
         <PageContainer>
           <p className="homev3-eyebrow homev3-eyebrow--dark">Instant quote</p>
-          <h1 className="homev3-title">Get your estimate in seconds</h1>
+          <h1 className="homev3-title">Instant Roofing & Exterior Estimates for Calgary Homeowners</h1>
           <p className="homev3-copy">
-            Address autocomplete, roof-data pricing, and nearby project proof in one flow.
+            Address-level pricing for roofing, siding, and eavestroughs in Calgary.
           </p>
+          <Image
+            src="/Instant_estimate_hero.png"
+            alt="Trusted Roofing instant estimate roof measurement preview"
+            width={2048}
+            height={1116}
+            style={{ width: "100%", height: "auto", borderRadius: "1rem", marginTop: "1rem" }}
+            priority
+          />
         </PageContainer>
       </section>
       <section className="ui-page-section ui-page-section--soft ui-page-section--quote">
@@ -99,6 +110,7 @@ export default function QuotePage() {
                   you want a detailed follow-up quote.
                 </p>
               </article>
+              <QuoteActivitySummary />
 
               <article className="ui-card quote-support-card">
                 <p className="ui-page-hero__eyebrow">FAQ</p>
