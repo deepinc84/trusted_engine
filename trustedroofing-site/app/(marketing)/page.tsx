@@ -95,7 +95,7 @@ export default async function HomePage() {
     })
   }));
 
-  const calgaryAreas = topAreas.filter((area) => area.city === "Calgary").slice(0, 8);
+  const calgaryAreas = topAreas.filter((area) => area.city === "Calgary");
 
   return (
     <>
