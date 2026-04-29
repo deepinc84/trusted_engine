@@ -2,6 +2,7 @@ import QuoteApplicationSchema, { quoteFaqItems } from "@/components/QuoteApplica
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import QuoteFlow from "@/components/QuoteFlow";
+import QuoteActivitySummary from "@/components/QuoteActivitySummary";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
 import Image from "next/image";
@@ -57,9 +58,9 @@ export default function QuotePage() {
       <section className="ui-page-hero ui-page-hero--quote">
         <PageContainer>
           <p className="homev3-eyebrow homev3-eyebrow--dark">Instant quote</p>
-          <h1 className="homev3-title">Get your estimate in seconds</h1>
+          <h1 className="homev3-title">Instant Roofing & Exterior Estimates for Calgary Homeowners</h1>
           <p className="homev3-copy">
-            Address autocomplete, roof-data pricing, and nearby project proof in one flow.
+            Address-level pricing for roofing, siding, and eavestroughs in Calgary.
           </p>
           <Image
             src="/Instant_estimate_hero.png"
@@ -109,6 +110,7 @@ export default function QuotePage() {
                   you want a detailed follow-up quote.
                 </p>
               </article>
+              <QuoteActivitySummary />
 
               <article className="ui-card quote-support-card">
                 <p className="ui-page-hero__eyebrow">FAQ</p>

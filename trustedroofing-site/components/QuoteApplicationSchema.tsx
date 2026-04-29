@@ -25,21 +25,21 @@ export const quoteFaqItems = [
 
 const quoteApplicationSchema = {
   "@context": "https://schema.org",
-  "@type": "WebPage",
-  name: "Trusted Roofing & Exterior Instant Estimator",
+  "@type": "WebApplication",
+  name: "Trusted Roofing Instant Estimator",
   url: canonicalUrl("/online-estimate"),
   description:
-    "An anonymous, instant estimation tool for Calgary homeowners. Get an immediate price range for roofing, vinyl or Hardie siding, and eavestrough projects without providing any personal contact information.",
-  mainEntity: {
-    "@type": "Service",
-    name: "Instant roofing, siding, and eavestrough estimate service",
-    serviceType: "Instant estimate service",
-    areaServed: "Calgary, Alberta",
-    provider: {
-      "@type": "Organization",
-      name: "Trusted Roofing & Exteriors",
-      url: canonicalUrl("")
-    }
+    "Anonymous instant roofing, siding, and eavestrough pricing tool for Calgary homeowners using address-level roof data and local pricing bands.",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "All",
+  areaServed: {
+    "@type": "City",
+    name: "Calgary"
+  },
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "CAD"
   }
 };
 
