@@ -231,7 +231,7 @@ export default async function QuotesArchivePage() {
 
               {renderAggregateSection("City level", "city", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.cities.slice(0, 12))}
               {renderAggregateSection("City + quadrant level", "city-quadrant", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.cityQuadrants.slice(0, 12))}
-              {renderAggregateSection("Neighborhood level", "neighborhood", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.neighborhoods.slice(0, 12))}
+              {renderAggregateSection("Neighborhood level", "neighborhood", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.neighborhoods)}
 
               <div style={{ marginTop: 24 }} id={`material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`}>
                 <h3 className="homev3-title" style={{ fontSize: "1.5rem" }}>Published {section.material.toLowerCase()} quote cards</h3>
