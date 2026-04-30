@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AdminTabs from "@/app/admin/_components/AdminTabs";
 import { listAdminInstantQuotes, listLeadsByInstantQuoteIds } from "@/lib/db";
 
 export default async function InstantQuotesAdminPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
@@ -23,6 +24,7 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
     <section className="section">
       <h1 className="hero-title">Instant quote dashboard</h1>
       <p className="hero-subtitle">Shows all quote events including quote-only records that never submitted contact info.</p>
+      <AdminTabs currentPath="/admin/instant-quotes" />
       <form method="GET" style={{ display: "grid", gap: 8, maxWidth: 720, marginTop: 16 }}>
         <input className="input" name="q" defaultValue={q} placeholder="Search by address" />
         <div style={{ display: "flex", gap: 8 }}>
