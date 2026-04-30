@@ -10,6 +10,8 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
   }
 
   const project = await getProjectById(post.project_id);
+  const projectUrl = project?.slug ? `/projects/${project.slug}` : "";
+  const defaultAnchorText = project?.title ? `See the full ${project.title} project` : "View the related project";
 
   return (
     <section className="section" style={{ maxWidth: 880 }}>
@@ -32,6 +34,14 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
         <label>
           Content
           <textarea className="input input--multiline" rows={10} name="content" defaultValue={post.content ?? ""} />
+        </label>
+        <label>
+          Link anchor text
+          <input className="input" name="project_link_anchor_text" placeholder={defaultAnchorText} />
+        </label>
+        <label>
+          Link target
+          <input className="input" name="project_link_href" defaultValue={projectUrl} placeholder="/projects/your-project-slug" />
         </label>
         <button className="button" type="submit">Save geo-post</button>
       </form>

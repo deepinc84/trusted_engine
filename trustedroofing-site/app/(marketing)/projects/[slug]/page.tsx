@@ -19,6 +19,27 @@ const STAGE_LABELS: Record<(typeof STAGE_ORDER)[number], string> = {
   detail_issue: "Detail / Issue"
 };
 
+function inferStageFromText(value: string): (typeof STAGE_ORDER)[number] | null {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("after")) return "after";
+  if (normalized.includes("before")) return "before";
+  if (normalized.includes("install")) return "installation";
+  if (normalized.includes("tear") || normalized.includes("prep")) return "tear_off_prep";
+  if (normalized.includes("issue") || normalized.includes("detail")) return "detail_issue";
+  return null;
+}
+
+function resolvePhotoStage(photo: { stage: string | null; caption: string | null; description: string | null }) {
+  const rawStage = (photo.stage ?? "").toLowerCase();
+  if (STAGE_ORDER.includes(rawStage as (typeof STAGE_ORDER)[number])) {
+    if (rawStage !== "before") return rawStage as (typeof STAGE_ORDER)[number];
+  }
+
+  const inferred = inferStageFromText(`${photo.caption ?? ""} ${photo.description ?? ""}`);
+  if (inferred) return inferred;
+  return "before";
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const project = await getProjectBySlug(params.slug);
   if (!project) {
@@ -45,7 +66,7 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
   const groupedGallery = STAGE_ORDER.map((stage) => ({
     stage,
     label: STAGE_LABELS[stage],
-    photos: gallery.filter((photo) => (photo.stage ?? "before") === stage)
+    photos: gallery.filter((photo) => resolvePhotoStage(photo) === stage)
   })).filter((entry) => entry.photos.length > 0);
   const relatedNeighborhoods = await getNearestNeighborhoodLinksForProject(project, 3);
 
@@ -78,11 +99,14 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
                 <section key={group.stage} style={{ display: "grid", gap: 12 }}>
                   <h3 style={{ margin: 0 }}>{group.label}</h3>
                   <div className="ui-grid ui-grid--gallery">
-                    {group.photos.slice(0, 12).map((photo) => {
+                    {group.photos.map((photo, index) => {
                       const caption = (photo.caption ?? "").trim();
+                      const imageNumber = index + 1;
+                      const defaultLabel = `[${group.label}] ${project.title} image ${String(imageNumber).padStart(2, "0")}`;
+                      const displayCaption = caption || defaultLabel;
                       const alt = caption
                         ? `${group.label}: ${caption}`
-                        : `${group.label}: ${project.title} in ${locationLabel}`;
+                        : `${group.label}: ${project.title} image ${imageNumber} in ${locationLabel}`;
                       return (
                         <article className="ui-card" key={photo.id}>
                           <Image
@@ -95,7 +119,7 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
                           <p style={{ margin: "10px 0 6px", fontWeight: 600, fontSize: 12, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--color-primary)" }}>
                             {group.label}
                           </p>
-                          {caption ? <p style={{ margin: "0 0 6px" }}>{caption}</p> : null}
+                          <p style={{ margin: "0 0 6px" }}>{displayCaption}</p>
                           {photo.description ? <p style={{ margin: 0 }}>{photo.description}</p> : null}
                         </article>
                       );
