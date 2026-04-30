@@ -16,6 +16,7 @@ export default function ProjectSchema(props: Props) {
   let serviceSlug: string;
   let imageUrls: string[];
   let url: string;
+  let projectUrl: string | null = null;
 
   if ("geoPost" in props) {
     const geoPost = props.geoPost!;
@@ -28,6 +29,9 @@ export default function ProjectSchema(props: Props) {
     serviceSlug = geoPost.service_slug ?? "roofing";
     imageUrls = geoPost.gallery.length > 0 ? geoPost.gallery : geoPost.heroImage ? [geoPost.heroImage] : [];
     url = canonicalUrl(`/geo-posts/${slug}`);
+    if (geoPost.slug) {
+      projectUrl = canonicalUrl(`/projects/${geoPost.slug}`);
+    }
   } else {
     const project = props.project!;
     slug = project.slug;
@@ -72,6 +76,14 @@ export default function ProjectSchema(props: Props) {
       isRelatedTo: [relatedServiceArea]
     }
   };
+
+  if (projectUrl) {
+    (schema.hasPart as Record<string, unknown>).isPartOf = {
+      "@type": "WebPage",
+      url: projectUrl
+    };
+    (schema.hasPart as Record<string, unknown>).mentions = [projectUrl];
+  }
 
   return (
     <script

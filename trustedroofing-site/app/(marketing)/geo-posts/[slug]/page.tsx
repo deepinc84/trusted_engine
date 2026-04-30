@@ -9,6 +9,27 @@ import { getGeoPostBySlug } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
 import { buildMetadata } from "@/lib/seo";
 
+function renderLinkedContent(content: string) {
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const nodes: Array<string | JSX.Element> = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = linkRegex.exec(content)) !== null) {
+    const [fullMatch, anchorText, href] = match;
+    if (match.index > lastIndex) nodes.push(content.slice(lastIndex, match.index));
+    nodes.push(
+      <Link key={`${href}-${match.index}`} href={href} className="button button--ghost" style={{ marginRight: 8 }}>
+        {anchorText}
+      </Link>
+    );
+    lastIndex = match.index + fullMatch.length;
+  }
+
+  if (lastIndex < content.length) nodes.push(content.slice(lastIndex));
+  return nodes;
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const geoPost = await getGeoPostBySlug(params.slug);
   if (!geoPost) {
@@ -64,6 +85,7 @@ export default async function GeoPostDetailPage({ params }: { params: { slug: st
               style={{ width: "100%", height: "auto", borderRadius: 12 }}
             />
             {geoPost.summary ? <p style={{ marginTop: 16 }}>{geoPost.summary}</p> : null}
+            {geoPost.content ? <div style={{ marginTop: 12, lineHeight: 1.6 }}>{renderLinkedContent(geoPost.content)}</div> : null}
           </article>
 
           {gallery.length > 1 ? (

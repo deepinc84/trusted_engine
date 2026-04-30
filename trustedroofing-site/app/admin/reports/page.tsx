@@ -1,3 +1,4 @@
+import AdminTabs from "@/app/admin/_components/AdminTabs";
 import { listAdminInstantQuotes, listProjects } from "@/lib/db";
 
 export default async function ReportsPage() {
@@ -29,6 +30,7 @@ export default async function ReportsPage() {
   return (
     <section className="section">
       <h1 className="hero-title">Lifecycle and profitability reporting</h1>
+      <AdminTabs currentPath="/admin/reports" />
       <div className="card-grid" style={{ marginTop: 20 }}>
         <article className="card"><h3>Quote only</h3><p>{quoteOnly}</p></article>
         <article className="card"><h3>Lead submitted</h3><p>{leadSubmitted}</p></article>

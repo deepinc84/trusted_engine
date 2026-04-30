@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import ProjectForm from "@/app/admin/_components/ProjectForm";
 import { getProjectById, listServices } from "@/lib/db";
+import AdminTabs from "@/app/admin/_components/AdminTabs";
 
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
   const [project, services] = await Promise.all([
@@ -20,6 +21,7 @@ export default async function EditProjectPage({ params }: { params: { id: string
   return (
     <section className="section">
       <h1 className="hero-title">Edit project</h1>
+      <AdminTabs currentPath="/admin" />
       <ProjectForm mode="edit" services={services} project={project} />
     </section>
   );

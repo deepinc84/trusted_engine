@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listAdminGeoPosts } from "@/lib/db";
+import { listAdminGeoPosts, getProjectById } from "@/lib/db";
+import AdminTabs from "@/app/admin/_components/AdminTabs";
 
 export default async function GeoPostDetailPage({ params }: { params: { id: string } }) {
   const posts = await listAdminGeoPosts(500);
@@ -8,10 +9,18 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
     return <section className="section"><p>Geo-post not found.</p></section>;
   }
 
+  const project = await getProjectById(post.project_id);
+  const projectUrl = project?.slug ? `/projects/${project.slug}` : "";
+  const defaultAnchorText = project?.title ? `See the full ${project.title} project` : "View the related project";
+
   return (
     <section className="section" style={{ maxWidth: 880 }}>
       <h1 className="hero-title">Geo-post detail</h1>
+      <AdminTabs currentPath="/admin/geo-posts" />
       <p><Link href="/admin/geo-posts">← Back to geo-posts</Link></p>
+      <p>Project source: <Link href={`/admin/projects/${post.project_id}/edit`}>{project?.title ?? post.project_id}</Link></p>
+      <p>Project summary: {project?.summary ?? "n/a"}</p>
+      <p>Project description: {project?.description ?? "No original project description saved."}</p>
       <form method="POST" action={`/admin/geo-posts/${post.id}/update`} style={{ display: "grid", gap: 10 }}>
         <label>
           Status
@@ -25,6 +34,14 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
         <label>
           Content
           <textarea className="input input--multiline" rows={10} name="content" defaultValue={post.content ?? ""} />
+        </label>
+        <label>
+          Link anchor text
+          <input className="input" name="project_link_anchor_text" placeholder={defaultAnchorText} />
+        </label>
+        <label>
+          Link target
+          <input className="input" name="project_link_href" defaultValue={projectUrl} placeholder="/projects/your-project-slug" />
         </label>
         <button className="button" type="submit">Save geo-post</button>
       </form>
