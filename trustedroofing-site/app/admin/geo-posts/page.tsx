@@ -18,9 +18,6 @@ export default async function GeoPostsAdminPage({
     : geoPosts;
   const linkedProjectIds = new Set(geoPosts.map((post) => post.project_id));
   const unlinkedProjects = projects.filter((project) => !linkedProjectIds.has(project.id));
-  const linkedProjectIds = new Set(geoPosts.map((post) => post.project_id));
-  const unlinkedProjects = projects.filter((project) => !linkedProjectIds.has(project.id));
-
 
   return (
     <section className="section">
@@ -53,7 +50,6 @@ export default async function GeoPostsAdminPage({
           ))}
         </div>
       </div>
-
 
       <div className="card-grid" style={{ marginTop: 20 }}>
         {filteredPosts.map((post) => {

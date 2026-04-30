@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run guard:conflicts && next build",
     "start": "next start",
     "lint": "next lint",
-    "sitemap": "ts-node --esm scripts/generate-sitemap.ts"
+    "sitemap": "ts-node --esm scripts/generate-sitemap.ts",
+    "guard:conflicts": "node scripts/check-merge-conflicts.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.1",
