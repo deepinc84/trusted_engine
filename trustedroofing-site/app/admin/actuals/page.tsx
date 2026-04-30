@@ -1,3 +1,4 @@
+import AdminTabs from "@/app/admin/_components/AdminTabs";
 import { listProjects } from "@/lib/db";
 
 export default async function ActualsAdminPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
@@ -23,6 +24,7 @@ export default async function ActualsAdminPage({ searchParams }: { searchParams:
   return (
     <section className="section">
       <h1 className="hero-title">Actual data admin tab</h1>
+      <AdminTabs currentPath="/admin/actuals" />
       <form method="GET" style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <input className="input" name="q" defaultValue={q} placeholder="Search by address / project" />
         <select className="input" name="sort" defaultValue={sort}>
