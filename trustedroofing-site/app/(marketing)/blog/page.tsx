@@ -11,6 +11,13 @@ export const metadata = buildMetadata({
 
 const posts = [
   {
+    slug: "what-wind-is-actually-doing-to-roofs-right-now",
+    title: "What Wind Is Actually Doing to Roofs Right Now",
+    excerpt: "A field update on current Calgary wind damage patterns across shingles, siding, soffit, gutters, and flashing.",
+    date: "2026-04-30",
+    image: "/calgary-wind-damage-roof.jpeg"
+  },
+  {
     slug: "how-much-does-a-roof-replacement-cost-in-calgary-2026",
     title: "How Much Does a Roof Replacement Cost in Calgary in 2026?",
     excerpt: "Real 2026 Calgary pricing ranges, what drives quote gaps, and what a proper roof quote should include.",
