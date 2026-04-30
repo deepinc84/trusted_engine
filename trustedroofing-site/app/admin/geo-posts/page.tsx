@@ -16,6 +16,11 @@ export default async function GeoPostsAdminPage({
   const filteredPosts = selectedProjectId
     ? geoPosts.filter((post) => post.project_id === selectedProjectId)
     : geoPosts;
+<<<<<<< codex/add-admin-tabs-for-geo-posts-pjslij
+  const linkedProjectIds = new Set(geoPosts.map((post) => post.project_id));
+  const unlinkedProjects = projects.filter((project) => !linkedProjectIds.has(project.id));
+=======
+>>>>>>> main
 
   return (
     <section className="section">
@@ -28,6 +33,30 @@ export default async function GeoPostsAdminPage({
           <Link href="/admin/geo-posts">(clear)</Link>
         </p>
       ) : null}
+<<<<<<< codex/add-admin-tabs-for-geo-posts-pjslij
+      <div style={{ marginTop: 24 }}>
+        <h2 className="homev3-title" style={{ fontSize: "1.5rem" }}>Projects needing geo-posts</h2>
+        <p className="hero-subtitle">These projects do not yet have a linked geo-post draft.</p>
+        <div className="card-grid" style={{ marginTop: 12 }}>
+          {unlinkedProjects.map((project) => (
+            <article key={project.id} className="card">
+              <h3>{project.title}</h3>
+              <p>{project.address_private ?? "Address unavailable"}</p>
+              <p>Summary: {project.summary}</p>
+              <p>Description: {project.description ?? "No original project description saved."}</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <form method="POST" action={`/admin/projects/${project.id}/geo-post`}>
+                  <button className="button" type="submit">Create geo-post draft</button>
+                </form>
+                <Link href={`/admin/projects/${project.id}/edit`} className="button button--ghost">Open project</Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+=======
+>>>>>>> main
       <div className="card-grid" style={{ marginTop: 20 }}>
         {filteredPosts.map((post) => {
           const project = projectById.get(post.project_id);
