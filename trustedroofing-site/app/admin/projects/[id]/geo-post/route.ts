@@ -20,17 +20,30 @@ async function triggerIndexing(urls: string[]) {
   }
 }
 
+function expectsHtmlNavigation(request: Request) {
+  const accept = request.headers.get("accept") ?? "";
+  const secFetchMode = request.headers.get("sec-fetch-mode") ?? "";
+  return accept.includes("text/html") || secFetchMode === "navigate";
+}
+
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
+  const wantsHtml = expectsHtmlNavigation(request);
   try {
     const project = await getProjectById(params.id);
     if (!project) {
+      if (wantsHtml) {
+        return NextResponse.redirect(new URL("/admin/geo-posts?error=project-not-found", request.url), { status: 303 });
+      }
       return NextResponse.json({ error: "Project not found." }, { status: 404 });
     }
 
     if (!project.photos || project.photos.length === 0) {
+      if (wantsHtml) {
+        return NextResponse.redirect(new URL(`/admin/projects/${project.id}/edit?error=geo-post-needs-photo`, request.url), { status: 303 });
+      }
       return NextResponse.json(
         { error: "Upload at least one project photo before publishing a geo-post." },
         { status: 400 }
@@ -42,8 +55,15 @@ export async function POST(
       await triggerIndexing(buildGeoPostIndexNowUrls(geoPost.slug));
     }
 
+    if (wantsHtml) {
+      return NextResponse.redirect(new URL(`/admin/geo-posts?projectId=${project.id}`, request.url), { status: 303 });
+    }
+
     return NextResponse.json({ geo_post: geoPost });
   } catch (error) {
+    if (wantsHtml) {
+      return NextResponse.redirect(new URL(`/admin/projects/${params.id}/edit?error=geo-post-publish-failed`, request.url), { status: 303 });
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to publish geo-post." },
       { status: 400 }
