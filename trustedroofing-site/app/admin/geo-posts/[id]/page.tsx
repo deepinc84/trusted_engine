@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listAdminGeoPosts, getProjectById } from "@/lib/db";
+import { listAdminGeoPosts, getProjectById, listServices } from "@/lib/db";
 import AdminTabs from "@/app/admin/_components/AdminTabs";
 
 export default async function GeoPostDetailPage({ params }: { params: { id: string } }) {
@@ -10,8 +10,14 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
   }
 
   const project = await getProjectById(post.project_id);
+  const services = await listServices();
   const projectUrl = project?.slug ? `/projects/${project.slug}` : "";
   const defaultAnchorText = project?.title ? `See the full ${project.title} project` : "View the related project";
+  const projectPhotoOptions = (project?.photos ?? []).map((photo) => photo.public_url);
+  const currentImageInProjectSet = post.primary_image_url && !projectPhotoOptions.includes(post.primary_image_url)
+    ? [post.primary_image_url]
+    : [];
+  const imageOptions = [...currentImageInProjectSet, ...projectPhotoOptions];
 
   return (
     <section className="section" style={{ maxWidth: 880 }}>
@@ -29,6 +35,24 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
             <option value="queued">queued</option>
             <option value="published">published</option>
             <option value="failed">failed</option>
+          </select>
+        </label>
+        <label>
+          Service category
+          <select className="input" name="service_slug" defaultValue={post.service_slug ?? project?.service_slug ?? ""}>
+            <option value="">Select service category</option>
+            {services.map((service) => (
+              <option key={service.id} value={service.slug}>{service.title}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Post image
+          <select className="input" name="primary_image_url" defaultValue={post.primary_image_url ?? ""}>
+            <option value="">Use project primary image</option>
+            {imageOptions.map((url, index) => (
+              <option key={`${url}-${index}`} value={url}>{url}</option>
+            ))}
           </select>
         </label>
         <label>
