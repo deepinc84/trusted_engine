@@ -16,8 +16,11 @@ export default async function GeoPostsAdminPage({
   const filteredPosts = selectedProjectId
     ? geoPosts.filter((post) => post.project_id === selectedProjectId)
     : geoPosts;
+<<<<<<< codex/add-admin-tabs-for-geo-posts-pjslij
   const linkedProjectIds = new Set(geoPosts.map((post) => post.project_id));
   const unlinkedProjects = projects.filter((project) => !linkedProjectIds.has(project.id));
+=======
+>>>>>>> main
 
   return (
     <section className="section">
@@ -30,6 +33,7 @@ export default async function GeoPostsAdminPage({
           <Link href="/admin/geo-posts">(clear)</Link>
         </p>
       ) : null}
+<<<<<<< codex/add-admin-tabs-for-geo-posts-pjslij
       <div style={{ marginTop: 24 }}>
         <h2 className="homev3-title" style={{ fontSize: "1.5rem" }}>Projects needing geo-posts</h2>
         <p className="hero-subtitle">These projects do not yet have a linked geo-post draft.</p>
@@ -51,6 +55,8 @@ export default async function GeoPostsAdminPage({
         </div>
       </div>
 
+=======
+>>>>>>> main
       <div className="card-grid" style={{ marginTop: 20 }}>
         {filteredPosts.map((post) => {
           const project = projectById.get(post.project_id);
