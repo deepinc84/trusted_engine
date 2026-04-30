@@ -41,9 +41,7 @@ export default async function GeoPostsAdminPage({
               <p>Summary: {project.summary}</p>
               <p>Description: {project.description ?? "No original project description saved."}</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                <form method="POST" action={`/admin/projects/${project.id}/geo-post`}>
-                  <button className="button" type="submit">Create geo-post draft</button>
-                </form>
+                <Link href={`/admin/projects/${project.id}/geo-post`} className="button">Create geo-post draft</Link>
                 <Link href={`/admin/projects/${project.id}/edit`} className="button button--ghost">Open project</Link>
               </div>
             </article>

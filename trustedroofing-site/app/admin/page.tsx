@@ -23,9 +23,9 @@ export default async function AdminDashboardPage() {
               <Link href={`/admin/projects/${project.id}/edit`} className="button button--ghost">
                 Edit in admin
               </Link>
-              <form method="POST" action={`/admin/projects/${project.id}/geo-post`}>
-                <button className="button" type="submit">Create geo-post draft</button>
-              </form>
+              <Link href={`/admin/projects/${project.id}/geo-post`} className="button">
+                Create geo-post draft
+              </Link>
               <Link href={`/admin/geo-posts?projectId=${project.id}`} className="button button--ghost">
                 Preview geo-posts
               </Link>
