@@ -1101,7 +1101,7 @@ export async function syncGeoPostForProject(projectId: string) {
     lat_public: project.lat_public,
     lng_public: project.lng_public,
     primary_image_url: primaryImage,
-    content: null,
+    content: project.description ?? project.summary ?? "",
     status: "draft" as const,
     published_at: null,
     gbp_response: null
