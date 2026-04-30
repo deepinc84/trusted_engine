@@ -705,7 +705,7 @@ export default function ProjectForm({ services, mode, project }: Props) {
     if (!projectId) return;
     setPublishingGeoPost(true);
     try {
-      const res = await adminFetch(`/admin/projects/${projectId}/geo-post`, { method: "POST" });
+      const res = await adminFetch(`/admin/projects/${projectId}/geo-post/create`, { method: "POST" });
       const text = await res.text();
       const data = text ? parseJsonSafe<{ error?: string }>(text) : {};
       if (!res.ok) {
