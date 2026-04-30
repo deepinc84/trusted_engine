@@ -53,7 +53,7 @@ type PdfPageDraft = {
 
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
-const PAGE_MARGIN_X = 40;
+const PAGE_MARGIN_X = 32;
 const HEADER_H = 96;
 const FOOTER_H = 44;
 const PAGE_TOP_START = PAGE_HEIGHT - HEADER_H - 18;
@@ -61,11 +61,12 @@ const CARD_RADIUS = 12;
 const CARD_BORDER_COLOR = "0.82 0.88 0.95";
 const CARD_BORDER_WIDTH = 1;
 const CARD_PADDING_X = 14;
-const CARD_PADDING_Y = 12;
-const SECTION_GAP_Y = 12;
+const CARD_PADDING_Y = 14;
+const SECTION_GAP_Y = 18;
 const GRID_GAP_X = 10;
 const GRID_GAP_Y = 10;
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN_X * 2;
+const SAFE_BOTTOM_Y = FOOTER_H + 24;
 
 function pdfRgbFromHex(hex: string) {
   const clean = hex.replace("#", "");
@@ -659,10 +660,14 @@ function drawHeader(
     drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
   }
   drawText(page, "TRUSTED ESTIMATE SUMMARY", MARGIN + 124, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
-  drawText(page, input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
+  const badgeW = 132;
+  const badgeX = PAGE_WIDTH - MARGIN - badgeW;
+  const titleMaxWidth = badgeX - (MARGIN + 136) - 12;
+  const safeTitleLines = clampTextLines(input.title, 18.5, Math.max(titleMaxWidth, 120), 1);
+  drawText(page, safeTitleLines[0] ?? input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
   drawText(page, input.subtitle, MARGIN + 124, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
-  drawRoundedBox(page, PAGE_WIDTH - MARGIN - 124, PAGE_HEIGHT - 72, 124, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
-  drawTextCentered(page, input.badge, PAGE_WIDTH - MARGIN - 62, PAGE_HEIGHT - 57, 9, COLORS.white, "F2");
+  drawRoundedBox(page, badgeX, PAGE_HEIGHT - 72, badgeW, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
+  drawTextCentered(page, input.badge, badgeX + badgeW / 2, PAGE_HEIGHT - 57, 9, COLORS.white, "F2");
 }
 
 function drawFooter(page: PdfPageDraft) {
@@ -1162,10 +1167,15 @@ export async function POST(request: Request) {
       drawCard(page3, MARGIN, optionsY - trustH, CONTENT_WIDTH, trustH, COLORS.cardSoft);
       drawText(page3, quoteSignal.heading, MARGIN + 12, optionsY - 22, 12, COLORS.textDark, "F2");
       drawMultiline(page3, quoteSignal.subtext, MARGIN + 12, optionsY - 36, CONTENT_WIDTH - 220, 8.4, 10.5, COLORS.textMid);
-      drawRoundedBox(page3, MARGIN + CONTENT_WIDTH - 204, optionsY - trustH + 12, 192, 62, COLORS.cardBg, COLORS.border);
-      drawText(page3, `${quoteSignal.quoteSignalCount} recent ${quoteSignal.serviceType.toLowerCase()} signals`, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 56, 8.2, COLORS.textDark, "F2");
-      drawText(page3, quoteSignal.geographyLabel, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 43, 8.1, COLORS.textSub);
-      drawText(page3, `Modeled range: ${fmtCurrency(quoteSignal.rangeMin)} - ${fmtCurrency(quoteSignal.rangeMax)}`, MARGIN + CONTENT_WIDTH - 194, optionsY - trustH + 29, 8.2, COLORS.navy, "F2");
+      const rangeCardX = MARGIN + CONTENT_WIDTH - 204;
+      const rangeCardY = optionsY - trustH + 12;
+      drawRoundedBox(page3, rangeCardX, rangeCardY, 192, 62, COLORS.cardBg, COLORS.border);
+      drawText(page3, `${quoteSignal.quoteSignalCount} recent ${quoteSignal.serviceType.toLowerCase()} signals`, rangeCardX + 10, rangeCardY + 50, 8.2, COLORS.textDark, "F2");
+      drawText(page3, quoteSignal.geographyLabel, rangeCardX + 10, rangeCardY + 40, 8.1, COLORS.textSub);
+      drawText(page3, `Modeled range: ${fmtCurrency(quoteSignal.rangeMin)} - ${fmtCurrency(quoteSignal.rangeMax)}`, rangeCardX + 10, rangeCardY + 30, 8.2, COLORS.navy, "F2");
+      drawRect(page3, rangeCardX + 10, rangeCardY + 19, 172, 3, COLORS.border);
+      drawText(page3, "Your estimate", rangeCardX + 62, rangeCardY + 11, 7.8, COLORS.navy, "F2");
+      drawText(page3, `${fmtCurrency(primaryLow)} - ${fmtCurrency(primaryHigh)}`, rangeCardX + 54, rangeCardY + 2, 7.8, COLORS.navy, "F2");
       optionsY -= trustH + SECTION_GAP_Y;
     }
 
@@ -1177,6 +1187,7 @@ export async function POST(request: Request) {
       drawText(page3, "More project examples are available on our website.", MARGIN + CARD_PADDING_X, optionsY - 33, 11, COLORS.textDark, "F2");
       drawText(page3, "See recent work", MARGIN + CARD_PADDING_X, optionsY - 50, 11, "0.12 0.38 0.72");
       addLink(builder, page3, MARGIN + 12, optionsY - 56, 140, 18, canonicalUrl("/projects"));
+      optionsY -= 64 + SECTION_GAP_Y;
     } else {
       const cardWidth = (CONTENT_WIDTH - GRID_GAP_X * 2) / 3;
       const cardHeight = 204;
@@ -1204,17 +1215,34 @@ export async function POST(request: Request) {
           builder
         );
       }
+      optionsY -= 218 + SECTION_GAP_Y;
     }
-
-    drawCard(page3, MARGIN, 92, CONTENT_WIDTH, 64, COLORS.cardSoft);
-    drawRoundedBox(page3, MARGIN + 12, 130, 166, 14, COLORS.badgeAmberBg, COLORS.badgeAmberBg);
-    drawTextCentered(page3, "SOLAR SNAPSHOT", MARGIN + 95, 134.5, 7.2, COLORS.badgeAmberFg, "F2");
-    drawText(page3, solarSnapshot.teaserTitle, MARGIN + 12, 116, 12.5, COLORS.textDark, "F2");
-    drawMultiline(page3, solarSnapshot.teaserBody, MARGIN + 12, 103, CONTENT_WIDTH - 24, 8.4, 10.4, COLORS.textMid);
-    drawText(page3, includeSolarPage ? solarSnapshot.teaserNextPage : "Solar snapshot appears when stronger rooftop model data is available.", MARGIN + 12, 70, 8.8, COLORS.navy, "F2");
-    drawRoundedBox(page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, COLORS.navy, COLORS.navy);
-    drawTextCentered(page3, "View solar overview →", MARGIN + CONTENT_WIDTH - 94, 72, 8.6, COLORS.white, "F2");
-    addLink(builder, page3, MARGIN + CONTENT_WIDTH - 176, 66, 164, 18, solarSnapshot.ctaUrl);
+    const ctaTop = Math.max(optionsY, SAFE_BOTTOM_Y + 132);
+    const ctaBlockH = 112;
+    const ctaY = ctaTop - ctaBlockH;
+    drawCard(page3, MARGIN, ctaY, CONTENT_WIDTH, ctaBlockH, COLORS.navyDark);
+    drawText(page3, "What happens when you reach out", MARGIN + 16, ctaY + ctaBlockH - 20, 11.5, COLORS.white, "F2");
+    const stepGap = 10;
+    const stepW = (CONTENT_WIDTH - 32 - stepGap * 2) / 3;
+    const stepStartX = MARGIN + 16;
+    const stepTopY = ctaY + ctaBlockH - 38;
+    const steps = [
+      { n: "1", t: "No obligation", d: "Reaching out doesn’t commit you to anything." },
+      { n: "2", t: "Full scope review", d: "We confirm measurements, product selection, and final pricing." },
+      { n: "3", t: "Written proposal", d: "Everything is written before any work begins." }
+    ];
+    steps.forEach((step, idx) => {
+      const x = stepStartX + idx * (stepW + stepGap);
+      drawRoundedBox(page3, x, stepTopY - 10, 16, 16, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
+      drawTextCentered(page3, step.n, x + 8, stepTopY - 5.2, 8, COLORS.white, "F2");
+      drawText(page3, step.t, x + 22, stepTopY - 4, 8.6, COLORS.white, "F2");
+      const dLines = clampTextLines(step.d, 7.2, stepW - 22, 2);
+      dLines.forEach((line, i) => drawText(page3, line, x + 22, stepTopY - 16 - i * 8.5, 7.2, "0.82 0.89 0.98"));
+    });
+    const buttonY = ctaY + 14;
+    drawRoundedBox(page3, MARGIN + 16, buttonY, CONTENT_WIDTH - 32, 28, COLORS.accentGold, COLORS.accentGold);
+    drawTextCentered(page3, "Request a Full Proposal", MARGIN + CONTENT_WIDTH / 2, buttonY + 10, 11, COLORS.textDark, "F2");
+    addLink(builder, page3, MARGIN + 16, buttonY, CONTENT_WIDTH - 32, 28, proposalUrl);
     drawFooter(page3);
 
     if (includeSolarPage) {
@@ -1280,10 +1308,27 @@ export async function POST(request: Request) {
       drawText(page4, "• A recent electricity bill is used to size the system correctly", MARGIN + 212, nextY + 20, 7.4, COLORS.textMid);
       drawText(page4, "This step simply confirms whether solar makes sense for this property before any decisions are made.", MARGIN + 12, nextY + 2, 7.2, COLORS.navy, "F2");
 
-      drawRoundedBox(page4, MARGIN, 46, CONTENT_WIDTH, 30, COLORS.navy, COLORS.navy);
-      drawTextCentered(page4, "Request a solar review", PAGE_WIDTH / 2, 58.8, 9.6, COLORS.white, "F2");
-      drawTextCentered(page4, "A recent electricity bill is required to prepare the review and size the system to actual usage.", PAGE_WIDTH / 2, 49.8, 6.6, "0.82 0.89 0.98");
-      addLink(builder, page4, MARGIN, 46, CONTENT_WIDTH, 30, solarSnapshot.ctaUrl);
+      const solarCtaTop = Math.max(nextY - 14, SAFE_BOTTOM_Y + 138);
+      const solarCtaY = solarCtaTop - 118;
+      drawCard(page4, MARGIN, solarCtaY, CONTENT_WIDTH, 118, COLORS.navyDark);
+      drawText(page4, "What a solar review involves", MARGIN + 14, solarCtaY + 96, 10.6, COLORS.white, "F2");
+      const solarStepW = (CONTENT_WIDTH - 28 - 10 * 2) / 3;
+      const solarSteps = [
+        { n: "1", t: "No cost", d: "The initial review is free." },
+        { n: "2", t: "No commitment", d: "Confirms suitability before decisions are made." },
+        { n: "3", t: "Usage-based sizing", d: "A recent bill helps size expected annual output." }
+      ];
+      solarSteps.forEach((step, idx) => {
+        const x = MARGIN + 14 + idx * (solarStepW + 10);
+        drawRoundedBox(page4, x, solarCtaY + 70, 16, 16, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
+        drawTextCentered(page4, step.n, x + 8, solarCtaY + 75, 8, COLORS.white, "F2");
+        drawText(page4, step.t, x + 22, solarCtaY + 76, 8.5, COLORS.white, "F2");
+        const lines = clampTextLines(step.d, 7.1, solarStepW - 24, 2);
+        lines.forEach((line, i) => drawText(page4, line, x + 22, solarCtaY + 64 - i * 8.5, 7.1, "0.82 0.89 0.98"));
+      });
+      drawRoundedBox(page4, MARGIN + 14, solarCtaY + 16, CONTENT_WIDTH - 28, 26, COLORS.accentGold, COLORS.accentGold);
+      drawTextCentered(page4, "Request a Solar Review", PAGE_WIDTH / 2, solarCtaY + 25.4, 10, COLORS.textDark, "F2");
+      addLink(builder, page4, MARGIN + 14, solarCtaY + 16, CONTENT_WIDTH - 28, 26, solarSnapshot.ctaUrl);
       drawFooter(page4);
     }
 
