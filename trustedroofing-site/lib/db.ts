@@ -2254,6 +2254,8 @@ export async function updateGeoPostAdmin(
   id: string,
   input: {
     content?: string | null;
+    primary_image_url?: string | null;
+    service_slug?: string | null;
     status?: "draft" | "queued" | "published" | "failed";
   }
 ) {
@@ -2262,6 +2264,8 @@ export async function updateGeoPostAdmin(
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
     const payload: Record<string, unknown> = {};
     if (input.content !== undefined) payload.content = input.content;
+    if (input.primary_image_url !== undefined) payload.primary_image_url = input.primary_image_url;
+    if (input.service_slug !== undefined) payload.service_slug = input.service_slug;
     if (input.status !== undefined) payload.status = input.status;
     const { data, error } = await client.from("geo_posts").update(payload).eq("id", id).select("*").single();
     if (error) throw new Error(error.message);
@@ -2271,6 +2275,8 @@ export async function updateGeoPostAdmin(
   const row = mockGeoPosts.find((geoPost) => geoPost.id === id);
   if (!row) throw new Error("Geo post not found");
   if (input.content !== undefined) row.content = input.content;
+  if (input.primary_image_url !== undefined) row.primary_image_url = input.primary_image_url;
+  if (input.service_slug !== undefined) row.service_slug = input.service_slug;
   if (input.status !== undefined) row.status = input.status;
   return row;
 }
