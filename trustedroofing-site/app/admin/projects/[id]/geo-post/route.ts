@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProjectById, syncGeoPostForProject } from "@/lib/db";
+import { getProjectById, syncGeoPostForProject, updateGeoPostAdmin } from "@/lib/db";
 import { buildGeoPostIndexNowUrls, getSiteUrl } from "@/lib/indexnow";
 
 async function triggerIndexing(urls: string[]) {
@@ -50,13 +50,23 @@ export async function POST(
       );
     }
 
+    const formData = wantsHtml ? await request.formData() : null;
+    const requestedContent = String(formData?.get("content") ?? "").trim();
+    const requestedImage = String(formData?.get("primary_image_url") ?? "").trim();
+
     const geoPost = await syncGeoPostForProject(project.id);
+    if (requestedContent || requestedImage) {
+      await updateGeoPostAdmin(geoPost.id, {
+        content: requestedContent || geoPost.content || "",
+        primary_image_url: requestedImage || geoPost.primary_image_url || null
+      });
+    }
     if (geoPost.slug) {
       await triggerIndexing(buildGeoPostIndexNowUrls(geoPost.slug));
     }
 
     if (wantsHtml) {
-      return NextResponse.redirect(new URL(`/admin/geo-posts?projectId=${project.id}`, request.url), { status: 303 });
+      return NextResponse.redirect(new URL(`/admin/geo-posts/${geoPost.id}`, request.url), { status: 303 });
     }
 
     return NextResponse.json({ geo_post: geoPost });
