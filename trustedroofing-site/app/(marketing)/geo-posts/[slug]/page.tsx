@@ -3,8 +3,8 @@ import { getGeoPostBySlug } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Geo posts",
-  description: "Geo post detail routes have moved to service pages.",
+  title: "Project updates",
+  description: "Project updates are available on service pages.",
   path: "/geo-posts",
   robots: {
     index: false,

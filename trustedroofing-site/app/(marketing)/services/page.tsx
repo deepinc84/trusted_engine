@@ -120,8 +120,8 @@ export default async function ServicesPage() {
 
           {recentGeoPosts.length > 0 ? (
             <article className="ui-card" style={{ marginTop: 24 }}>
-              <h2>Recent Published Geo Posts Across Services</h2>
-              <div className="carousel" aria-label="Recent geo posts across all services">
+              <h2>Recent Published Project Updates Across Services</h2>
+              <div className="carousel" aria-label="Recent published project updates across all services">
                 {recentGeoPosts.map((post, index) => (
                   <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
                 ))}

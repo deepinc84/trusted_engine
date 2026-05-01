@@ -123,9 +123,9 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
             <h2 className="homev3-title" style={{ marginBottom: 16 }}>
               Recent {service.title} Projects Near Calgary
             </h2>
-            <div className="carousel" aria-label={`Recent ${service.title} geo posts`}>
+            <div className="carousel" aria-label={`Recent ${service.title} project updates`}>
               {recentGeoPosts.map((post, index) => (
-                <div key={post.id} id={`geo-post-${post.id}`}>
+                <div key={post.id} id={`project-update-${post.id}`}>
                   <GeoPostCard geoPost={post} eagerImage={index < 2} />
                 </div>
               ))}
@@ -138,13 +138,13 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
         <section className="ui-page-section ui-page-section--soft">
           <PageContainer>
             <article className="ui-card">
-              <h2>All Published {service.title} Geo Posts</h2>
+              <h2>All Published {service.title} Project Updates</h2>
               <p className="homev3-copy">Older published updates remain discoverable here for homeowners and search engines.</p>
               <div className="ui-list-links">
                 {olderGeoPosts.map((post) => (
                   <article key={post.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--ui-border)" }}>
                     <h3 style={{ marginBottom: 4 }}>
-                      <Link href={`/services/${service.slug}#geo-post-${post.id}`}>{post.title ?? "Geo post"}</Link>
+                      <Link href={`/services/${service.slug}#project-update-${post.id}`}>{post.title ?? "Project update"}</Link>
                     </h3>
                     <p style={{ margin: 0 }}>{post.summary ?? "Published location-backed project update."}</p>
                   </article>

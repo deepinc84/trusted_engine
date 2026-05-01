@@ -4,7 +4,7 @@ import type { ResolvedGeoPost } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
 
 export default function GeoPostCard({ geoPost, eagerImage = false }: { geoPost: ResolvedGeoPost; eagerImage?: boolean }) {
-  const title = geoPost.title ?? geoPost.slug ?? "Geo post";
+  const title = geoPost.title ?? geoPost.slug ?? "Project update";
   const markdownLinkMatch = (geoPost.content ?? "").match(/\[([^\]]+)\]\(([^)]+)\)/);
   const selectedAnchorText = markdownLinkMatch?.[1]?.trim() || "View related project";
   const href = markdownLinkMatch?.[2]?.trim() || null;
