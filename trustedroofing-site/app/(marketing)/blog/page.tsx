@@ -37,7 +37,7 @@ export default function BlogIndexPage() {
 
       <section className="ui-page-section">
         <PageContainer>
-          <div className="ui-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+          <div className="ui-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
             {posts.map((post) => (
               <article key={post.slug} className="ui-card">
                 <img
