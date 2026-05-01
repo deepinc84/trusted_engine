@@ -50,6 +50,18 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
   ]);
   const matchingGeoPosts = geoPosts.slice(0, 8);
 
+  const serviceFamily = (slug: string) => {
+    if (slug === "roofing" || slug === "roof-repair") return "roofing";
+    if (slug === "siding" || slug === "james-hardie-siding") return "siding";
+    if (slug === "gutters" || slug === "eavestrough") return "gutters";
+    return slug;
+  };
+
+  const targetFamily = serviceFamily(service.slug);
+  const matchingGeoPosts = geoPosts
+    .filter((post) => !!post.service_slug && serviceFamily(post.service_slug) === targetFamily)
+    .slice(0, 8);
+
   const related = allServices.filter((item) => item.slug !== service.slug).slice(0, 3);
 
   const items = recentProjects.map((project) => ({
