@@ -3,8 +3,8 @@ import Link from "next/link";
 import type { ResolvedGeoPost } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
 
-export default function GeoPostCard({ geoPost }: { geoPost: ResolvedGeoPost }) {
-  const title = geoPost.title ?? geoPost.slug ?? "Geo post";
+export default function GeoPostCard({ geoPost, eagerImage = false }: { geoPost: ResolvedGeoPost; eagerImage?: boolean }) {
+  const title = geoPost.title ?? geoPost.slug ?? "Project update";
   const markdownLinkMatch = (geoPost.content ?? "").match(/\[([^\]]+)\]\(([^)]+)\)/);
   const selectedAnchorText = markdownLinkMatch?.[1]?.trim() || "View related project";
   const href = markdownLinkMatch?.[2]?.trim() || null;
@@ -28,6 +28,7 @@ export default function GeoPostCard({ geoPost }: { geoPost: ResolvedGeoPost }) {
             width={640}
             height={400}
             className="ui-card--project__image"
+            loading={eagerImage ? "eager" : "lazy"}
           />
           <div className="seo-card__content">
             <span className="ui-pill">{geoPost.service_slug ?? "project"}</span>
@@ -46,6 +47,7 @@ export default function GeoPostCard({ geoPost }: { geoPost: ResolvedGeoPost }) {
             width={640}
             height={400}
             className="ui-card--project__image"
+            loading={eagerImage ? "eager" : "lazy"}
           />
           <span className="ui-pill">{geoPost.service_slug ?? "project"}</span>
           <h3>{title}</h3>

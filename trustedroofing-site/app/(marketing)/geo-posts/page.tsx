@@ -2,8 +2,8 @@ import { permanentRedirect } from "next/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Geo posts",
-  description: "Geo post archive has moved to the published projects collection.",
+  title: "Project updates",
+  description: "Project updates are available on service pages.",
   path: "/geo-posts",
   robots: {
     index: false,
@@ -12,5 +12,5 @@ export const metadata = buildMetadata({
 });
 
 export default function GeoPostsPage() {
-  permanentRedirect("/projects");
+  permanentRedirect("/services");
 }
