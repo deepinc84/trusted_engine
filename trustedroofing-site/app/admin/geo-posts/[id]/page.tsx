@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listAdminGeoPosts, getProjectById } from "@/lib/db";
+import { listAdminGeoPosts, getProjectById, listServices } from "@/lib/db";
 import AdminTabs from "@/app/admin/_components/AdminTabs";
 
 export default async function GeoPostDetailPage({ params }: { params: { id: string } }) {
@@ -10,8 +10,14 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
   }
 
   const project = await getProjectById(post.project_id);
+  const services = await listServices();
   const projectUrl = project?.slug ? `/projects/${project.slug}` : "";
   const defaultAnchorText = project?.title ? `See the full ${project.title} project` : "View the related project";
+  const projectPhotoOptions = (project?.photos ?? []).map((photo) => photo.public_url);
+  const currentImageInProjectSet = post.primary_image_url && !projectPhotoOptions.includes(post.primary_image_url)
+    ? [post.primary_image_url]
+    : [];
+  const imageOptions = [...currentImageInProjectSet, ...projectPhotoOptions];
 
   return (
     <section className="section" style={{ maxWidth: 880 }}>
@@ -31,6 +37,30 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
             <option value="failed">failed</option>
           </select>
         </label>
+        <label>
+          Service category
+          <select className="input" name="service_slug" defaultValue={post.service_slug ?? project?.service_slug ?? ""}>
+            <option value="">Select service category</option>
+            {services.map((service) => (
+              <option key={service.id} value={service.slug}>{service.title}</option>
+            ))}
+          </select>
+        </label>
+        <fieldset style={{ border: "1px solid #d7dce5", borderRadius: 10, padding: 12 }}>
+          <legend>Post image</legend>
+          <label style={{ display: "block", marginBottom: 8 }}>
+            <input type="radio" name="primary_image_url" value="" defaultChecked={!post.primary_image_url} /> Use project primary image
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+            {imageOptions.map((url, index) => (
+              <label key={`${url}-${index}`} style={{ border: "1px solid #d7dce5", borderRadius: 8, padding: 8, display: "grid", gap: 6 }}>
+                <input type="radio" name="primary_image_url" value={url} defaultChecked={post.primary_image_url === url} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Geo-post image option ${index + 1}`} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 6 }} />
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label>
           Content
           <textarea className="input input--multiline" rows={10} name="content" defaultValue={post.content ?? ""} />
