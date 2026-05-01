@@ -626,7 +626,10 @@ export async function getProjectById(id: string): Promise<Project | null> {
   };
 }
 
-export async function listGeoPosts(limit?: number | null): Promise<ResolvedGeoPost[]> {
+export async function listGeoPosts(
+  limit?: number | null,
+  filters?: { serviceSlugs?: string[] }
+): Promise<ResolvedGeoPost[]> {
   const resolveGeoPosts = async (geoPosts: GeoPost[]) => {
     const imageSets = await getProjectImageSets(geoPosts.map((geoPost) => geoPost.project_id));
 
@@ -660,8 +663,11 @@ export async function listGeoPosts(limit?: number | null): Promise<ResolvedGeoPo
       let query = client
         .from("geo_posts")
         .select("*")
+        .eq("status", "published")
         .order("created_at", { ascending: false });
 
+      const serviceSlugs = filters?.serviceSlugs?.filter((slug) => typeof slug === "string" && slug.length > 0) ?? [];
+      if (serviceSlugs.length > 0) query = query.in("service_slug", serviceSlugs);
       if (limit) query = query.limit(limit);
 
       const { data } = await query;
@@ -671,7 +677,14 @@ export async function listGeoPosts(limit?: number | null): Promise<ResolvedGeoPo
     }
   }
 
-  return resolveGeoPosts(mockGeoPosts.filter((geoPost) => !!geoPost.slug).slice(0, limit ?? undefined));
+  const serviceSlugs = filters?.serviceSlugs?.filter((slug) => typeof slug === "string" && slug.length > 0) ?? [];
+  const filtered = mockGeoPosts.filter((geoPost) => {
+    if (!geoPost.slug) return false;
+    if (geoPost.status !== "published") return false;
+    if (serviceSlugs.length > 0 && (!geoPost.service_slug || !serviceSlugs.includes(geoPost.service_slug))) return false;
+    return true;
+  });
+  return resolveGeoPosts(filtered.slice(0, limit ?? undefined));
 }
 
 export async function getGeoPostBySlug(slug: string): Promise<ResolvedGeoPost | null> {
@@ -1112,10 +1125,23 @@ export async function syncGeoPostForProject(projectId: string) {
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for geo_post writes.");
+    const { data: existingRows } = await client
+      .from("geo_posts")
+      .select("*")
+      .eq("project_id", project.id)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const existing = ((existingRows ?? [])[0] as GeoPost | undefined) ?? null;
+    const mergedPayload = {
+      ...payload,
+      content: existing?.content ?? payload.content,
+      primary_image_url: existing?.primary_image_url ?? payload.primary_image_url,
+      service_slug: existing?.service_slug ?? payload.service_slug
+    };
 
     const { data, error } = await client
       .from("geo_posts")
-      .upsert(payload, { onConflict: "project_id" })
+      .upsert(mergedPayload, { onConflict: "project_id" })
       .select("*")
       .single();
 
@@ -1137,7 +1163,7 @@ export async function syncGeoPostForProject(projectId: string) {
       if (existing.length > 0) {
         const { data: updated, error: updateError } = await client
           .from("geo_posts")
-          .update(payload)
+          .update(mergedPayload)
           .eq("id", existing[0].id)
           .select("*")
           .single();
@@ -1156,7 +1182,7 @@ export async function syncGeoPostForProject(projectId: string) {
 
       const { data: inserted, error: insertError } = await client
         .from("geo_posts")
-        .insert(payload)
+        .insert(mergedPayload)
         .select("*")
         .single();
 
@@ -1171,10 +1197,14 @@ export async function syncGeoPostForProject(projectId: string) {
   }
 
   const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);
+  const existing = existingIndex >= 0 ? mockGeoPosts[existingIndex] : null;
   const base: GeoPost = {
     id: existingIndex >= 0 ? mockGeoPosts[existingIndex].id : crypto.randomUUID(),
     created_at: existingIndex >= 0 ? mockGeoPosts[existingIndex].created_at : new Date().toISOString(),
-    ...payload
+    ...payload,
+    content: existing?.content ?? payload.content,
+    primary_image_url: existing?.primary_image_url ?? payload.primary_image_url,
+    service_slug: existing?.service_slug ?? payload.service_slug
   };
 
   if (existingIndex >= 0) {
@@ -1246,7 +1276,10 @@ export async function markGbpQueueStatus(id: string, status: "sent" | "failed", 
       })
       .eq("id", id);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (error.message.includes("Could not find the table 'public.gbp_post_queue'")) return;
+      throw new Error(error.message);
+    }
     return;
   }
 
@@ -2221,19 +2254,15 @@ export async function publishGeoPostById(id: string) {
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
     const { data: geoPost, error } = await client.from("geo_posts").select("*").eq("id", id).single();
     if (error) throw new Error(error.message);
-    await enqueueGbpPost((geoPost as GeoPost).project_id, {
-      geo_post_id: id,
-      slug: (geoPost as GeoPost).slug,
-      title: (geoPost as GeoPost).title,
-      summary: (geoPost as GeoPost).summary
-    });
+    // GBP queueing is intentionally disabled until the gbp_post_queue table
+    // and worker pipeline are fully implemented.
     const publishedAt = new Date().toISOString();
     const { data: updated, error: updateError } = await client
       .from("geo_posts")
       .update({
         status: "published",
         published_at: publishedAt,
-        gbp_response: { ok: true, published_at: publishedAt, queued: true }
+        gbp_response: { ok: true, published_at: publishedAt, queued: false, note: "GBP queueing disabled" }
       })
       .eq("id", id)
       .select("*")
@@ -2246,7 +2275,7 @@ export async function publishGeoPostById(id: string) {
   if (!row) throw new Error("Geo post not found");
   row.status = "published";
   row.published_at = new Date().toISOString();
-  row.gbp_response = { ok: true, queued: true };
+  row.gbp_response = { ok: true, queued: false, note: "GBP queueing disabled" };
   return row;
 }
 
@@ -2254,6 +2283,8 @@ export async function updateGeoPostAdmin(
   id: string,
   input: {
     content?: string | null;
+    primary_image_url?: string | null;
+    service_slug?: string | null;
     status?: "draft" | "queued" | "published" | "failed";
   }
 ) {
@@ -2262,6 +2293,8 @@ export async function updateGeoPostAdmin(
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
     const payload: Record<string, unknown> = {};
     if (input.content !== undefined) payload.content = input.content;
+    if (input.primary_image_url !== undefined) payload.primary_image_url = input.primary_image_url;
+    if (input.service_slug !== undefined) payload.service_slug = input.service_slug;
     if (input.status !== undefined) payload.status = input.status;
     const { data, error } = await client.from("geo_posts").update(payload).eq("id", id).select("*").single();
     if (error) throw new Error(error.message);
@@ -2271,6 +2304,8 @@ export async function updateGeoPostAdmin(
   const row = mockGeoPosts.find((geoPost) => geoPost.id === id);
   if (!row) throw new Error("Geo post not found");
   if (input.content !== undefined) row.content = input.content;
+  if (input.primary_image_url !== undefined) row.primary_image_url = input.primary_image_url;
+  if (input.service_slug !== undefined) row.service_slug = input.service_slug;
   if (input.status !== undefined) row.status = input.status;
   return row;
 }
