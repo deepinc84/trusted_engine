@@ -1263,7 +1263,10 @@ export async function markGbpQueueStatus(id: string, status: "sent" | "failed", 
       })
       .eq("id", id);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (error.message.includes("Could not find the table 'public.gbp_post_queue'")) return;
+      throw new Error(error.message);
+    }
     return;
   }
 
