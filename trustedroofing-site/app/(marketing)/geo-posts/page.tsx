@@ -12,5 +12,5 @@ export const metadata = buildMetadata({
 });
 
 export default function GeoPostsPage() {
-  permanentRedirect("/projects");
+  permanentRedirect("/services");
 }
