@@ -4,8 +4,9 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceCard from "@/components/ui/ServiceCard";
+import GeoPostCard from "@/components/GeoPostCard";
 import ServiceSchema from "@/components/ServiceSchema";
-import { getServiceBySlug, listProjects, listServices } from "@/lib/db";
+import { getServiceBySlug, listGeoPosts, listProjects, listServices } from "@/lib/db";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 
 const benefits = [
@@ -35,10 +36,23 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
   const service = await getServiceBySlug(params.slug);
   if (!service) return notFound();
 
-  const [recentProjects, allServices] = await Promise.all([
+  const [recentProjects, allServices, geoPosts] = await Promise.all([
     listProjects({ service_slug: service.slug, limit: 3 }),
-    listServices()
+    listServices(),
+    listGeoPosts(60)
   ]);
+
+  const serviceFamily = (slug: string) => {
+    if (slug === "roofing" || slug === "roof-repair") return "roofing";
+    if (slug === "siding" || slug === "james-hardie-siding") return "siding";
+    if (slug === "gutters" || slug === "eavestrough") return "gutters";
+    return slug;
+  };
+
+  const targetFamily = serviceFamily(service.slug);
+  const matchingGeoPosts = geoPosts
+    .filter((post) => !!post.service_slug && serviceFamily(post.service_slug) === targetFamily)
+    .slice(0, 8);
 
   const related = allServices.filter((item) => item.slug !== service.slug).slice(0, 3);
 
@@ -103,6 +117,21 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
           </div>
         </PageContainer>
       </section>
+
+      {matchingGeoPosts.length > 0 ? (
+        <section className="ui-page-section">
+          <PageContainer>
+            <h2 className="homev3-title" style={{ marginBottom: 16 }}>
+              Recent {service.title} Projects Near Calgary
+            </h2>
+            <div className="carousel" aria-label={`Recent ${service.title} geo-posts`}>
+              {matchingGeoPosts.map((post) => (
+                <GeoPostCard key={post.id} geoPost={post} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
+      ) : null}
 
       <CtaBand
         title="Ready to price your project?"
