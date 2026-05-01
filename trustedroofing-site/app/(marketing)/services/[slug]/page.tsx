@@ -16,9 +16,9 @@ const benefits = [
 ];
 
 const serviceFamilySlugs = (slug: string) => {
-  if (slug === "roofing" || slug === "roof-repair") return ["roofing", "roof-repair"];
-  if (slug === "siding" || slug === "james-hardie-siding") return ["siding", "james-hardie-siding"];
-  if (slug === "gutters" || slug === "eavestrough") return ["gutters", "eavestrough"];
+  if (slug === "roofing" || slug === "roof-repair") return ["roofing", "roof-repair", "roof-replacement", "shingles"];
+  if (slug === "siding" || slug === "james-hardie-siding") return ["siding", "james-hardie-siding", "vinyl-siding", "hardie-board-siding"];
+  if (slug === "gutters" || slug === "eavestrough") return ["gutters", "eavestrough", "downspout", "drainage"];
   return [slug];
 };
 
@@ -50,7 +50,8 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
     listGeoPosts(24, { serviceSlugs: serviceFamilySlugs(service.slug) })
   ]);
 
-  const matchingGeoPosts = geoPosts.slice(0, 8);
+  const recentGeoPosts = geoPosts.slice(0, 5);
+  const olderGeoPosts = geoPosts.slice(5);
 
   const related = allServices.filter((item) => item.slug !== service.slug).slice(0, 3);
 
@@ -116,17 +117,40 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
         </PageContainer>
       </section>
 
-      {matchingGeoPosts.length > 0 ? (
+      {recentGeoPosts.length > 0 ? (
         <section className="ui-page-section">
           <PageContainer>
             <h2 className="homev3-title" style={{ marginBottom: 16 }}>
               Recent {service.title} Projects Near Calgary
             </h2>
             <div className="carousel" aria-label={`Recent ${service.title} geo posts`}>
-              {matchingGeoPosts.map((post) => (
-                <GeoPostCard key={post.id} geoPost={post} />
+              {recentGeoPosts.map((post, index) => (
+                <div key={post.id} id={`geo-post-${post.id}`}>
+                  <GeoPostCard geoPost={post} eagerImage={index < 2} />
+                </div>
               ))}
             </div>
+          </PageContainer>
+        </section>
+      ) : null}
+
+      {olderGeoPosts.length > 0 ? (
+        <section className="ui-page-section ui-page-section--soft">
+          <PageContainer>
+            <article className="ui-card">
+              <h2>All Published {service.title} Geo Posts</h2>
+              <p className="homev3-copy">Older published updates remain discoverable here for homeowners and search engines.</p>
+              <div className="ui-list-links">
+                {olderGeoPosts.map((post) => (
+                  <article key={post.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--ui-border)" }}>
+                    <h3 style={{ marginBottom: 4 }}>
+                      <Link href={`/services/${service.slug}#geo-post-${post.id}`}>{post.title ?? "Geo post"}</Link>
+                    </h3>
+                    <p style={{ margin: 0 }}>{post.summary ?? "Published location-backed project update."}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
           </PageContainer>
         </section>
       ) : null}
