@@ -36,11 +36,19 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
   const service = await getServiceBySlug(params.slug);
   if (!service) return notFound();
 
+  const serviceFamilySlugs = (slug: string) => {
+    if (slug === "roofing" || slug === "roof-repair") return ["roofing", "roof-repair"];
+    if (slug === "siding" || slug === "james-hardie-siding") return ["siding", "james-hardie-siding"];
+    if (slug === "gutters" || slug === "eavestrough") return ["gutters", "eavestrough"];
+    return [slug];
+  };
+
   const [recentProjects, allServices, geoPosts] = await Promise.all([
     listProjects({ service_slug: service.slug, limit: 3 }),
     listServices(),
-    listGeoPosts(60)
+    listGeoPosts(24, { serviceSlugs: serviceFamilySlugs(service.slug) })
   ]);
+  const matchingGeoPosts = geoPosts.slice(0, 8);
 
   const serviceFamily = (slug: string) => {
     if (slug === "roofing" || slug === "roof-repair") return "roofing";

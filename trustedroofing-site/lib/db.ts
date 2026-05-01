@@ -626,7 +626,10 @@ export async function getProjectById(id: string): Promise<Project | null> {
   };
 }
 
-export async function listGeoPosts(limit?: number | null): Promise<ResolvedGeoPost[]> {
+export async function listGeoPosts(
+  limit?: number | null,
+  filters?: { serviceSlugs?: string[] }
+): Promise<ResolvedGeoPost[]> {
   const resolveGeoPosts = async (geoPosts: GeoPost[]) => {
     const imageSets = await getProjectImageSets(geoPosts.map((geoPost) => geoPost.project_id));
 
@@ -660,8 +663,11 @@ export async function listGeoPosts(limit?: number | null): Promise<ResolvedGeoPo
       let query = client
         .from("geo_posts")
         .select("*")
+        .eq("status", "published")
         .order("created_at", { ascending: false });
 
+      const serviceSlugs = filters?.serviceSlugs?.filter((slug) => typeof slug === "string" && slug.length > 0) ?? [];
+      if (serviceSlugs.length > 0) query = query.in("service_slug", serviceSlugs);
       if (limit) query = query.limit(limit);
 
       const { data } = await query;
@@ -671,7 +677,14 @@ export async function listGeoPosts(limit?: number | null): Promise<ResolvedGeoPo
     }
   }
 
-  return resolveGeoPosts(mockGeoPosts.filter((geoPost) => !!geoPost.slug).slice(0, limit ?? undefined));
+  const serviceSlugs = filters?.serviceSlugs?.filter((slug) => typeof slug === "string" && slug.length > 0) ?? [];
+  const filtered = mockGeoPosts.filter((geoPost) => {
+    if (!geoPost.slug) return false;
+    if (geoPost.status !== "published") return false;
+    if (serviceSlugs.length > 0 && (!geoPost.service_slug || !serviceSlugs.includes(geoPost.service_slug))) return false;
+    return true;
+  });
+  return resolveGeoPosts(filtered.slice(0, limit ?? undefined));
 }
 
 export async function getGeoPostBySlug(slug: string): Promise<ResolvedGeoPost | null> {
