@@ -1112,10 +1112,23 @@ export async function syncGeoPostForProject(projectId: string) {
   if (getDataMode() === "supabase") {
     const client = getServiceClient();
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for geo_post writes.");
+    const { data: existingRows } = await client
+      .from("geo_posts")
+      .select("*")
+      .eq("project_id", project.id)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const existing = ((existingRows ?? [])[0] as GeoPost | undefined) ?? null;
+    const mergedPayload = {
+      ...payload,
+      content: existing?.content ?? payload.content,
+      primary_image_url: existing?.primary_image_url ?? payload.primary_image_url,
+      service_slug: existing?.service_slug ?? payload.service_slug
+    };
 
     const { data, error } = await client
       .from("geo_posts")
-      .upsert(payload, { onConflict: "project_id" })
+      .upsert(mergedPayload, { onConflict: "project_id" })
       .select("*")
       .single();
 
@@ -1137,7 +1150,7 @@ export async function syncGeoPostForProject(projectId: string) {
       if (existing.length > 0) {
         const { data: updated, error: updateError } = await client
           .from("geo_posts")
-          .update(payload)
+          .update(mergedPayload)
           .eq("id", existing[0].id)
           .select("*")
           .single();
@@ -1156,7 +1169,7 @@ export async function syncGeoPostForProject(projectId: string) {
 
       const { data: inserted, error: insertError } = await client
         .from("geo_posts")
-        .insert(payload)
+        .insert(mergedPayload)
         .select("*")
         .single();
 
@@ -1171,10 +1184,14 @@ export async function syncGeoPostForProject(projectId: string) {
   }
 
   const existingIndex = mockGeoPosts.findIndex((row) => row.project_id === project.id);
+  const existing = existingIndex >= 0 ? mockGeoPosts[existingIndex] : null;
   const base: GeoPost = {
     id: existingIndex >= 0 ? mockGeoPosts[existingIndex].id : crypto.randomUUID(),
     created_at: existingIndex >= 0 ? mockGeoPosts[existingIndex].created_at : new Date().toISOString(),
-    ...payload
+    ...payload,
+    content: existing?.content ?? payload.content,
+    primary_image_url: existing?.primary_image_url ?? payload.primary_image_url,
+    service_slug: existing?.service_slug ?? payload.service_slug
   };
 
   if (existingIndex >= 0) {

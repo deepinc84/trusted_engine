@@ -46,15 +46,21 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
             ))}
           </select>
         </label>
-        <label>
-          Post image
-          <select className="input" name="primary_image_url" defaultValue={post.primary_image_url ?? ""}>
-            <option value="">Use project primary image</option>
+        <fieldset style={{ border: "1px solid #d7dce5", borderRadius: 10, padding: 12 }}>
+          <legend>Post image</legend>
+          <label style={{ display: "block", marginBottom: 8 }}>
+            <input type="radio" name="primary_image_url" value="" defaultChecked={!post.primary_image_url} /> Use project primary image
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
             {imageOptions.map((url, index) => (
-              <option key={`${url}-${index}`} value={url}>{url}</option>
+              <label key={`${url}-${index}`} style={{ border: "1px solid #d7dce5", borderRadius: 8, padding: 8, display: "grid", gap: 6 }}>
+                <input type="radio" name="primary_image_url" value={url} defaultChecked={post.primary_image_url === url} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Geo-post image option ${index + 1}`} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 6 }} />
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
         <label>
           Content
           <textarea className="input input--multiline" rows={10} name="content" defaultValue={post.content ?? ""} />
