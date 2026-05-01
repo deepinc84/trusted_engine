@@ -2238,19 +2238,15 @@ export async function publishGeoPostById(id: string) {
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
     const { data: geoPost, error } = await client.from("geo_posts").select("*").eq("id", id).single();
     if (error) throw new Error(error.message);
-    await enqueueGbpPost((geoPost as GeoPost).project_id, {
-      geo_post_id: id,
-      slug: (geoPost as GeoPost).slug,
-      title: (geoPost as GeoPost).title,
-      summary: (geoPost as GeoPost).summary
-    });
+    // GBP queueing is intentionally disabled until the gbp_post_queue table
+    // and worker pipeline are fully implemented.
     const publishedAt = new Date().toISOString();
     const { data: updated, error: updateError } = await client
       .from("geo_posts")
       .update({
         status: "published",
         published_at: publishedAt,
-        gbp_response: { ok: true, published_at: publishedAt, queued: true }
+        gbp_response: { ok: true, published_at: publishedAt, queued: false, note: "GBP queueing disabled" }
       })
       .eq("id", id)
       .select("*")
@@ -2263,7 +2259,7 @@ export async function publishGeoPostById(id: string) {
   if (!row) throw new Error("Geo post not found");
   row.status = "published";
   row.published_at = new Date().toISOString();
-  row.gbp_response = { ok: true, queued: true };
+  row.gbp_response = { ok: true, queued: false, note: "GBP queueing disabled" };
   return row;
 }
 
