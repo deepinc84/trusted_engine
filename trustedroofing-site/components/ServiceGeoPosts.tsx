@@ -18,7 +18,7 @@ function cleanContent(content: string | null): string {
   return (content ?? "").replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1").trim();
 }
 
-export default function ServiceGeoPosts({ geoPosts }: { geoPosts: ResolvedGeoPost[] }) {
+export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: ResolvedGeoPost[]; heading?: string }) {
   const [isOpen, setIsOpen] = useState(true);
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
@@ -50,8 +50,8 @@ export default function ServiceGeoPosts({ geoPosts }: { geoPosts: ResolvedGeoPos
             aria-expanded={isOpen}
             aria-controls="service-project-updates"
           >
-            <span>Recent local project updates</span>
-            <span style={{ color: "#b92128", fontSize: "1.5rem", lineHeight: 1 }}>{isOpen ? "−" : "+"}</span>
+            <span>{heading ?? "Recent roof replacements"}</span>
+            <span style={{ color: "#1f4f96", fontSize: "1.5rem", lineHeight: 1 }}>{isOpen ? "−" : "+"}</span>
           </button>
 
           {isOpen ? (
@@ -80,7 +80,7 @@ export default function ServiceGeoPosts({ geoPosts }: { geoPosts: ResolvedGeoPos
                           style={{
                             justifySelf: "start",
                             border: "none",
-                            background: "#b92128",
+                            background: "#1f4f96",
                             color: "white",
                             borderRadius: 999,
                             padding: "7px 12px",

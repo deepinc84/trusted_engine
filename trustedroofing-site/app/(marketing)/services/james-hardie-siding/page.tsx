@@ -196,7 +196,7 @@ export default async function JamesHardieSidingPage() {
         title="Trying to decide between vinyl and Hardie?"
         body="Start with the instant quote, then we can sort out whether the added cost of a fiber cement system actually fits the project."
       />
-      <ServiceGeoPosts geoPosts={geoPosts} />
+      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent James Hardie siding jobs in Calgary" />
     </>
   );
 }

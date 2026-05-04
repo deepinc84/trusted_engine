@@ -155,7 +155,7 @@ export default async function RoofingPage() {
 
 
       <CtaBand title="Want a realistic roofing range before a site visit?" body="Use the instant quote tool, then we can confirm ventilation, material, and flashing details on site." />
-      <ServiceGeoPosts geoPosts={geoPosts} />
+      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent roof replacement jobs in Calgary" />
     </>
   );
 }

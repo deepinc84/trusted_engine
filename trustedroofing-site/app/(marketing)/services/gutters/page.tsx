@@ -43,7 +43,7 @@ export default async function GuttersPage() {
 
 
       <CtaBand title="Need to know whether the problem is capacity, slope, or age?" body="Start with the quote tool, then we can confirm measurements and drainage layout on site." />
-      <ServiceGeoPosts geoPosts={geoPosts} />
+      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent gutter and eavestrough jobs in Calgary" />
     </>
   );
 }

@@ -46,7 +46,7 @@ export default async function SolarPage() {
 
 
       <CtaBand title="Planning solar + roofing together?" body="Start with an exterior quote so sequencing is handled correctly." />
-      <ServiceGeoPosts geoPosts={geoPosts} />
+      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent solar integration roofing jobs in Calgary" />
     </>
   );
 }

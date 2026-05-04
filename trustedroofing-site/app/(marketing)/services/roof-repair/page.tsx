@@ -45,7 +45,7 @@ export default async function RoofRepairPage() {
 
 
       <CtaBand title="Need urgent repair pricing?" body="Start with instant quote and we can triage next steps quickly." />
-      <ServiceGeoPosts geoPosts={geoPosts} />
+      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent roof repair jobs in Calgary" />
     </>
   );
 }
