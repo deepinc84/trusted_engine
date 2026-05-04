@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ResolvedGeoPost } from "@/lib/db";
@@ -11,71 +14,101 @@ function projectLinkFromContent(content: string | null): { href: string; text: s
   return { text: match[1].trim(), href: match[2].trim() };
 }
 
+function cleanContent(content: string | null): string {
+  return (content ?? "").replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1").trim();
+}
+
 export default function ServiceGeoPosts({ geoPosts }: { geoPosts: ResolvedGeoPost[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
   if (geoPosts.length === 0) return null;
 
-  const recent = geoPosts.slice(0, 5);
-  const fullList = geoPosts.slice(0, 5);
-  const fullPanels = [0, 1, 2].map((i) => fullList[i] ?? null);
+  const gallery = geoPosts.slice(0, 12);
 
   return (
-    <>
-      <section className="ui-page-section ui-page-section--soft">
-        <PageContainer>
-          <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-            {recent.map((post, index) => {
-              const title = post.title ?? post.slug ?? "Project update";
-              const geoHref = post.slug ? `/geo-posts/${post.slug}` : "/projects";
-              const heroImage = post.heroImage ?? getPlaceholderProjectImage({ seed: post.slug ?? post.id, neighborhood: post.neighborhood, city: post.city });
-              return (
-                <article key={post.id} className="ui-card" style={{ padding: 0, overflow: "hidden" }}>
-                  <Link href={geoHref}>
-                    <Image src={heroImage} alt={title} width={420} height={220} style={{ width: "100%", height: 130, objectFit: "cover" }} loading={index < 2 ? "eager" : "lazy"} />
-                    <div style={{ padding: 10, display: "grid", gap: 6 }}>
-                      <h3 style={{ margin: 0, fontSize: "1rem", lineHeight: 1.3 }}>{title}</h3>
-                      <p style={{ margin: 0, fontSize: ".85rem" }}>{post.neighborhood ?? post.city ?? "Calgary"}, {post.province ?? "AB"}</p>
-                      <span className="quote-card__cta">Read full post</span>
-                    </div>
-                  </Link>
-                </article>
-              );
-            })}
-          </div>
-        </PageContainer>
-      </section>
+    <section className="ui-page-section">
+      <PageContainer>
+        <article className="ui-card" style={{ padding: 16 }}>
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              border: "none",
+              background: "transparent",
+              padding: 0,
+              cursor: "pointer",
+              fontWeight: 800,
+              fontSize: "1.8rem",
+              color: "var(--ink)",
+              textAlign: "left",
+            }}
+            aria-expanded={isOpen}
+            aria-controls="service-project-updates"
+          >
+            <span>Recent local project updates</span>
+            <span style={{ color: "#b92128", fontSize: "1.5rem", lineHeight: 1 }}>{isOpen ? "−" : "+"}</span>
+          </button>
 
-      <section className="ui-page-section">
-        <PageContainer>
-          <article className="ui-card">
-            <h2>Full local post archive</h2>
-            <p className="homev3-copy">Expanded geo-post text is provided below for indexing and location detail depth.</p>
-            <div style={{ display: "grid", gap: 10 }}>
-              {fullPanels.map((post, i) => (
-                <details key={post?.id ?? `empty-${i}`}>
-                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-                    {post ? (post.title ?? "Project update") : `Reserved project post slot ${i + 1}`}
-                  </summary>
-                  {post ? (() => {
-                    const geoHref = post.slug ? `/geo-posts/${post.slug}` : "/projects";
-                    const projectLink = projectLinkFromContent(post.content);
-                    const cleanContent = (post.content ?? "").replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1").trim();
-                    return (
-                      <div style={{ paddingTop: 10, display: "grid", gap: 8 }}>
-                        <p style={{ margin: 0 }}>{cleanContent || post.summary || "Published local project update."}</p>
-                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                          <Link href={geoHref}>Open canonical geo-post</Link>
-                          <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "View related project"}</Link>
-                        </div>
+          {isOpen ? (
+            <div id="service-project-updates" style={{ marginTop: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                {gallery.map((post) => {
+                  const title = post.title ?? post.slug ?? "Project update";
+                  const fullPostHref = post.slug ? `/geo-posts/${post.slug}` : "/projects";
+                  const projectLink = projectLinkFromContent(post.content);
+                  const heroImage =
+                    post.heroImage ??
+                    getPlaceholderProjectImage({ seed: post.slug ?? post.id, neighborhood: post.neighborhood, city: post.city });
+                  const cardOpen = expandedCards[post.id] ?? false;
+
+                  return (
+                    <article key={post.id} className="ui-card" style={{ padding: 0, overflow: "hidden" }}>
+                      <Image src={heroImage} alt={title} width={520} height={300} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                      <div style={{ padding: 12, display: "grid", gap: 6 }}>
+                        <h3 style={{ margin: 0, fontSize: "1.35rem", lineHeight: 1.25 }}>{title}</h3>
+                        <p style={{ margin: 0, color: "#667085", fontSize: ".95rem" }}>
+                          {post.neighborhood ?? post.city ?? "Calgary"}, {post.province ?? "AB"}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedCards((prev) => ({ ...prev, [post.id]: !cardOpen }))}
+                          style={{
+                            justifySelf: "start",
+                            border: "none",
+                            background: "#b92128",
+                            color: "white",
+                            borderRadius: 999,
+                            padding: "7px 12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {cardOpen ? "Hide details" : "View details"}
+                        </button>
+
+                        {cardOpen ? (
+                          <>
+                            <p style={{ margin: 0, fontSize: ".96rem" }}>{cleanContent(post.content) || post.summary || "Published project update."}</p>
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                              <Link href={fullPostHref}>Open full project update</Link>
+                              <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "Related project"}</Link>
+                            </div>
+                          </>
+                        ) : null}
                       </div>
-                    );
-                  })() : <p style={{ marginTop: 8 }}>No additional post yet.</p>}
-                </details>
-              ))}
+                    </article>
+                  );
+                })}
+              </div>
             </div>
-          </article>
-        </PageContainer>
-      </section>
-    </>
+          ) : null}
+        </article>
+      </PageContainer>
+    </section>
   );
 }

@@ -28,7 +28,6 @@ export default async function SolarPage() {
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
 
-      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -47,6 +46,7 @@ export default async function SolarPage() {
 
 
       <CtaBand title="Planning solar + roofing together?" body="Start with an exterior quote so sequencing is handled correctly." />
+      <ServiceGeoPosts geoPosts={geoPosts} />
     </>
   );
 }

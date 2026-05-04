@@ -82,7 +82,6 @@ export default async function JamesHardieSidingPage() {
       />
 
 
-      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -197,6 +196,7 @@ export default async function JamesHardieSidingPage() {
         title="Trying to decide between vinyl and Hardie?"
         body="Start with the instant quote, then we can sort out whether the added cost of a fiber cement system actually fits the project."
       />
+      <ServiceGeoPosts geoPosts={geoPosts} />
     </>
   );
 }

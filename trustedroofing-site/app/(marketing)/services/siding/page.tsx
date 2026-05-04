@@ -82,7 +82,6 @@ export default async function VinylSidingPage() {
       />
 
 
-      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -209,6 +208,7 @@ export default async function VinylSidingPage() {
         title="Need to price vinyl siding work?"
         body="Start with the instant quote and we can narrow the scope around trim, detailing, and wall condition after that."
       />
+      <ServiceGeoPosts geoPosts={geoPosts} />
     </>
   );
 }

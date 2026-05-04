@@ -27,7 +27,6 @@ export default async function RoofRepairPage() {
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
 
-      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -46,6 +45,7 @@ export default async function RoofRepairPage() {
 
 
       <CtaBand title="Need urgent repair pricing?" body="Start with instant quote and we can triage next steps quickly." />
+      <ServiceGeoPosts geoPosts={geoPosts} />
     </>
   );
 }
