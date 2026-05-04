@@ -4,6 +4,8 @@ import FaqAccordion from "@/components/FaqAccordion";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import GeoPostCard from "@/components/GeoPostCard";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -60,7 +62,10 @@ function buildHardieFaqSchema() {
   };
 }
 
-export default function JamesHardieSidingPage() {
+export default async function JamesHardieSidingPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["siding", "james-hardie-siding", "vinyl-siding", "hardie-board-siding"] });
+
+
   const faqSchema = buildHardieFaqSchema();
 
   return (
@@ -180,6 +185,20 @@ export default function JamesHardieSidingPage() {
           </article>
         </PageContainer>
       </section>
+
+
+      {geoPosts.length > 0 ? (
+        <section className="ui-page-section">
+          <PageContainer>
+            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
+            <div className="carousel" aria-label="Recent local project updates">
+              {geoPosts.map((post, index) => (
+                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
+      ) : null}
 
       <CtaBand
         title="Trying to decide between vinyl and Hardie?"
