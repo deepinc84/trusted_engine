@@ -3,6 +3,8 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 const includes = [
@@ -33,7 +35,10 @@ export const metadata = buildMetadata({
   path: "/services/roofing"
 });
 
-export default function RoofingPage() {
+export default async function RoofingPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["roofing", "roof-repair", "roof-replacement", "shingles"] });
+
+
   return (
     <>
       {/* Schema note: keep Service schema as the primary schema on this page. Avoid stacking multiple primary schema types. */}
@@ -44,6 +49,9 @@ export default function RoofingPage() {
         description="A roof system has to do more than look clean from the street. It has to handle hail, wind-driven moisture, freeze-thaw cycles, and attic ventilation pressure without turning small weak points into expensive interior damage."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+
+      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -142,6 +150,10 @@ export default function RoofingPage() {
           </article>
         </PageContainer>
       </section>
+
+
+      
+
 
       <CtaBand title="Want a realistic roofing range before a site visit?" body="Use the instant quote tool, then we can confirm ventilation, material, and flashing details on site." />
     </>

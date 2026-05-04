@@ -3,6 +3,8 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -11,7 +13,10 @@ export const metadata = buildMetadata({
   path: "/services/roof-repair"
 });
 
-export default function RoofRepairPage() {
+export default async function RoofRepairPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["roofing", "roof-repair", "roof-replacement", "shingles"] });
+
+
   return (
     <>
       <ServiceSchema serviceName="Roof repair" serviceType="Roof repair" />
@@ -21,6 +26,9 @@ export default function RoofRepairPage() {
         description="Fast diagnostics and repair scopes for leaks, storm issues, and maintenance fixes."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+      <ServiceGeoPosts geoPosts={geoPosts} />
+
       <section className="ui-page-section">
         <PageContainer>
           <article className="ui-card">
@@ -33,6 +41,10 @@ export default function RoofRepairPage() {
           </article>
         </PageContainer>
       </section>
+
+      
+
+
       <CtaBand title="Need urgent repair pricing?" body="Start with instant quote and we can triage next steps quickly." />
     </>
   );

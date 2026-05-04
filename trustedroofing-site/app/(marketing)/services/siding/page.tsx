@@ -4,6 +4,8 @@ import FaqAccordion from "@/components/FaqAccordion";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -60,7 +62,10 @@ function buildVinylFaqSchema() {
   };
 }
 
-export default function VinylSidingPage() {
+export default async function VinylSidingPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["siding", "james-hardie-siding", "vinyl-siding", "hardie-board-siding"] });
+
+
   const faqSchema = buildVinylFaqSchema();
 
   return (
@@ -75,6 +80,9 @@ export default function VinylSidingPage() {
         description="New siding should not just hide an old wall. It should improve water control, sharpen the finish around openings and trim, and stand up to Calgary wind, sun, and temperature swings."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+
+      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -192,6 +200,10 @@ export default function VinylSidingPage() {
           </div>
         </PageContainer>
       </section>
+
+
+      
+
 
       <CtaBand
         title="Need to price vinyl siding work?"
