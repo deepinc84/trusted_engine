@@ -9,6 +9,8 @@ import ServiceSchema from "@/components/ServiceSchema";
 import { getServiceBySlug, listGeoPosts, listProjects, listServices } from "@/lib/db";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+
 const benefits = [
   "Scope clarity before install starts",
   "Built for Calgary freeze-thaw + hail cycles",
