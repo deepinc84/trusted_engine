@@ -4,6 +4,8 @@ import FaqAccordion from "@/components/FaqAccordion";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -60,7 +62,10 @@ function buildHardieFaqSchema() {
   };
 }
 
-export default function JamesHardieSidingPage() {
+export default async function JamesHardieSidingPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["siding", "james-hardie-siding", "vinyl-siding", "hardie-board-siding"] });
+
+
   const faqSchema = buildHardieFaqSchema();
 
   return (
@@ -75,6 +80,8 @@ export default function JamesHardieSidingPage() {
         description="James Hardie siding is usually chosen by homeowners who want a more substantial look, stronger visual lines, and a cladding system that feels more rigid on the wall."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+
 
       <section className="ui-page-section">
         <PageContainer>
@@ -181,10 +188,15 @@ export default function JamesHardieSidingPage() {
         </PageContainer>
       </section>
 
+
+      
+
+
       <CtaBand
         title="Trying to decide between vinyl and Hardie?"
         body="Start with the instant quote, then we can sort out whether the added cost of a fiber cement system actually fits the project."
       />
+      <ServiceGeoPosts geoPosts={geoPosts} />
     </>
   );
 }
