@@ -3,6 +3,8 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import GeoPostCard from "@/components/GeoPostCard";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 const includes = [
@@ -33,7 +35,10 @@ export const metadata = buildMetadata({
   path: "/services/roofing"
 });
 
-export default function RoofingPage() {
+export default async function RoofingPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["roofing", "roof-repair", "roof-replacement", "shingles"] });
+
+
   return (
     <>
       {/* Schema note: keep Service schema as the primary schema on this page. Avoid stacking multiple primary schema types. */}
@@ -142,6 +147,20 @@ export default function RoofingPage() {
           </article>
         </PageContainer>
       </section>
+
+
+      {geoPosts.length > 0 ? (
+        <section className="ui-page-section">
+          <PageContainer>
+            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
+            <div className="carousel" aria-label="Recent local project updates">
+              {geoPosts.map((post, index) => (
+                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
+      ) : null}
 
       <CtaBand title="Want a realistic roofing range before a site visit?" body="Use the instant quote tool, then we can confirm ventilation, material, and flashing details on site." />
     </>

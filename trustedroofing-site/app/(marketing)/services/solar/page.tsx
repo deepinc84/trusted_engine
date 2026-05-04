@@ -3,6 +3,8 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import GeoPostCard from "@/components/GeoPostCard";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -12,7 +14,10 @@ export const metadata = buildMetadata({
   path: "/services/solar"
 });
 
-export default function SolarPage() {
+export default async function SolarPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["solar"] });
+
+
   return (
     <>
       <ServiceSchema serviceName="Solar integration" serviceType="Solar" />
@@ -34,6 +39,20 @@ export default function SolarPage() {
           </article>
         </PageContainer>
       </section>
+
+      {geoPosts.length > 0 ? (
+        <section className="ui-page-section">
+          <PageContainer>
+            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
+            <div className="carousel" aria-label="Recent local project updates">
+              {geoPosts.map((post, index) => (
+                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
+      ) : null}
+
       <CtaBand title="Planning solar + roofing together?" body="Start with an exterior quote so sequencing is handled correctly." />
     </>
   );

@@ -3,6 +3,8 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import GeoPostCard from "@/components/GeoPostCard";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 const faqs = [
@@ -20,7 +22,10 @@ export const metadata = buildMetadata({
   path: "/services/gutters"
 });
 
-export default function GuttersPage() {
+export default async function GuttersPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["gutters", "eavestrough", "downspout", "drainage"] });
+
+
   return (
     <>
       {/* Schema note: this page should use one primary Service schema for eavestrough and gutter work. */}
@@ -31,6 +36,20 @@ export default function GuttersPage() {
       <section className="ui-page-section"><PageContainer><article className="ui-card"><h2>How the process works</h2><ol><li>We review the roofline and identify where the current drainage path is failing.</li><li>We measure the runs and decide whether 5-inch or 6-inch capacity is more appropriate.</li><li>We confirm downspout count and discharge points before fabrication or installation.</li><li>We install the new system with attention to slope, support, and clean transitions at fascia and roof edge details.</li><li>We verify that runoff is leaving the house properly, not just dropping beside it.</li></ol></article></PageContainer></section>
       <section className="ui-page-section ui-page-section--soft"><PageContainer><article className="ui-card"><h2>Related references</h2><p>For broader guidance on roof drainage components and accessory planning, review the manufacturer information from <a href="https://www.gaf.ca/" target="_blank" rel="noreferrer">GAF</a>. Then compare that information against how your own roofline sheds water in real storms.</p></article></PageContainer></section>
       <section className="ui-page-section"><PageContainer><article className="ui-card"><h2>Frequently asked questions</h2>{/* Schema note: apply FAQ schema to this section only. */}<div className="ui-list-links" style={{ display: "grid", gap: 20 }}>{faqs.map((item) => <div key={item.question}><h3>{item.question}</h3><p>{item.answer}</p></div>)}</div></article></PageContainer></section>
+
+      {geoPosts.length > 0 ? (
+        <section className="ui-page-section">
+          <PageContainer>
+            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
+            <div className="carousel" aria-label="Recent local project updates">
+              {geoPosts.map((post, index) => (
+                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
+      ) : null}
+
       <CtaBand title="Need to know whether the problem is capacity, slope, or age?" body="Start with the quote tool, then we can confirm measurements and drainage layout on site." />
     </>
   );
