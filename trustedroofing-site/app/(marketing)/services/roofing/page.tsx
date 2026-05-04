@@ -3,7 +3,7 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
-import GeoPostCard from "@/components/GeoPostCard";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
 import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
@@ -49,6 +49,9 @@ export default async function RoofingPage() {
         description="A roof system has to do more than look clean from the street. It has to handle hail, wind-driven moisture, freeze-thaw cycles, and attic ventilation pressure without turning small weak points into expensive interior damage."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+
+      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -149,18 +152,8 @@ export default async function RoofingPage() {
       </section>
 
 
-      {geoPosts.length > 0 ? (
-        <section className="ui-page-section">
-          <PageContainer>
-            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
-            <div className="carousel" aria-label="Recent local project updates">
-              {geoPosts.map((post, index) => (
-                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
-              ))}
-            </div>
-          </PageContainer>
-        </section>
-      ) : null}
+      
+
 
       <CtaBand title="Want a realistic roofing range before a site visit?" body="Use the instant quote tool, then we can confirm ventilation, material, and flashing details on site." />
     </>

@@ -4,7 +4,7 @@ import FaqAccordion from "@/components/FaqAccordion";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
-import GeoPostCard from "@/components/GeoPostCard";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
 import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
@@ -80,6 +80,9 @@ export default async function JamesHardieSidingPage() {
         description="James Hardie siding is usually chosen by homeowners who want a more substantial look, stronger visual lines, and a cladding system that feels more rigid on the wall."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+
+      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -187,18 +190,8 @@ export default async function JamesHardieSidingPage() {
       </section>
 
 
-      {geoPosts.length > 0 ? (
-        <section className="ui-page-section">
-          <PageContainer>
-            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
-            <div className="carousel" aria-label="Recent local project updates">
-              {geoPosts.map((post, index) => (
-                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
-              ))}
-            </div>
-          </PageContainer>
-        </section>
-      ) : null}
+      
+
 
       <CtaBand
         title="Trying to decide between vinyl and Hardie?"

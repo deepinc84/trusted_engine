@@ -4,7 +4,7 @@ import FaqAccordion from "@/components/FaqAccordion";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
-import GeoPostCard from "@/components/GeoPostCard";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
 import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
@@ -80,6 +80,9 @@ export default async function VinylSidingPage() {
         description="New siding should not just hide an old wall. It should improve water control, sharpen the finish around openings and trim, and stand up to Calgary wind, sun, and temperature swings."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+
+      <ServiceGeoPosts geoPosts={geoPosts} />
 
       <section className="ui-page-section">
         <PageContainer>
@@ -199,18 +202,8 @@ export default async function VinylSidingPage() {
       </section>
 
 
-      {geoPosts.length > 0 ? (
-        <section className="ui-page-section">
-          <PageContainer>
-            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
-            <div className="carousel" aria-label="Recent local project updates">
-              {geoPosts.map((post, index) => (
-                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
-              ))}
-            </div>
-          </PageContainer>
-        </section>
-      ) : null}
+      
+
 
       <CtaBand
         title="Need to price vinyl siding work?"
