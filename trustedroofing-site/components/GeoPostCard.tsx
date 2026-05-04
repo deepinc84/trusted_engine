@@ -38,7 +38,10 @@ export default function GeoPostCard({ geoPost, eagerImage = false }: { geoPost: 
           <div className="seo-card__content">
             <span className="ui-pill">{geoPost.service_slug ?? "project"}</span>
             <h3>{title}</h3>
-            <p>{geoPost.neighborhood ?? geoPost.city ?? "Calgary"}, {geoPost.province ?? "AB"}</p>
+            <p>
+              {geoPost.neighborhood ?? geoPost.city ?? "Calgary"},{" "}
+              {geoPost.province ?? "AB"}
+            </p>
             {publishedLabel ? <p>Job date: {publishedLabel}</p> : null}
             <p>{excerpt}{excerpt.length >= 160 ? "…" : ""}</p>
             <span className="quote-card__cta">{selectedAnchorText}</span>
@@ -56,7 +59,10 @@ export default function GeoPostCard({ geoPost, eagerImage = false }: { geoPost: 
           />
           <span className="ui-pill">{geoPost.service_slug ?? "project"}</span>
           <h3>{title}</h3>
-          <p>{geoPost.neighborhood ?? geoPost.city ?? "Calgary"}, {geoPost.province ?? "AB"}</p>
+          <p>
+            {geoPost.neighborhood ?? geoPost.city ?? "Calgary"},{" "}
+            {geoPost.province ?? "AB"}
+          </p>
           {publishedLabel ? <p>Job date: {publishedLabel}</p> : null}
           <p>{excerpt}{excerpt.length >= 160 ? "…" : ""}</p>
         </>
