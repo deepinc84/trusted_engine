@@ -19,7 +19,7 @@ function cleanContent(content: string | null): string {
 }
 
 export default function ServiceGeoPosts({ geoPosts }: { geoPosts: ResolvedGeoPost[] }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   if (geoPosts.length === 0) return null;
