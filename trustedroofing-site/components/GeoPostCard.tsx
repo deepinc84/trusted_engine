@@ -3,37 +3,22 @@ import Link from "next/link";
 import type { ResolvedGeoPost } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
 
-export default function GeoPostCard({
-  geoPost,
-  eagerImage = false
-}: {
-  geoPost: ResolvedGeoPost;
-  eagerImage?: boolean;
-}) {
+export default function GeoPostCard({ geoPost, eagerImage = false }: { geoPost: ResolvedGeoPost; eagerImage?: boolean }) {
   const title = geoPost.title ?? geoPost.slug ?? "Project update";
-
   const markdownLinkMatch = (geoPost.content ?? "").match(/\[([^\]]+)\]\(([^)]+)\)/);
   const selectedAnchorText = markdownLinkMatch?.[1]?.trim() || "View related project";
   const href = markdownLinkMatch?.[2]?.trim() || null;
-
   const plainContent = (geoPost.content ?? "")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
-
-  const heroImage =
-    geoPost.heroImage ??
-    getPlaceholderProjectImage({
-      seed: geoPost.slug ?? geoPost.id,
-      neighborhood: geoPost.neighborhood,
-      city: geoPost.city
-    });
-
-  const excerptSource =
-    plainContent || geoPost.summary || "Published location-backed project update.";
-
+  const heroImage = geoPost.heroImage ?? getPlaceholderProjectImage({
+    seed: geoPost.slug ?? geoPost.id,
+    neighborhood: geoPost.neighborhood,
+    city: geoPost.city
+  });
+  const excerptSource = plainContent || geoPost.summary || "Published location-backed project update.";
   const excerpt = excerptSource.slice(0, 220);
-
   const publishedLabel = geoPost.published_at
     ? new Date(geoPost.published_at).toLocaleDateString("en-CA")
     : null;

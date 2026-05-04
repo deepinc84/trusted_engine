@@ -59,10 +59,8 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
 
   const serviceSlugs = serviceFamilySlugs(service.slug);
   const keywords = serviceFamilyKeywords(service.slug);
-
   const geoPosts = allPublishedUpdates.filter((post) => {
     if (post.service_slug && serviceSlugs.includes(post.service_slug)) return true;
-
     const haystack = `${post.title ?? ""} ${post.summary ?? ""} ${post.content ?? ""}`.toLowerCase();
     return keywords.some((keyword) => haystack.includes(keyword));
   });
@@ -161,13 +159,9 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
                 {olderGeoPosts.map((post) => (
                   <article key={post.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--ui-border)" }}>
                     <h3 style={{ marginBottom: 4 }}>
-                      <Link href={`/services/${service.slug}#project-update-${post.id}`}>
-                        {post.title ?? "Project update"}
-                      </Link>
+                      <Link href={`/services/${service.slug}#project-update-${post.id}`}>{post.title ?? "Project update"}</Link>
                     </h3>
-                    <p style={{ margin: 0 }}>
-                      {post.summary ?? "Published location-backed project update."}
-                    </p>
+                    <p style={{ margin: 0 }}>{post.summary ?? "Published location-backed project update."}</p>
                   </article>
                 ))}
               </div>
