@@ -3,6 +3,8 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -12,7 +14,10 @@ export const metadata = buildMetadata({
   path: "/services/solar"
 });
 
-export default function SolarPage() {
+export default async function SolarPage() {
+  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["solar"] });
+
+
   return (
     <>
       <ServiceSchema serviceName="Solar integration" serviceType="Solar" />
@@ -22,6 +27,8 @@ export default function SolarPage() {
         description="Roof and exterior planning aligned with partner-led solar install pathways."
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
+
+
       <section className="ui-page-section">
         <PageContainer>
           <article className="ui-card">
@@ -34,7 +41,12 @@ export default function SolarPage() {
           </article>
         </PageContainer>
       </section>
+
+      
+
+
       <CtaBand title="Planning solar + roofing together?" body="Start with an exterior quote so sequencing is handled correctly." />
+      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent solar integration roofing jobs in Calgary" />
     </>
   );
 }
