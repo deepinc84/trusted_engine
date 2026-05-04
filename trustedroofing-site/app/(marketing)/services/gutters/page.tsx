@@ -3,7 +3,11 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceSchema from "@/components/ServiceSchema";
+<<<<<<< codex/fix-geo-post-visibility-issue-xwqmdd
 import ServiceGeoPosts from "@/components/ServiceGeoPosts";
+=======
+import GeoPostCard from "@/components/GeoPostCard";
+>>>>>>> main
 import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
@@ -40,8 +44,23 @@ export default async function GuttersPage() {
       <section className="ui-page-section ui-page-section--soft"><PageContainer><article className="ui-card"><h2>Related references</h2><p>For broader guidance on roof drainage components and accessory planning, review the manufacturer information from <a href="https://www.gaf.ca/" target="_blank" rel="noreferrer">GAF</a>. Then compare that information against how your own roofline sheds water in real storms.</p></article></PageContainer></section>
       <section className="ui-page-section"><PageContainer><article className="ui-card"><h2>Frequently asked questions</h2>{/* Schema note: apply FAQ schema to this section only. */}<div className="ui-list-links" style={{ display: "grid", gap: 20 }}>{faqs.map((item) => <div key={item.question}><h3>{item.question}</h3><p>{item.answer}</p></div>)}</div></article></PageContainer></section>
 
+<<<<<<< codex/fix-geo-post-visibility-issue-xwqmdd
       
 
+=======
+      {geoPosts.length > 0 ? (
+        <section className="ui-page-section">
+          <PageContainer>
+            <h2 className="homev3-title" style={{ marginBottom: 16 }}>Recent local project updates</h2>
+            <div className="carousel" aria-label="Recent local project updates">
+              {geoPosts.map((post, index) => (
+                <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
+              ))}
+            </div>
+          </PageContainer>
+        </section>
+      ) : null}
+>>>>>>> main
 
       <CtaBand title="Need to know whether the problem is capacity, slope, or age?" body="Start with the quote tool, then we can confirm measurements and drainage layout on site." />
     </>
