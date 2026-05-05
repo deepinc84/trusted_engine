@@ -28,7 +28,7 @@ export default function ProjectSchema(props: Props) {
     neighborhood = geoPost.neighborhood ?? city;
     serviceSlug = geoPost.service_slug ?? "roofing";
     imageUrls = geoPost.gallery.length > 0 ? geoPost.gallery : geoPost.heroImage ? [geoPost.heroImage] : [];
-    url = canonicalUrl(`/geo-posts/${slug}`);
+    url = canonicalUrl(`/services/${serviceSlug}`);
     if (geoPost.slug) {
       projectUrl = canonicalUrl(`/projects/${geoPost.slug}`);
     }

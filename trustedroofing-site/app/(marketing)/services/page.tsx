@@ -3,7 +3,8 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceCard from "@/components/ui/ServiceCard";
-import { listServices } from "@/lib/db";
+import GeoPostCard from "@/components/GeoPostCard";
+import { listGeoPosts, listServices } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
 
@@ -54,7 +55,10 @@ export const metadata = buildMetadata({
 });
 
 export default async function ServicesPage() {
-  const services = await listServices();
+  const [services, recentGeoPosts] = await Promise.all([
+    listServices(),
+    listGeoPosts(5)
+  ]);
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -113,6 +117,17 @@ export default async function ServicesPage() {
               />
             ))}
           </div>
+
+          {recentGeoPosts.length > 0 ? (
+            <article className="ui-card" style={{ marginTop: 24 }}>
+              <h2>Recent Published Project Updates Across Services</h2>
+              <div className="carousel" aria-label="Recent published project updates across all services">
+                {recentGeoPosts.map((post, index) => (
+                  <GeoPostCard key={post.id} geoPost={post} eagerImage={index < 2} />
+                ))}
+              </div>
+            </article>
+          ) : null}
 
           <article className="ui-card" style={{ marginTop: 24 }}>
             <h2>What Work Usually Looks Like on Calgary Homes</h2>
