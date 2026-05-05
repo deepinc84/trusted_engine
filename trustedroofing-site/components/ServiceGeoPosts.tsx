@@ -26,6 +26,33 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
 
   const gallery = geoPosts.slice(0, 12);
 
+  const geoJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: heading ?? "Recent roof replacements",
+    itemListElement: gallery
+      .filter((post) => post.lat_public !== null && post.lng_public !== null)
+      .map((post, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          "@type": "BlogPosting",
+          headline: post.title ?? "Roof replacement update",
+          url: post.slug ? `/geo-posts/${post.slug}` : "/projects",
+          datePublished: post.published_at ?? post.created_at,
+          contentLocation: {
+            "@type": "Place",
+            name: [post.neighborhood, post.city, post.province].filter(Boolean).join(", "),
+            geo: {
+              "@type": "GeoCoordinates",
+              latitude: post.lat_public,
+              longitude: post.lng_public,
+            },
+          },
+        },
+      })),
+  };
+
   return (
     <section className="ui-page-section">
       <PageContainer>
@@ -53,6 +80,12 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
             <span>{heading ?? "Recent roof replacements"}</span>
             <span style={{ color: "#1f4f96", fontSize: "1.5rem", lineHeight: 1 }}>{isOpen ? "−" : "+"}</span>
           </button>
+
+
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(geoJsonLd) }}
+          />
 
           {isOpen ? (
             <div id="service-project-updates" style={{ marginTop: 14 }}>
