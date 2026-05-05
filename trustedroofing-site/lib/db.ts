@@ -630,6 +630,7 @@ export async function listGeoPosts(
   limit?: number | null,
   filters?: { serviceSlugs?: string[] }
 ): Promise<ResolvedGeoPost[]> {
+  noStore();
   const resolveGeoPosts = async (geoPosts: GeoPost[]) => {
     const imageSets = await getProjectImageSets(geoPosts.map((geoPost) => geoPost.project_id));
 
