@@ -29,6 +29,15 @@ export default function DynamicSchema(props: Props) {
   );
 }
 
+function buildNeighborhoodGeo(lat: number | null, lng: number | null) {
+  if (typeof lat !== "number" || typeof lng !== "number") return undefined;
+  return {
+    "@type": "GeoCoordinates",
+    latitude: Number(lat.toFixed(3)),
+    longitude: Number(lng.toFixed(3))
+  };
+}
+
 function buildProjectSchema(project: Project, relatedNeighborhoods: Array<{ slug: string; neighborhood: string }>) {
   const projectUrl = canonicalUrl(`/projects/${project.slug}`);
   const neighborhoodName = project.neighborhood ?? project.city;
@@ -46,7 +55,8 @@ function buildProjectSchema(project: Project, relatedNeighborhoods: Array<{ slug
         addressLocality: project.city,
         addressRegion: project.province,
         addressCountry: "CA"
-      }
+      },
+      geo: buildNeighborhoodGeo(project.lat_public ?? null, project.lng_public ?? null)
     },
     hasPart: {
       "@type": "Project",
@@ -57,7 +67,8 @@ function buildProjectSchema(project: Project, relatedNeighborhoods: Array<{ slug
       image: (project.photos ?? []).map((photo) => photo.public_url),
       areaServed: {
         "@type": "Place",
-        name: `${neighborhoodName}, ${project.city}`
+        name: `${neighborhoodName}, ${project.city}`,
+        geo: buildNeighborhoodGeo(project.lat_public ?? null, project.lng_public ?? null)
       },
       isRelatedTo: relatedNeighborhoods.map((area) => canonicalUrl(`/service-areas/${area.slug}`))
     }
@@ -82,7 +93,8 @@ function buildQuoteSchema(quote: QuoteNeighborhoodSummary, relatedNeighborhoods:
     },
     areaServed: {
       "@type": "Place",
-      name: `${quote.neighborhood}, ${quote.city}`
+      name: `${quote.neighborhood}, ${quote.city}`,
+      geo: buildNeighborhoodGeo(quote.centroidLat ?? null, quote.centroidLng ?? null)
     },
     makesOffer: {
       "@type": "AggregateOffer",
@@ -100,7 +112,8 @@ function buildQuoteSchema(quote: QuoteNeighborhoodSummary, relatedNeighborhoods:
         highPrice: card.estimateHigh ?? highPrice,
         areaServed: {
           "@type": "Place",
-          name: `${card.neighborhood}, ${card.city}`
+          name: `${card.neighborhood}, ${card.city}`,
+          geo: buildNeighborhoodGeo(quote.centroidLat ?? null, quote.centroidLng ?? null)
         }
       })),
       isRelatedTo: relatedNeighborhoods.map((area) => canonicalUrl(`/service-areas/${area.slug}`))

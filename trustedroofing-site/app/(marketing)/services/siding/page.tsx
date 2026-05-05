@@ -63,7 +63,10 @@ function buildVinylFaqSchema() {
 }
 
 export default async function VinylSidingPage() {
-  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["siding", "james-hardie-siding", "vinyl-siding", "hardie-board-siding"] });
+  const geoPosts = await listGeoPosts(6, {
+    serviceSlugs: ["siding", "vinyl-siding"],
+    excludeKeywords: ["hardie", "fiber cement", "fibre cement"]
+  });
 
 
   const faqSchema = buildVinylFaqSchema();

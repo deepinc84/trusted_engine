@@ -63,7 +63,10 @@ function buildHardieFaqSchema() {
 }
 
 export default async function JamesHardieSidingPage() {
-  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["siding", "james-hardie-siding", "vinyl-siding", "hardie-board-siding"] });
+  const geoPosts = await listGeoPosts(6, {
+    serviceSlugs: ["siding", "james-hardie-siding", "hardie-board-siding"],
+    includeKeywords: ["hardie", "fiber cement", "fibre cement"]
+  });
 
 
   const faqSchema = buildHardieFaqSchema();

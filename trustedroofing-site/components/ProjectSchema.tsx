@@ -6,6 +6,17 @@ type Props =
   | { project: Project; geoPost?: never }
   | { geoPost: ResolvedGeoPost; project?: never };
 
+
+
+function buildNeighborhoodGeo(lat: number | null, lng: number | null) {
+  if (typeof lat !== "number" || typeof lng !== "number") return undefined;
+  return {
+    "@type": "GeoCoordinates",
+    latitude: Number(lat.toFixed(3)),
+    longitude: Number(lng.toFixed(3))
+  };
+}
+
 export default function ProjectSchema(props: Props) {
   let slug: string;
   let title: string;
@@ -17,6 +28,8 @@ export default function ProjectSchema(props: Props) {
   let imageUrls: string[];
   let url: string;
   let projectUrl: string | null = null;
+  let latPublic: number | null = null;
+  let lngPublic: number | null = null;
 
   if ("geoPost" in props) {
     const geoPost = props.geoPost!;
@@ -29,6 +42,8 @@ export default function ProjectSchema(props: Props) {
     serviceSlug = geoPost.service_slug ?? "roofing";
     imageUrls = geoPost.gallery.length > 0 ? geoPost.gallery : geoPost.heroImage ? [geoPost.heroImage] : [];
     url = canonicalUrl(`/services/${serviceSlug}`);
+    latPublic = geoPost.lat_public ?? null;
+    lngPublic = geoPost.lng_public ?? null;
     if (geoPost.slug) {
       projectUrl = canonicalUrl(`/projects/${geoPost.slug}`);
     }
@@ -43,6 +58,8 @@ export default function ProjectSchema(props: Props) {
     serviceSlug = project.service_slug;
     imageUrls = (project.photos ?? []).map((photo) => photo.public_url);
     url = canonicalUrl(`/projects/${slug}`);
+    latPublic = project.lat_public ?? null;
+    lngPublic = project.lng_public ?? null;
   }
 
   const relatedServiceArea = canonicalUrl(`/service-areas/${neighborhoodSlug(neighborhood)}`);
@@ -60,7 +77,8 @@ export default function ProjectSchema(props: Props) {
         addressLocality: city,
         addressRegion: province,
         addressCountry: "CA"
-      }
+      },
+      geo: buildNeighborhoodGeo(latPublic, lngPublic)
     },
     hasPart: {
       "@type": "Project",
@@ -71,7 +89,8 @@ export default function ProjectSchema(props: Props) {
       image: imageUrls,
       areaServed: {
         "@type": "Place",
-        name: `${neighborhood}, ${city}`
+        name: `${neighborhood}, ${city}`,
+        geo: buildNeighborhoodGeo(latPublic, lngPublic)
       },
       isRelatedTo: [relatedServiceArea]
     }

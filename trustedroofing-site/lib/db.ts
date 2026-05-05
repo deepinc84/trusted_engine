@@ -628,9 +628,29 @@ export async function getProjectById(id: string): Promise<Project | null> {
 
 export async function listGeoPosts(
   limit?: number | null,
-  filters?: { serviceSlugs?: string[] }
+  filters?: { serviceSlugs?: string[]; includeKeywords?: string[]; excludeKeywords?: string[] }
 ): Promise<ResolvedGeoPost[]> {
-  noStore();
+  const keywordText = (geoPost: GeoPost) => [
+    geoPost.service_slug,
+    geoPost.title,
+    geoPost.summary,
+    geoPost.content
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const normalizedIncludeKeywords = filters?.includeKeywords
+    ?.map((keyword) => keyword.trim().toLowerCase())
+    .filter((keyword) => keyword.length > 0) ?? [];
+  const normalizedExcludeKeywords = filters?.excludeKeywords
+    ?.map((keyword) => keyword.trim().toLowerCase())
+    .filter((keyword) => keyword.length > 0) ?? [];
+
+  const applyKeywordFilters = (geoPosts: GeoPost[]) => geoPosts.filter((geoPost) => {
+    const text = keywordText(geoPost);
+    if (normalizedIncludeKeywords.length > 0 && !normalizedIncludeKeywords.some((keyword) => text.includes(keyword))) return false;
+    if (normalizedExcludeKeywords.length > 0 && normalizedExcludeKeywords.some((keyword) => text.includes(keyword))) return false;
+    return true;
+  });
+
   const resolveGeoPosts = async (geoPosts: GeoPost[]) => {
     const imageSets = await getProjectImageSets(geoPosts.map((geoPost) => geoPost.project_id));
 
@@ -669,22 +689,22 @@ export async function listGeoPosts(
 
       const serviceSlugs = filters?.serviceSlugs?.filter((slug) => typeof slug === "string" && slug.length > 0) ?? [];
       if (serviceSlugs.length > 0) query = query.in("service_slug", serviceSlugs);
-      if (limit) query = query.limit(limit);
+      if (limit && normalizedIncludeKeywords.length === 0 && normalizedExcludeKeywords.length === 0) query = query.limit(limit);
 
       const { data } = await query;
 
-      const geoPosts = ((data ?? []) as GeoPost[]).filter((geoPost) => !!geoPost.slug);
+      const geoPosts = applyKeywordFilters(((data ?? []) as GeoPost[]).filter((geoPost) => !!geoPost.slug)).slice(0, limit ?? undefined);
       return resolveGeoPosts(geoPosts);
     }
   }
 
   const serviceSlugs = filters?.serviceSlugs?.filter((slug) => typeof slug === "string" && slug.length > 0) ?? [];
-  const filtered = mockGeoPosts.filter((geoPost) => {
+  const filtered = applyKeywordFilters(mockGeoPosts.filter((geoPost) => {
     if (!geoPost.slug) return false;
     if (geoPost.status !== "published") return false;
     if (serviceSlugs.length > 0 && (!geoPost.service_slug || !serviceSlugs.includes(geoPost.service_slug))) return false;
     return true;
-  });
+  }));
   return resolveGeoPosts(filtered.slice(0, limit ?? undefined));
 }
 
