@@ -5,7 +5,7 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
-import { getQuoteArchiveByMaterial } from "@/lib/seo-engine";
+import { getAllQuoteNeighborhoods, getQuoteArchiveByMaterial } from "@/lib/seo-engine";
 
 export const metadata = buildMetadata({
   title: "Calgary quote archive",
@@ -15,7 +15,7 @@ export const metadata = buildMetadata({
 
 export const dynamic = "force-dynamic";
 
-function buildArchiveSchema(cards: Awaited<ReturnType<typeof getQuoteArchiveByMaterial>>[number]["cards"]) {
+function buildArchiveSchema(cards: Awaited<ReturnType<typeof getQuoteArchiveByMaterial>>[number]["cards"], neighborhoodGeoByKey: Record<string, { lat: number; lng: number }>) {
   const pricedCards = cards.filter((card) => typeof card.estimateLow === "number" || typeof card.estimateHigh === "number");
   const allLowPrices = pricedCards.flatMap((card) => typeof card.estimateLow === "number" ? [card.estimateLow] : []);
   const allHighPrices = pricedCards.flatMap((card) => typeof card.estimateHigh === "number" ? [card.estimateHigh] : []);
@@ -37,10 +37,21 @@ function buildArchiveSchema(cards: Awaited<ReturnType<typeof getQuoteArchiveByMa
     }
   };
 
-  const buildAreaServed = (card: Awaited<ReturnType<typeof getQuoteArchiveByMaterial>>[number]["cards"][number]) => ({
-    "@type": card.locationKind === "city" ? "City" : "AdministrativeArea",
-    name: card.locationKind === "city" ? card.city : card.locationLabel
-  });
+  const buildAreaServed = (card: Awaited<ReturnType<typeof getQuoteArchiveByMaterial>>[number]["cards"][number]) => {
+    const key = `${card.city}|${card.locality}`;
+    const geo = card.locationKind === "neighborhood" ? neighborhoodGeoByKey[key] : undefined;
+    return {
+      "@type": card.locationKind === "city" ? "City" : "AdministrativeArea",
+      name: card.locationKind === "city" ? card.city : card.locationLabel,
+      ...(geo ? {
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: Number(geo.lat.toFixed(3)),
+          longitude: Number(geo.lng.toFixed(3))
+        }
+      } : {})
+    };
+  };
 
   const buildItemOffer = (card: Awaited<ReturnType<typeof getQuoteArchiveByMaterial>>[number]["cards"][number]) => {
     const lowPrice = typeof card.estimateLow === "number" ? card.estimateLow : undefined;
@@ -158,7 +169,14 @@ export default async function QuotesArchivePage() {
   const cards = sections.flatMap((section) => section.cards);
   const cityCount = new Set(cards.map((card) => card.city)).size;
 
-  const schema = buildArchiveSchema(cards);
+  const neighborhoods = await getAllQuoteNeighborhoods();
+  const neighborhoodGeoByKey = neighborhoods.reduce<Record<string, { lat: number; lng: number }>>((acc, item) => {
+    if (typeof item.centroidLat !== "number" || typeof item.centroidLng !== "number") return acc;
+    acc[`${item.city}|${item.neighborhood}`] = { lat: item.centroidLat, lng: item.centroidLng };
+    return acc;
+  }, {});
+
+  const schema = buildArchiveSchema(cards, neighborhoodGeoByKey);
   const lastUpdated = cards[0]?.queriedAt
     ? new Date(cards[0].queriedAt).toLocaleDateString("en-CA", {
       year: "numeric",
