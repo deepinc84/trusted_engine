@@ -11,6 +11,10 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
 
   const project = await getProjectById(post.project_id);
   const services = await listServices();
+  const serviceOptions = [
+    ...services.map((service) => ({ slug: service.slug, title: service.title })),
+    { slug: "james-hardie-siding", title: "James Hardie siding" }
+  ].filter((item, index, arr) => arr.findIndex((candidate) => candidate.slug === item.slug) === index);
   const projectUrl = project?.slug ? `/projects/${project.slug}` : "";
   const defaultAnchorText = project?.title ? `See the full ${project.title} project` : "View the related project";
   const projectPhotoOptions = (project?.photos ?? []).map((photo) => photo.public_url);
@@ -41,8 +45,8 @@ export default async function GeoPostDetailPage({ params }: { params: { id: stri
           Service category
           <select className="input" name="service_slug" defaultValue={post.service_slug ?? project?.service_slug ?? ""}>
             <option value="">Select service category</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.slug}>{service.title}</option>
+            {serviceOptions.map((service) => (
+              <option key={service.slug} value={service.slug}>{service.title}</option>
             ))}
           </select>
         </label>
