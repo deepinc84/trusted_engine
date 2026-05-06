@@ -2267,6 +2267,7 @@ export async function listLeadsByInstantQuoteIds(quoteIds: string[]) {
 
 export async function upsertLifecycleLeadFromSubmission(input: {
   legacy_address_query_id: string;
+  address?: string | null;
   name: string | null;
   email: string;
   phone: string | null;
@@ -2278,7 +2279,7 @@ export async function upsertLifecycleLeadFromSubmission(input: {
 }) {
   const instantQuote = await upsertInstantQuoteFromAddressQuery({
     legacy_address_query_id: input.legacy_address_query_id,
-    address: "",
+    address: input.address ?? "",
     service_type: input.service_type,
     quote_low: input.quote_low,
     quote_high: input.quote_high
