@@ -161,6 +161,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
   const [sidingMaterial, setSidingMaterial] = useState<SidingMaterial>("vinyl");
   const [benchmarkQuotedAmount, setBenchmarkQuotedAmount] = useState<string>("");
   const [benchmarkLabel, setBenchmarkLabel] = useState<string>("");
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [isResumedEstimate, setIsResumedEstimate] = useState(false);
 
   const selectedLabel = useMemo(
     () => quoteScopes.find((scope) => scope.value === selectedScope)?.label,
@@ -202,6 +204,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
         setPlaceId(payload.estimate.placeId ?? null);
         setLat(payload.estimate.lat ?? null);
         setLng(payload.estimate.lng ?? null);
+        setIsResumedEstimate(true);
+        setPdfDownloaded(false);
         setStatus("Estimate restored. Continue to request your full proposal when ready.");
       } catch {
         // keep standard flow if restore fails
@@ -369,6 +373,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
       setLat(result.lat ?? lat);
       setLng(result.lng ?? lng);
       setStep(2);
+      setIsResumedEstimate(false);
+      setPdfDownloaded(false);
       setStatus(
         result.areaSource === "regional"
           ? `Estimate ready using trusted regional intelligence fallback. Model debug: ${result.solarDebug ?? "no debug message"} (trace: ${result.solarRequestId ?? "n/a"})`
@@ -425,7 +431,11 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
           sidingHigh: selectedSidingRange?.high ?? estimate.extras.sidingVinyl.high,
           leadScore: estimate.complexityScore,
           dataSource: estimate.dataSource,
-          serviceScope: selectedScope
+          serviceScope: selectedScope,
+          quoteLeadSource: isResumedEstimate ? "resumed_step_2" : "initial_step_2",
+          isResumedLead: isResumedEstimate,
+          pdfDownloaded,
+          pdfDownloadStatus: pdfDownloaded ? "downloaded_before_submission" : "not_downloaded_before_submission"
         })
       });
 
@@ -464,6 +474,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
     setSidingMaterial("vinyl");
     setBenchmarkQuotedAmount("");
     setBenchmarkLabel("");
+    setPdfDownloaded(false);
+    setIsResumedEstimate(false);
     setStatus(null);
     setError(null);
   };
@@ -485,6 +497,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
     setSidingMaterial("vinyl");
     setBenchmarkQuotedAmount("");
     setBenchmarkLabel("");
+    setPdfDownloaded(false);
+    setIsResumedEstimate(false);
     setStatus(null);
     setError(null);
   };
@@ -518,6 +532,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
       link.download = `instant-estimate-${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
+      setPdfDownloaded(true);
       link.remove();
       URL.revokeObjectURL(url);
     } catch {
@@ -731,8 +746,8 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
               <input className="input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
             </label>
             <label>
-              Phone (optional if you prefer email only)
-              <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(403) 555-0100" />
+              Phone number
+              <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(403) 555-0100" required />
             </label>
             <fieldset style={{ border: "1px solid rgba(30,58,138,0.16)", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
               <legend style={{ padding: "0 6px", fontWeight: 600 }}>Where are you in the process?</legend>
@@ -756,7 +771,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
             <button className="button button--ghost" type="button" onClick={() => void downloadEstimatePdf()}>
               Download free estimate proposal (PDF)
             </button>
-            <button className="button" type="submit" disabled={submitting || !name || !email}>
+            <button className="button" type="submit" disabled={submitting || !name || !email || !phone}>
               {submitting ? "Submitting..." : "Send me my detailed proposal"}
             </button>
             <p style={{ margin: 0, fontSize: 13, color: "var(--color-muted)" }}>• No obligation &nbsp; • No spam &nbsp; • Response within 2 business days</p>

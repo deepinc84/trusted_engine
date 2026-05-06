@@ -45,6 +45,85 @@ async function sendEmail(input: {
   }
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function valueFromForm(form: Record<string, unknown>, key: string, fallback = "n/a") {
+  const value = form[key];
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
+}
+
+function currencyRange(low: unknown, high: unknown) {
+  const lowNumber = typeof low === "number" ? low : Number(low);
+  const highNumber = typeof high === "number" ? high : Number(high);
+  if (!Number.isFinite(lowNumber) || !Number.isFinite(highNumber)) return "n/a";
+  return `$${Math.round(lowNumber).toLocaleString()} - $${Math.round(highNumber).toLocaleString()}`;
+}
+
+function serviceLabel(scope: unknown) {
+  if (scope === "all") return "Full exterior";
+  if (scope === "vinyl_siding") return "Vinyl siding";
+  if (scope === "hardie_siding") return "Hardie siding";
+  if (scope === "eavestrough") return "Eavestrough";
+  if (scope === "roofing") return "Roofing";
+  return String(scope ?? "unknown");
+}
+
+function yesNo(value: unknown) {
+  return value === true ? "Yes" : "No";
+}
+
+function buildInstantQuoteSummary(input: {
+  lead: LeadRecord;
+  instantQuote: InstantQuoteRecord;
+  submittedForm: Record<string, unknown>;
+  timestamp: string;
+}) {
+  const form = input.submittedForm;
+  const requestedScope = valueFromForm(form, "serviceScope", input.lead.service_type ?? input.instantQuote.service_type ?? "unknown");
+  const leadSource = valueFromForm(form, "quoteLeadSource", "initial_step_2");
+  const pdfDownloaded = form.pdfDownloaded === true;
+  const pdfStatus = valueFromForm(
+    form,
+    "pdfDownloadStatus",
+    pdfDownloaded ? "downloaded_before_submission" : "not_downloaded_before_submission"
+  );
+
+  return [
+    { label: "Full address", value: input.instantQuote.address || valueFromForm(form, "address") },
+    { label: "Quote requested", value: serviceLabel(requestedScope) },
+    { label: "Lead source", value: leadSource === "resumed_step_2" ? "Resumed step 2 lead" : "Initial instant quote step 2 lead" },
+    { label: "Resumed lead", value: yesNo(form.isResumedLead === true || leadSource === "resumed_step_2") },
+    { label: "PDF downloaded before submitting", value: yesNo(pdfDownloaded) },
+    { label: "PDF download status", value: pdfStatus },
+    { label: "Name", value: input.lead.name ?? valueFromForm(form, "name") },
+    { label: "Phone", value: input.lead.phone ?? valueFromForm(form, "phone") },
+    { label: "Email", value: input.lead.email },
+    { label: "Budget / process answer", value: input.lead.budget_response ?? valueFromForm(form, "budgetResponse") },
+    { label: "Timeline", value: input.lead.timeline ?? valueFromForm(form, "timeline") },
+    { label: "Primary range", value: currencyRange(input.lead.quote_low ?? form.goodLow, input.lead.quote_high ?? form.goodHigh) },
+    { label: "Better roof range", value: currencyRange(form.betterLow, form.betterHigh) },
+    { label: "Best roof range", value: currencyRange(form.bestLow, form.bestHigh) },
+    { label: "Eavestrough range", value: currencyRange(form.eavesLow, form.eavesHigh) },
+    { label: "Siding range", value: currencyRange(form.sidingLow, form.sidingHigh) },
+    { label: "Roof area", value: `${valueFromForm(form, "roofAreaSqft")} sq ft` },
+    { label: "Roof squares", value: valueFromForm(form, "roofSquares") },
+    { label: "Pitch", value: valueFromForm(form, "pitch") },
+    { label: "Lead score", value: valueFromForm(form, "leadScore") },
+    { label: "Model / data source", value: valueFromForm(form, "dataSource", input.instantQuote.service_type ?? "n/a") },
+    { label: "Place ID", value: valueFromForm(form, "placeId") },
+    { label: "Coordinates", value: `${valueFromForm(form, "lat")}, ${valueFromForm(form, "lng")}` },
+    { label: "Submitted at", value: input.timestamp }
+  ];
+}
+
 export async function processLeadSubmissionEmails(input: {
   lead: LeadRecord;
   instantQuote: InstantQuoteRecord;
@@ -62,28 +141,25 @@ export async function processLeadSubmissionEmails(input: {
     hour: "2-digit",
     minute: "2-digit"
   });
-  const range = input.instantQuote.quote_low !== null && input.instantQuote.quote_high !== null
-    ? `$${input.instantQuote.quote_low.toLocaleString()} - $${input.instantQuote.quote_high.toLocaleString()}`
-    : "Range pending";
+  const summary = buildInstantQuoteSummary({ ...input, timestamp });
 
   if (!alreadySent.has("internal")) {
+    const requestedScope = valueFromForm(input.submittedForm, "serviceScope", input.lead.service_type ?? "unknown");
+    const leadSource = valueFromForm(input.submittedForm, "quoteLeadSource", "initial_step_2");
+    const textRows = summary.map((row) => `${row.label}: ${row.value}`);
+    const htmlRows = summary.map((row) => `<tr><th align="left" style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(row.label)}</th><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(row.value)}</td></tr>`).join("");
     const internalBody = {
       to: "info@trustedexteriors.ca",
-      subject: `New instant quote lead: ${input.instantQuote.address}`,
+      subject: `${leadSource === "resumed_step_2" ? "Resumed" : "New"} instant quote lead: ${serviceLabel(requestedScope)} - ${input.instantQuote.address}`,
       text: [
-        `Address: ${input.instantQuote.address}`,
-        `Quote range: ${range}`,
-        `Service type: ${input.instantQuote.service_type ?? "unknown"}`,
-        `Customer email: ${input.lead.email}`,
-        `Timestamp: ${timestamp}`,
-        `Form data: ${JSON.stringify(input.submittedForm, null, 2)}`
+        ...textRows,
+        "",
+        `All submitted instant quote data: ${JSON.stringify(input.submittedForm, null, 2)}`
       ].join("\n"),
-      html: `<p><strong>Address:</strong> ${input.instantQuote.address}</p>
-<p><strong>Quote range:</strong> ${range}</p>
-<p><strong>Service type:</strong> ${input.instantQuote.service_type ?? "unknown"}</p>
-<p><strong>Customer email:</strong> ${input.lead.email}</p>
-<p><strong>Timestamp:</strong> ${timestamp}</p>
-<pre>${JSON.stringify(input.submittedForm, null, 2)}</pre>`
+      html: `<h2>Instant quote lead</h2>
+<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:760px;">${htmlRows}</table>
+<h3>All submitted instant quote data</h3>
+<pre style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;padding:12px;border-radius:8px;">${escapeHtml(JSON.stringify(input.submittedForm, null, 2))}</pre>`
     };
     const internalResult = await sendEmail(internalBody);
     await upsertLeadEmailNotification({
@@ -102,7 +178,7 @@ export async function processLeadSubmissionEmails(input: {
       subject: "We received your estimate request",
       text: `Thanks for your submission. We've received your request for ${input.instantQuote.address}.\n\nOur team is reviewing your site-specific details and preparing a proposal. We'll follow up shortly.`,
       html: `<p>Thanks for your submission.</p>
-<p>We received your estimate request for <strong>${input.instantQuote.address}</strong>.</p>
+<p>We received your estimate request for <strong>${escapeHtml(input.instantQuote.address)}</strong>.</p>
 <p>Our team is now reviewing your site-specific details and preparing your proposal. We'll follow up shortly.</p>`
     };
     const customerResult = await sendEmail(customerBody);
