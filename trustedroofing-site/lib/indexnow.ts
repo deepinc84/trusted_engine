@@ -55,7 +55,7 @@ export function buildGeoPostIndexNowUrls(slug: string) {
   return normalizeIndexNowUrls([
     `${siteUrl}/`,
     `${siteUrl}/projects`,
-    `${siteUrl}/geo-posts/${slug}`
+    `${siteUrl}/projects/${slug}`
   ]);
 }
 
