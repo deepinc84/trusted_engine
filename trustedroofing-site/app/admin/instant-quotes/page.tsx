@@ -32,6 +32,7 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
   const leadCount = quotes.filter((quote) => !quote.project_id && (quote.has_contact_submission || leadIds.has(quote.id))).length;
   const linkedCount = quotes.filter((quote) => quote.project_id).length;
   const marketingCount = quotes.filter((quote) => quote.is_marketing).length;
+  const quoteEventCount = quotes.filter((quote) => quote.source === "quote_events").length;
 
   return (
     <section className="section admin-shell">
@@ -93,7 +94,7 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
           <p className="admin-kicker">Results</p>
           <h2 className="homev3-title">Quote events</h2>
         </div>
-        <p>{quotes.length} record{quotes.length === 1 ? "" : "s"} shown. Tag buttons update the record and reload this dashboard.</p>
+        <p>{quotes.length} record{quotes.length === 1 ? "" : "s"} shown{quoteEventCount ? `, including ${quoteEventCount} legacy quote_event record${quoteEventCount === 1 ? "" : "s"}` : ""}. Tag buttons update instant quote records.</p>
       </div>
 
       {quotes.length > 0 ? (
@@ -118,7 +119,7 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
                 </div>
                 <div role="cell">
                   <strong>{money(quote.quote_low)} - {money(quote.quote_high)}</strong>
-                  <span>{quote.is_marketing ? "Marketing" : "Internal"}</span>
+                  <span>{quote.source === "quote_events" ? "Quote event fallback" : quote.is_marketing ? "Marketing" : "Internal"}</span>
                 </div>
                 <div role="cell">
                   <span className={`admin-status-pill ${statusClass}`}>{state}</span>
@@ -128,15 +129,21 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
                     <Link href={`/admin/projects/${quote.project_id}/edit`}>Open linked project</Link>
                   ) : lead ? (
                     <span>{lead.name ?? "Unnamed lead"} · {lead.email}{lead.phone ? ` · ${lead.phone}` : ""}</span>
+                  ) : quote.contact_email || quote.contact_phone || quote.contact_name ? (
+                    <span>{quote.contact_name ?? "Quote event lead"}{quote.contact_email ? ` · ${quote.contact_email}` : ""}{quote.contact_phone ? ` · ${quote.contact_phone}` : ""}</span>
                   ) : (
                     <span className="admin-muted">No contact submitted</span>
                   )}
                 </div>
                 <div className="admin-action-row" role="cell">
-                  <form method="POST" action={`/admin/instant-quotes/${quote.id}`}>
-                    <input type="hidden" name="is_marketing" value={quote.is_marketing ? "false" : "true"} />
-                    <button className="button" type="submit">Mark {quote.is_marketing ? "internal" : "marketing"}</button>
-                  </form>
+                  {quote.source === "quote_events" ? (
+                    <span className="admin-muted">Legacy quote_event</span>
+                  ) : (
+                    <form method="POST" action={`/admin/instant-quotes/${quote.id}`}>
+                      <input type="hidden" name="is_marketing" value={quote.is_marketing ? "false" : "true"} />
+                      <button className="button" type="submit">Mark {quote.is_marketing ? "internal" : "marketing"}</button>
+                    </form>
+                  )}
                   {quote.project_id ? <Link className="button button--ghost" href={`/admin/projects/${quote.project_id}/edit`}>Project</Link> : null}
                 </div>
               </article>

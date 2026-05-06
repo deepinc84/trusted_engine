@@ -1442,6 +1442,10 @@ export type InstantQuoteRecord = {
   project_id: string | null;
   is_marketing: boolean;
   created_at: string;
+  source?: "instant_quotes" | "quote_events" | "mock";
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
 };
 
 export type LeadRecord = {
@@ -2084,6 +2088,71 @@ export async function findHistoricalRoofProfile(input: {
   };
 }
 
+type QuoteEventAdminRow = {
+  id: string;
+  created_at: string | null;
+  status: string | null;
+  service_type?: string | null;
+  service_slug?: string | null;
+  address?: string | null;
+  address_private?: string | null;
+  estimate_low?: number | null;
+  estimate_high?: number | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
+function normalizeInstantQuote(row: InstantQuoteRecord): InstantQuoteRecord {
+  return { ...row, source: row.source ?? "instant_quotes" };
+}
+
+function mapQuoteEventToInstantQuote(row: QuoteEventAdminRow): InstantQuoteRecord {
+  const status = String(row.status ?? "").toLowerCase();
+  const hasContact = Boolean(row.email || row.phone || row.name || status.includes("lead") || status.includes("contact") || status === "step2");
+
+  return {
+    id: row.id,
+    legacy_address_query_id: row.id,
+    address: row.address ?? row.address_private ?? "Unknown address",
+    service_type: row.service_type ?? row.service_slug ?? null,
+    quote_low: typeof row.estimate_low === "number" ? row.estimate_low : null,
+    quote_high: typeof row.estimate_high === "number" ? row.estimate_high : null,
+    has_contact_submission: hasContact,
+    project_id: null,
+    is_marketing: false,
+    created_at: row.created_at ?? new Date().toISOString(),
+    source: "quote_events",
+    contact_name: row.name ?? null,
+    contact_email: row.email ?? null,
+    contact_phone: row.phone ?? null
+  };
+}
+
+function filterInstantQuoteRows(rows: InstantQuoteRecord[], filters?: {
+  status?: "all" | "quote_only" | "lead_submitted" | "linked_project";
+  is_marketing?: "all" | "marketing" | "internal";
+  from?: string | null;
+  to?: string | null;
+  q?: string | null;
+}) {
+  return rows
+    .filter((row) => !filters?.q || row.address.toLowerCase().includes(filters.q.toLowerCase()))
+    .filter((row) => !filters?.from || row.created_at >= filters.from)
+    .filter((row) => !filters?.to || row.created_at <= filters.to)
+    .filter((row) => filters?.is_marketing === "all" || !filters?.is_marketing
+      ? true
+      : filters.is_marketing === "marketing"
+        ? row.is_marketing
+        : !row.is_marketing)
+    .filter((row) => {
+      if (filters?.status === "quote_only") return !row.has_contact_submission && !row.project_id;
+      if (filters?.status === "lead_submitted") return row.has_contact_submission && !row.project_id;
+      if (filters?.status === "linked_project") return !!row.project_id;
+      return true;
+    });
+}
+
 export async function listAdminInstantQuotes(filters?: {
   status?: "all" | "quote_only" | "lead_submitted" | "linked_project";
   is_marketing?: "all" | "marketing" | "internal";
@@ -2096,33 +2165,61 @@ export async function listAdminInstantQuotes(filters?: {
   if (getDataMode() === "supabase") {
     const client = getServiceClient() ?? getAnonClient();
     if (!client) return [] as InstantQuoteRecord[];
-    let query = client.from("instant_quotes").select("*").order("created_at", { ascending: false }).limit(limit);
-    if (filters?.q) query = query.ilike("address", `%${filters.q}%`);
-    if (filters?.from) query = query.gte("created_at", filters.from);
-    if (filters?.to) query = query.lte("created_at", filters.to);
-    if (filters?.is_marketing === "marketing") query = query.eq("is_marketing", true);
-    if (filters?.is_marketing === "internal") query = query.eq("is_marketing", false);
-    if (filters?.status === "quote_only") query = query.eq("has_contact_submission", false).is("project_id", null);
-    if (filters?.status === "lead_submitted") query = query.eq("has_contact_submission", true).is("project_id", null);
-    if (filters?.status === "linked_project") query = query.not("project_id", "is", null);
-    const { data } = await query;
-    return (data ?? []) as InstantQuoteRecord[];
+
+    let instantQuery = client.from("instant_quotes").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (filters?.q) instantQuery = instantQuery.ilike("address", `%${filters.q}%`);
+    if (filters?.from) instantQuery = instantQuery.gte("created_at", filters.from);
+    if (filters?.to) instantQuery = instantQuery.lte("created_at", filters.to);
+    if (filters?.is_marketing === "marketing") instantQuery = instantQuery.eq("is_marketing", true);
+    if (filters?.is_marketing === "internal") instantQuery = instantQuery.eq("is_marketing", false);
+    if (filters?.status === "quote_only") instantQuery = instantQuery.eq("has_contact_submission", false).is("project_id", null);
+    if (filters?.status === "lead_submitted") instantQuery = instantQuery.eq("has_contact_submission", true).is("project_id", null);
+    if (filters?.status === "linked_project") instantQuery = instantQuery.not("project_id", "is", null);
+
+    const { data: instantQuoteData } = await instantQuery;
+    const instantRows = ((instantQuoteData ?? []) as InstantQuoteRecord[]).map(normalizeInstantQuote);
+    const instantLegacyIds = new Set(instantRows.map((row) => row.legacy_address_query_id).filter(Boolean));
+
+    const shouldIncludeQuoteEvents = filters?.is_marketing !== "marketing" && filters?.status !== "linked_project";
+    let quoteEventRows: InstantQuoteRecord[] = [];
+
+    if (shouldIncludeQuoteEvents) {
+      let eventQuery = client
+        .from("quote_events")
+        .select("id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (filters?.q) eventQuery = eventQuery.or(`address.ilike.%${filters.q}%,address_private.ilike.%${filters.q}%`);
+      if (filters?.from) eventQuery = eventQuery.gte("created_at", filters.from);
+      if (filters?.to) eventQuery = eventQuery.lte("created_at", filters.to);
+
+      const { data: eventData, error: eventError } = await eventQuery;
+      if (!eventError) {
+        quoteEventRows = ((eventData ?? []) as QuoteEventAdminRow[])
+          .filter((row) => !instantLegacyIds.has(row.id))
+          .map(mapQuoteEventToInstantQuote);
+      } else {
+        let compactEventQuery = client
+          .from("quote_events")
+          .select("id, created_at, status, service_type, address, estimate_low, estimate_high")
+          .order("created_at", { ascending: false })
+          .limit(limit);
+        if (filters?.q) compactEventQuery = compactEventQuery.ilike("address", `%${filters.q}%`);
+        if (filters?.from) compactEventQuery = compactEventQuery.gte("created_at", filters.from);
+        if (filters?.to) compactEventQuery = compactEventQuery.lte("created_at", filters.to);
+        const { data: compactEventData } = await compactEventQuery;
+        quoteEventRows = ((compactEventData ?? []) as QuoteEventAdminRow[])
+          .filter((row) => !instantLegacyIds.has(row.id))
+          .map(mapQuoteEventToInstantQuote);
+      }
+    }
+
+    return filterInstantQuoteRows([...instantRows, ...quoteEventRows], filters)
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+      .slice(0, limit);
   }
 
-  return mockInstantQuotes
-    .filter((row) => !filters?.q || row.address.toLowerCase().includes(filters.q.toLowerCase()))
-    .filter((row) => filters?.is_marketing === "all" || !filters?.is_marketing
-      ? true
-      : filters.is_marketing === "marketing"
-        ? row.is_marketing
-        : !row.is_marketing)
-    .filter((row) => {
-      if (filters?.status === "quote_only") return !row.has_contact_submission && !row.project_id;
-      if (filters?.status === "lead_submitted") return row.has_contact_submission && !row.project_id;
-      if (filters?.status === "linked_project") return !!row.project_id;
-      return true;
-    })
-    .slice(0, limit);
+  return filterInstantQuoteRows(mockInstantQuotes.map((row) => ({ ...row, source: "mock" })), filters).slice(0, limit);
 }
 
 export async function setInstantQuoteMarketingTag(id: string, is_marketing: boolean) {
