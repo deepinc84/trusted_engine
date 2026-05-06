@@ -16,9 +16,9 @@ const adminTabs: AdminTab[] = [
 
 export default function AdminTabs({ currentPath }: { currentPath: string }) {
   return (
-    <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 10 }}>
+    <div className="admin-tabs">
       {adminTabs.map((tab) => {
-        const isActive = currentPath === tab.href || currentPath.startsWith(`${tab.href}/`);
+        const isActive = tab.href === "/admin" ? currentPath === tab.href : currentPath === tab.href || currentPath.startsWith(`${tab.href}/`);
         return (
           <Link
             key={tab.href}
