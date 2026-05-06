@@ -38,7 +38,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
         item: {
           "@type": "BlogPosting",
           headline: post.title ?? "Roof replacement update",
-          url: post.slug ? `/geo-posts/${post.slug}` : "/projects",
+          url: post.slug ? `/projects/${post.slug}` : "/projects",
           datePublished: post.published_at ?? post.created_at,
           contentLocation: {
             "@type": "Place",
@@ -92,7 +92,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
                 {gallery.map((post) => {
                   const title = post.title ?? post.slug ?? "Project update";
-                  const fullPostHref = post.slug ? `/geo-posts/${post.slug}` : "/projects";
+                  const fullPostHref = post.slug ? `/projects/${post.slug}` : "/projects";
                   const projectLink = projectLinkFromContent(post.content);
                   const heroImage =
                     post.heroImage ??
