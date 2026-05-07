@@ -126,7 +126,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
 
                         {cardOpen ? (
                           <>
-                            <p style={{ margin: 0, fontSize: ".96rem" }}>{cleanContent(post.content) || post.summary || "Published project update."}</p>
+                            <p className="formatted-text" style={{ margin: 0, fontSize: ".96rem" }}>{cleanContent(post.content) || post.summary || "Published project update."}</p>
                             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                               <Link href={fullPostHref}>Open full project update</Link>
                               <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "Related project"}</Link>

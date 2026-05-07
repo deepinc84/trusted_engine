@@ -1450,7 +1450,7 @@ main {
   color: #64748b;
 }
 
-.project-formatted-text {
+.formatted-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
