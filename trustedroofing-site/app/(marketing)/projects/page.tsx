@@ -5,12 +5,26 @@ import PageHero from "@/components/ui/PageHero";
 import { listProjects, listServices } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
+import ProjectCard from "@/components/ProjectCard";
 import ProjectsExplorer from "@/components/ProjectsExplorer";
+import NeighborhoodChips from "@/components/ui/NeighborhoodChips";
 
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
   loading: () => <p className="homev3-copy">Loading FAQ…</p>
 });
+
+const FEATURED_PROJECT_COUNT = 3;
+const PROJECTS_ANCHOR = "remaining-projects";
+
+function toServiceFilterLink(slug: string | null) {
+  if (!slug) return `/projects#${PROJECTS_ANCHOR}`;
+  return `/projects?service_slug=${encodeURIComponent(slug)}#${PROJECTS_ANCHOR}`;
+}
+
+function toNeighborhoodFilterLink(name: string) {
+  return `/projects?neighborhood=${encodeURIComponent(name)}#${PROJECTS_ANCHOR}`;
+}
 
 const faqs = [
   { question: "Are these real completed roofing and exterior projects in Calgary?", answer: "Yes. These are real completed jobs, not stock examples. Each project is tied to an actual scope, materials, and location so you can see how work is handled in real conditions." },
@@ -30,10 +44,28 @@ export const metadata = buildMetadata({
 });
 
 export default async function ProjectsPage({ searchParams }: { searchParams?: { service_slug?: string; neighborhood?: string } }) {
-  const [services, projects] = await Promise.all([
+  const selectedServiceSlug = searchParams?.service_slug ?? null;
+  const selectedNeighborhood = searchParams?.neighborhood ?? null;
+  const hasActiveFilter = Boolean(selectedServiceSlug || selectedNeighborhood);
+
+  const [services, allProjects, filteredProjects] = await Promise.all([
     listServices(),
-    listProjects({ service_slug: searchParams?.service_slug ?? null, neighborhood: searchParams?.neighborhood ?? null, include_unpublished: false, limit: 200 })
+    listProjects({ include_unpublished: false, limit: 200 }),
+    hasActiveFilter
+      ? listProjects({ service_slug: selectedServiceSlug, neighborhood: selectedNeighborhood, include_unpublished: false, limit: 200 })
+      : Promise.resolve(null)
   ]);
+
+  const featuredProjects = allProjects.slice(0, FEATURED_PROJECT_COUNT);
+  const remainingProjects = hasActiveFilter
+    ? filteredProjects ?? []
+    : allProjects.slice(FEATURED_PROJECT_COUNT);
+  const serviceChips = [
+    { label: "All services", href: toServiceFilterLink(null) },
+    ...services.map((service) => ({ label: service.title, href: toServiceFilterLink(service.slug) }))
+  ];
+  const neighborhoodChips = Array.from(new Set(allProjects.map((project) => project.neighborhood).filter(Boolean)))
+    .map((name) => ({ label: name as string, href: toNeighborhoodFilterLink(name as string) }));
 
   return (
     <>
@@ -42,6 +74,31 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
         title="Real Calgary Roofing and Exterior Projects"
         description="This page shows completed roofing and exterior work across Calgary and surrounding areas. No stock photos, no filler examples."
       />
+      <section className="ui-page-section">
+        <PageContainer>
+          <div>
+            <NeighborhoodChips chips={serviceChips} />
+            <NeighborhoodChips chips={neighborhoodChips} />
+          </div>
+
+          {featuredProjects.length ? (
+            <div style={{ marginTop: 24 }}>
+              <article className="ui-card" style={{ marginBottom: 16 }}>
+                <h2>Featured projects</h2>
+                <p>
+                  Showing the 3 most recent completed projects first. Use the filters to jump to the matching project database below.
+                </p>
+              </article>
+
+              <div className="ui-grid ui-grid--projects">
+                {featuredProjects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </PageContainer>
+      </section>
       <section className="ui-page-section">
         <PageContainer>
           <article className="ui-card">
@@ -90,10 +147,11 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
       <section className="ui-page-section">
         <PageContainer>
           <ProjectsExplorer
-            projects={projects}
+            projects={remainingProjects}
+            filterProjects={allProjects}
             services={services}
-            selectedServiceSlug={searchParams?.service_slug ?? null}
-            selectedNeighborhood={searchParams?.neighborhood ?? null}
+            selectedServiceSlug={selectedServiceSlug}
+            selectedNeighborhood={selectedNeighborhood}
           />
         </PageContainer>
       </section>
