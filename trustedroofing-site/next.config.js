@@ -34,6 +34,16 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/geo-posts",
+        destination: "/services",
+        permanent: true
+      },
+      {
+        source: "/geo-posts/:path*",
+        destination: "/services",
+        permanent: true
+      },
+      {
         source: "/quote",
         destination: "/online-estimate",
         permanent: true
