@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ResolvedGeoPost } from "@/lib/db";
@@ -19,6 +19,7 @@ function cleanContent(content: string | null): string {
 }
 
 export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: ResolvedGeoPost[]; heading?: string }) {
+  const sectionId = useId();
   const [isOpen, setIsOpen] = useState(true);
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
@@ -75,7 +76,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
               textAlign: "left",
             }}
             aria-expanded={isOpen}
-            aria-controls="service-project-updates"
+            aria-controls={sectionId}
           >
             <span>{heading ?? "Recent roof replacements"}</span>
             <span style={{ color: "#1f4f96", fontSize: "1.5rem", lineHeight: 1 }}>{isOpen ? "−" : "+"}</span>
@@ -88,8 +89,8 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
           />
 
           {isOpen ? (
-            <div id="service-project-updates" style={{ marginTop: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+            <div id={sectionId} style={{ marginTop: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, alignItems: "start" }}>
                 {gallery.map((post) => {
                   const title = post.title ?? post.slug ?? "Project update";
                   const fullPostHref = post.slug ? `/projects/${post.slug}` : "/projects";
@@ -99,10 +100,12 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                     getPlaceholderProjectImage({ seed: post.slug ?? post.id, neighborhood: post.neighborhood, city: post.city });
                   const cardOpen = expandedCards[post.id] ?? false;
 
+                  const detailsId = `${sectionId}-${post.id}-details`;
+
                   return (
-                    <article key={post.id} className="ui-card" style={{ padding: 0, overflow: "hidden" }}>
+                    <article key={post.id} className="ui-card" style={{ padding: 0, overflow: "hidden", alignSelf: "start" }}>
                       <Image src={heroImage} alt={title} width={520} height={300} style={{ width: "100%", height: 160, objectFit: "cover" }} />
-                      <div style={{ padding: 12, display: "grid", gap: 6 }}>
+                      <div style={{ padding: 12, display: "grid", gap: 6, alignItems: "start" }}>
                         <h3 style={{ margin: 0, fontSize: "1.35rem", lineHeight: 1.25 }}>{title}</h3>
                         <p style={{ margin: 0, color: "#667085", fontSize: ".95rem" }}>
                           {post.neighborhood ?? post.city ?? "Calgary"}, {post.province ?? "AB"}
@@ -110,6 +113,8 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                         <button
                           type="button"
                           onClick={() => setExpandedCards((prev) => ({ ...prev, [post.id]: !cardOpen }))}
+                          aria-expanded={cardOpen}
+                          aria-controls={detailsId}
                           style={{
                             justifySelf: "start",
                             border: "none",
@@ -119,20 +124,29 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                             padding: "7px 12px",
                             fontWeight: 700,
                             cursor: "pointer",
+                            alignSelf: "start",
                           }}
                         >
                           {cardOpen ? "Hide details" : "View details"}
                         </button>
 
-                        {cardOpen ? (
-                          <>
-                            <p style={{ margin: 0, fontSize: ".96rem" }}>{cleanContent(post.content) || post.summary || "Published project update."}</p>
-                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                              <Link href={fullPostHref}>Open full project update</Link>
-                              <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "Related project"}</Link>
-                            </div>
-                          </>
-                        ) : null}
+                        <div
+                          id={detailsId}
+                          style={{
+                            display: "grid",
+                            gap: 6,
+                            maxHeight: cardOpen ? "none" : 0,
+                            overflow: "hidden",
+                            opacity: cardOpen ? 1 : 0,
+                            pointerEvents: cardOpen ? "auto" : "none",
+                          }}
+                        >
+                          <p style={{ margin: 0, fontSize: ".96rem" }}>{cleanContent(post.content) || post.summary || "Published project update."}</p>
+                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                            <Link href={fullPostHref} tabIndex={cardOpen ? undefined : -1}>Open full project update</Link>
+                            <Link href={projectLink?.href ?? "/projects"} tabIndex={cardOpen ? undefined : -1}>{projectLink?.text ?? "Related project"}</Link>
+                          </div>
+                        </div>
                       </div>
                     </article>
                   );
