@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import DynamicSchema from "@/components/DynamicSchema";
 import ProjectCard from "@/components/ProjectCard";
 import QuoteCard from "@/components/QuoteCard";
@@ -8,28 +8,36 @@ import PageHero from "@/components/ui/PageHero";
 import { listProjects } from "@/lib/db";
 import { getAllQuoteNeighborhoods, getQuoteNeighborhoodBySlug } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
+import { normalizeNeighborhoodSlug } from "@/lib/serviceAreas";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const area = await getQuoteNeighborhoodBySlug(params.slug);
+  const normalizedSlug = normalizeNeighborhoodSlug(params.slug);
+  const area = await getQuoteNeighborhoodBySlug(normalizedSlug);
   if (!area) {
     return buildMetadata({
       title: "Service area not found",
       description: "The requested Calgary neighborhood page could not be found.",
-      path: `/service-areas/${params.slug}`
+      path: `/service-areas/${normalizedSlug}`
     });
   }
 
   return buildMetadata({
     title: `${area.neighborhood} roofing quotes`,
     description: `Live quote ranges, project proof, and neighborhood-specific roofing demand for ${area.neighborhood}, Calgary.`,
-    path: `/service-areas/${params.slug}`
+    path: `/service-areas/${normalizedSlug}`
   });
 }
 
 export default async function ServiceAreaDetailPage({ params }: { params: { slug: string } }) {
-  const area = await getQuoteNeighborhoodBySlug(params.slug);
+  const normalizedSlug = normalizeNeighborhoodSlug(params.slug);
+
+  if (params.slug !== normalizedSlug) {
+    permanentRedirect(`/service-areas/${normalizedSlug}`);
+  }
+
+  const area = await getQuoteNeighborhoodBySlug(normalizedSlug);
   if (!area) return notFound();
 
   const projects = await listProjects({
