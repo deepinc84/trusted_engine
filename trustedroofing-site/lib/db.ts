@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { unstable_noStore as noStore } from "next/cache";
 import { haversineKm } from "./geo";
-import { roundLatLng, sanitizeText } from "./sanitize";
+import { roundLatLng, sanitizeMultilineText, sanitizeText } from "./sanitize";
 import { getProjectPhotosBucketName } from "./storage";
 
 export type Service = {
@@ -798,8 +798,8 @@ function toProjectPayload(data: ProjectInput) {
   return {
     slug: normalizeSlug(data.slug),
     title: sanitizeText(data.title),
-    summary: sanitizeText(data.summary),
-    description: data.description ? sanitizeText(data.description) : null,
+    summary: sanitizeMultilineText(data.summary),
+    description: data.description ? sanitizeMultilineText(data.description) : null,
     service_slug: data.service_slug,
     city: data.city ?? "Calgary",
     province: data.province ?? "AB",
@@ -2411,7 +2411,7 @@ export async function updateGeoPostAdmin(
     const client = getServiceClient();
     if (!client) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin writes.");
     const payload: Record<string, unknown> = {};
-    if (input.content !== undefined) payload.content = input.content;
+    if (input.content !== undefined) payload.content = input.content ? sanitizeMultilineText(input.content) : null;
     if (input.primary_image_url !== undefined) payload.primary_image_url = input.primary_image_url;
     if (input.service_slug !== undefined) payload.service_slug = input.service_slug;
     if (input.status !== undefined) payload.status = input.status;
@@ -2422,7 +2422,7 @@ export async function updateGeoPostAdmin(
 
   const row = mockGeoPosts.find((geoPost) => geoPost.id === id);
   if (!row) throw new Error("Geo post not found");
-  if (input.content !== undefined) row.content = input.content;
+  if (input.content !== undefined) row.content = input.content ? sanitizeMultilineText(input.content) : null;
   if (input.primary_image_url !== undefined) row.primary_image_url = input.primary_image_url;
   if (input.service_slug !== undefined) row.service_slug = input.service_slug;
   if (input.status !== undefined) row.status = input.status;

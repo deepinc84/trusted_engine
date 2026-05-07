@@ -17,3 +17,10 @@ export function roundLatLng(
 export function sanitizeText(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
+
+export function sanitizeMultilineText(value: string) {
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
+}

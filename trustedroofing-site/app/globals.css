@@ -1450,6 +1450,11 @@ main {
   color: #64748b;
 }
 
+.formatted-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .ui-card a {
   font-weight: 700;
   color: #1e3a8a;

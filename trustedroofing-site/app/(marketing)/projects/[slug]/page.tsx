@@ -89,8 +89,8 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
         <PageContainer>
           <article className="ui-card">
             <h2>Project summary</h2>
-            <p>{project.summary}</p>
-            {project.description ? <p>{project.description}</p> : null}
+            <p className="formatted-text">{project.summary}</p>
+            {project.description ? <p className="formatted-text">{project.description}</p> : null}
           </article>
 
           {gallery.length ? (
