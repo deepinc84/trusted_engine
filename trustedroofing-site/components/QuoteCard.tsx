@@ -73,7 +73,7 @@ export default function QuoteCard({
               ))}
             </dl>
           </div>
-          <span className="quote-card__cta">Open: {quote.title}</span>
+          <span className="quote-card__cta">{compact ? "View quote details" : `Open: ${quote.title}`}</span>
         </Link>
       ) : (
         <div className="seo-card__content quote-card__content">

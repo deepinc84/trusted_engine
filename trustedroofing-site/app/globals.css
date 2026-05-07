@@ -573,8 +573,8 @@ main {
 
 .nearby-quotes__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
 }
 
 .nearby-quotes__grid > * {
@@ -739,7 +739,7 @@ main {
   }
 
   .quote-card--compact .quote-card__meta {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1605,8 +1605,8 @@ main {
 }
 
 .quote-card__meta--compact {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .quote-card__meta div {
@@ -1618,7 +1618,7 @@ main {
 }
 
 .quote-card__meta--compact div {
-  padding: 7px 9px;
+  padding: 8px 10px;
 }
 
 .quote-card__meta dt {
@@ -1630,7 +1630,7 @@ main {
 }
 
 .quote-card__meta--compact dt {
-  font-size: 0.66rem;
+  font-size: 0.68rem;
 }
 
 .quote-card__meta dd {
@@ -1646,11 +1646,10 @@ main {
 }
 
 .quote-card--compact h3 {
-  font-size: 0.96rem;
-  line-height: 1.18;
+  font-size: 1rem;
+  line-height: 1.22;
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .quote-card--compact .seo-card__eyebrow {
@@ -1671,7 +1670,7 @@ main {
 
 .quote-card--compact .quote-card__cta {
   padding: 0 14px 14px;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
 }
 
 .quote-aggregate-card__range {
