@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { unstable_noStore as noStore } from "next/cache";
 import { haversineKm } from "./geo";
-import { roundLatLng, sanitizeText } from "./sanitize";
+import { roundLatLng, sanitizeMultilineText, sanitizeText } from "./sanitize";
 import { getProjectPhotosBucketName } from "./storage";
 
 export type Service = {
@@ -798,8 +798,8 @@ function toProjectPayload(data: ProjectInput) {
   return {
     slug: normalizeSlug(data.slug),
     title: sanitizeText(data.title),
-    summary: sanitizeText(data.summary),
-    description: data.description ? sanitizeText(data.description) : null,
+    summary: sanitizeMultilineText(data.summary),
+    description: data.description ? sanitizeMultilineText(data.description) : null,
     service_slug: data.service_slug,
     city: data.city ?? "Calgary",
     province: data.province ?? "AB",
