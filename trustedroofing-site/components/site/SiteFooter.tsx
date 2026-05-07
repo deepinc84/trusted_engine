@@ -25,40 +25,43 @@ export default function SiteFooter() {
         <div>
           <h4>Services</h4>
           <Link href="/services/roofing">Roof Replacement</Link>
-          <Link href="/services/roof-repair">Repairs & Leaks</Link>
-          <Link href="/services">Siding & Exterior</Link>
-          <Link href="/services">Eavestrough</Link>
+          <Link href="/services/roof-repair">Roof Repair</Link>
+          <Link href="/services/gutters">Eavestrough</Link>
+          <Link href="/services/siding">Vinyl Siding</Link>
+          <Link href="/services/james-hardie-siding">James Hardie Siding</Link>
+          <Link href="/services/soffit-fascia">Soffit & Fascia</Link>
         </div>
 
         <div>
           <h4>Projects</h4>
-          <Link href="/projects">Featured Work</Link>
-          <Link href="/projects">Recent Activity</Link>
-          <Link href="/projects">Before & After</Link>
+          <Link href="/projects?service_slug=gutters#remaining-projects">Gutter Projects</Link>
+          <Link href="/projects?service_slug=roof-repair#remaining-projects">Roof Repair Projects</Link>
+          <Link href="/projects?service_slug=roofing#remaining-projects">Roofing Projects</Link>
+          <Link href="/projects?service_slug=siding#remaining-projects">Siding Projects</Link>
+          <Link href="/projects?service_slug=soffit-fascia#remaining-projects">Soffit & Fascia Projects</Link>
         </div>
 
         <div>
           <h4>Company</h4>
           <Link href="/">About Trusted</Link>
-          <Link href="/services">How it works</Link>
-          <Link href="/projects">Reviews</Link>
+          <Link href="/projects">Calgary Roofing & Exterior Projects</Link>
           <Link href="/blog">Blog</Link>
-          <Link href="/#areas">Service areas</Link>
+          <Link href="/service-areas">Service Areas</Link>
+          <Link href="/online-estimate">Online Estimate</Link>
+          <Link href="/quotes">Roofing & Exterior Quotes</Link>
         </div>
 
         <div>
           <h4>Contact</h4>
           <a href="tel:5872883351">587-288-3351</a>
           <a href="mailto:info@trustedexteriors.ca">info@trustedexteriors.ca</a>
-          <Link href="/online-estimate">Get a quote</Link>
+          <Link href="/online-estimate">Get a Roofing Quote</Link>
         </div>
       </div>
       <div className="site-shell site-footer__bottom">
         <p>© {new Date().getFullYear()} Trusted Roofing and Exteriors Inc. Calgary, AB. All rights reserved.</p>
         <div className="site-footer__legal">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Serving Calgary & area</a>
+          <Link href="/service-areas">Serving Calgary & area</Link>
         </div>
       </div>
     </footer>
