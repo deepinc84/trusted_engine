@@ -34,15 +34,17 @@ export default function SiteFooter() {
 
         <div>
           <h4>Projects</h4>
-          <Link href="/projects">Featured Work</Link>
-          <Link href="/projects">Recent Activity</Link>
-          <Link href="/projects">Before & After</Link>
+          <Link href="/projects?service_slug=gutters#remaining-projects">Gutter Projects</Link>
+          <Link href="/projects?service_slug=roof-repair#remaining-projects">Roof Repair Projects</Link>
+          <Link href="/projects?service_slug=roofing#remaining-projects">Roofing Projects</Link>
+          <Link href="/projects?service_slug=siding#remaining-projects">Siding Projects</Link>
+          <Link href="/projects?service_slug=soffit-fascia#remaining-projects">Soffit & Fascia Projects</Link>
         </div>
 
         <div>
           <h4>Company</h4>
           <Link href="/">About Trusted</Link>
-          <Link href="/projects">Projects</Link>
+          <Link href="/projects">Calgary Roofing & Exterior Projects</Link>
           <Link href="/blog">Blog</Link>
           <Link href="/service-areas">Service Areas</Link>
           <Link href="/online-estimate">Online Estimate</Link>
@@ -53,7 +55,7 @@ export default function SiteFooter() {
           <h4>Contact</h4>
           <a href="tel:5872883351">587-288-3351</a>
           <a href="mailto:info@trustedexteriors.ca">info@trustedexteriors.ca</a>
-          <Link href="/online-estimate">Online Estimate</Link>
+          <Link href="/online-estimate">Get a Roofing Quote</Link>
         </div>
       </div>
       <div className="site-shell site-footer__bottom">
