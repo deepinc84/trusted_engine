@@ -303,8 +303,7 @@ main {
 }
 
 .quote-shell {
-  max-width: 860px;
-  margin: 0 auto;
+  width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 22px;
@@ -658,7 +657,7 @@ main {
 
 .quote-flow-overview__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -679,8 +678,7 @@ main {
 }
 
 .quote-support-stack {
-  max-width: 860px;
-  margin: 0 auto;
+  width: 100%;
   display: grid;
   gap: 20px;
 }
