@@ -172,3 +172,85 @@ export async function uploadProjectImageToSupabase(input: {
     height: dimensions?.height ?? null
   };
 }
+
+export const SOLAR_BILL_ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/heic",
+  "image/heif",
+  "image/webp"
+]);
+
+export const SOLAR_BILL_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+export type UploadedSolarBill = {
+  bucket: string;
+  path: string;
+  file_size: number;
+  mime_type: string;
+};
+
+export function getSolarBillsBucketName() {
+  return process.env.SOLAR_BILLS_BUCKET?.trim() || "solar-bills";
+}
+
+function extensionForSolarBill(file: File, mimeType: string) {
+  const originalExtension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (originalExtension && ["pdf", "jpg", "jpeg", "png", "heic", "heif", "webp"].includes(originalExtension)) {
+    return originalExtension;
+  }
+
+  if (mimeType === "application/pdf") return "pdf";
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/heic") return "heic";
+  if (mimeType === "image/heif") return "heif";
+  if (mimeType === "image/webp") return "webp";
+  return "jpg";
+}
+
+export function buildSolarBillPath(leadId: string, file: File, mimeType: string) {
+  const extension = extensionForSolarBill(file, mimeType);
+  return `${leadId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+}
+
+export async function uploadSolarBillToSupabase(input: {
+  client: SupabaseClient;
+  leadId: string;
+  file: File;
+}): Promise<UploadedSolarBill> {
+  const bucket = getSolarBillsBucketName();
+  const mimeType = input.file.type || "application/octet-stream";
+
+  if (!SOLAR_BILL_ALLOWED_MIME_TYPES.has(mimeType)) {
+    throw new Error("Unsupported bill file type. Upload a PDF, JPG, JPEG, PNG, HEIC, HEIF, or WEBP file.");
+  }
+
+  if (input.file.size > SOLAR_BILL_MAX_FILE_SIZE_BYTES) {
+    throw new Error("Bill file is too large. Maximum upload size is 10 MB.");
+  }
+
+  const arrayBuffer = await input.file.arrayBuffer();
+  const uploadBuffer = Buffer.from(arrayBuffer);
+  const path = buildSolarBillPath(input.leadId, input.file, mimeType);
+
+  const { error } = await input.client.storage.from(bucket).upload(path, uploadBuffer, {
+    contentType: mimeType,
+    upsert: false
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("bucket not found")) {
+      throw new Error(`Storage bucket "${bucket}" was not found. Create the private bucket in Supabase Storage or set SOLAR_BILLS_BUCKET.`);
+    }
+    throw new Error(`Solar bill upload failed (${bucket}/${path}): ${error.message}`);
+  }
+
+  return {
+    bucket,
+    path,
+    file_size: uploadBuffer.byteLength,
+    mime_type: mimeType
+  };
+}

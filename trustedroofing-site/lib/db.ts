@@ -256,7 +256,7 @@ function getAnonClient() {
   return anonClient;
 }
 
-function getServiceClient() {
+export function getServiceClient() {
   if (!isSupabaseEnabled || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
   if (!serviceClient) {
     serviceClient = createClient(
