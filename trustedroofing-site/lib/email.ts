@@ -6,7 +6,7 @@ type SendResult = {
   error?: string;
 };
 
-async function sendEmail(input: {
+export async function sendEmail(input: {
   to: string;
   subject: string;
   text: string;
@@ -191,4 +191,45 @@ export async function processLeadSubmissionEmails(input: {
       error_message: customerResult.error ?? null
     });
   }
+}
+
+
+export async function sendSolarSuitabilityLeadEmail(input: {
+  to: string;
+  name: string;
+  email: string;
+  phone: string;
+  propertyAddress: string;
+  neighborhood: string | null;
+  preferredAppointments: Array<{ date: string; timeWindow: string }>;
+  notes: string | null;
+  billSignedUrl: string | null;
+  source: string;
+}) {
+  const subjectLocation = input.propertyAddress || input.neighborhood || "property address pending";
+  const rows = [
+    { label: "Name", value: input.name },
+    { label: "Email", value: input.email },
+    { label: "Phone", value: input.phone },
+    { label: "Property address", value: input.propertyAddress },
+    ...input.preferredAppointments.map((appointment, index) => ({
+      label: `Preferred appointment ${index + 1}`,
+      value: `${appointment.date} — ${appointment.timeWindow}`
+    })),
+    { label: "Notes", value: input.notes || "n/a" },
+    { label: "Uploaded bill", value: input.billSignedUrl || "No signed link available" },
+    { label: "Source", value: input.source }
+  ];
+
+  const text = rows.map((row) => `${row.label}: ${row.value}`).join("\n");
+  const htmlRows = rows.map((row) => `<tr><th align="left" style="padding:6px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;">${escapeHtml(row.label)}</th><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;">${row.label === "Uploaded bill" && input.billSignedUrl ? `<a href="${escapeHtml(input.billSignedUrl)}">Secure signed bill link</a>` : escapeHtml(row.value)}</td></tr>`).join("");
+
+  return sendEmail({
+    to: input.to,
+    subject: `New solar suitability request - ${subjectLocation}`,
+    text,
+    html: `<h2>Solar suitability request</h2>
+<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:760px;">${htmlRows}</table>
+<p style="color:#64748b;font-size:13px;">The bill link is a private Supabase signed URL and may expire.</p>`
+  });
 }

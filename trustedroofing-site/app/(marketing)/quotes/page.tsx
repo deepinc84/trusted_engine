@@ -134,11 +134,14 @@ function buildArchiveSchema(cards: Awaited<ReturnType<typeof getQuoteArchiveByMa
   };
 }
 
+function buildAggregateFilterHash(materialSlug: string, type: "city" | "city-quadrant" | "neighborhood", key: string) {
+  return `filter--${encodeURIComponent(materialSlug)}--${type}--${encodeURIComponent(key)}`;
+}
+
 function renderAggregateSection(
   title: string,
   type: "city" | "city-quadrant" | "neighborhood",
   materialSlug: string,
-  jumpAnchor: string,
   items: Array<{ key: string; title: string; quoteCount: number; averageLow: number | null; averageHigh: number | null }>
 ) {
   if (items.length === 0) return null;
@@ -147,18 +150,29 @@ function renderAggregateSection(
     <div style={{ marginTop: 22 }} id={`${materialSlug}-${type}`}>
       <h3 className="homev3-title" style={{ fontSize: "1.5rem" }}>{title}</h3>
       <div className="quote-card-grid" style={{ marginTop: 16 }}>
-        {items.map((item) => (
-          <article key={item.key} className="ui-card quote-aggregate-card">
-            <h4>{item.title}</h4>
-            <p className="homev3-copy">
-              {item.quoteCount.toLocaleString()} quote signal{item.quoteCount === 1 ? "" : "s"} · recent modeled range
-            </p>
-            <p className="quote-aggregate-card__range">
-              {item.averageLow ? `$${item.averageLow.toLocaleString()}` : "N/A"} - {item.averageHigh ? `$${item.averageHigh.toLocaleString()}` : "N/A"}
-            </p>
-            <Link href={`/quotes#${jumpAnchor}`} className="quote-aggregate-card__jump">Jump to published quote cards</Link>
-          </article>
-        ))}
+        {items.map((item) => {
+          const filterHash = buildAggregateFilterHash(materialSlug, type, item.key);
+
+          return (
+            <article key={item.key} className="ui-card quote-aggregate-card">
+              <h4>{item.title}</h4>
+              <p className="homev3-copy">
+                {item.quoteCount.toLocaleString()} quote signal{item.quoteCount === 1 ? "" : "s"} · recent modeled range
+              </p>
+              <p className="quote-aggregate-card__range">
+                {item.averageLow ? `$${item.averageLow.toLocaleString()}` : "N/A"} - {item.averageHigh ? `$${item.averageHigh.toLocaleString()}` : "N/A"}
+              </p>
+              <Link
+                href={`/quotes#${filterHash}`}
+                className="quote-aggregate-card__jump"
+                data-quote-filter-hash={filterHash}
+                data-quote-filter-label={item.title}
+              >
+                Filter to these published quote cards
+              </Link>
+            </article>
+          );
+        })}
       </div>
     </div>
   );
@@ -247,15 +261,24 @@ export default async function QuotesArchivePage() {
                 <Link href={`/quotes#material-${section.material.toLowerCase().replace(/\s+/g, "-")}-neighborhood`} className="quote-quick-nav__chip">#neighborhood</Link>
               </div>
 
-              {renderAggregateSection("City level", "city", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.cities.slice(0, 12))}
-              {renderAggregateSection("City + quadrant level", "city-quadrant", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.cityQuadrants.slice(0, 12))}
-              {renderAggregateSection("Neighborhood level", "neighborhood", section.material.toLowerCase().replace(/\s+/g, "-"), `material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`, section.aggregates.neighborhoods)}
+              {renderAggregateSection("City level", "city", section.material.toLowerCase().replace(/\s+/g, "-"), section.aggregates.cities.slice(0, 12))}
+              {renderAggregateSection("City + quadrant level", "city-quadrant", section.material.toLowerCase().replace(/\s+/g, "-"), section.aggregates.cityQuadrants.slice(0, 12))}
+              {renderAggregateSection("Neighborhood level", "neighborhood", section.material.toLowerCase().replace(/\s+/g, "-"), section.aggregates.neighborhoods)}
 
               <div style={{ marginTop: 24 }} id={`material-${section.material.toLowerCase().replace(/\s+/g, "-")}-cards`}>
                 <h3 className="homev3-title" style={{ fontSize: "1.5rem" }}>Published {section.material.toLowerCase()} quote cards</h3>
+                <p className="quote-filter-status" data-quote-filter-status={section.material.toLowerCase().replace(/\s+/g, "-")} hidden />
                 <div className="quote-card-grid" style={{ marginTop: 16 }}>
                   {section.cards.map((card) => (
-                    <div key={card.slug} id={card.slug} className="quote-card-anchor">
+                    <div
+                      key={card.slug}
+                      id={card.slug}
+                      className="quote-card-anchor"
+                      data-quote-material={section.material.toLowerCase().replace(/\s+/g, "-")}
+                      data-quote-city={card.city}
+                      data-quote-quadrant={card.quadrant ?? ""}
+                      data-quote-neighborhood-key={`${card.city}|${card.locality}`}
+                    >
                       <span id={`quote-${card.id}`} />
                       <QuoteCard quote={card} href={null} variant="full" />
                     </div>
