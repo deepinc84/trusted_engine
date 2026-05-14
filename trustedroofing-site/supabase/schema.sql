@@ -238,7 +238,7 @@ alter table if exists projects
 
 create table if not exists instant_quotes (
   id uuid primary key default gen_random_uuid(),
-  legacy_address_query_id uuid references instaquote_address_queries(id) on delete set null,
+  legacy_address_query_id uuid,
   address text not null,
   service_type text,
   quote_low integer,
