@@ -105,7 +105,7 @@ export function buildServiceAreaNarrative(
     );
   if (input.geoPostCount > 0)
     summaryParts.push(
-      "and project-derived geo-post enrichment tied to completed work",
+      "and project-derived local project updates tied to completed work",
     );
 
   const activityContext =

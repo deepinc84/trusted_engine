@@ -8,7 +8,7 @@ import { quoteMaterialLabel, resolvePublicLocation } from "./serviceAreas";
 
 export type LiveActivityItem = {
   id: string;
-  type: "quote" | "project" | "geo_post" | "solar";
+  type: "quote" | "project" | "project_update" | "solar";
   service: string;
   location: string;
   message: string;
@@ -86,7 +86,7 @@ export async function getLiveActivityFeed(
 
     return {
       id: `geo-${geoPost.id}`,
-      type: "geo_post",
+      type: "project_update",
       service,
       location: location.label,
       message: `${service} project published in ${location.label}`,

@@ -9,7 +9,7 @@ export type HomeMetric = {
 
 export type HomeActivity = {
   id: string;
-  type: "quote" | "project" | "geo_post" | "solar";
+  type: "quote" | "project" | "project_update" | "solar";
   service: string;
   location: string;
   message: string;

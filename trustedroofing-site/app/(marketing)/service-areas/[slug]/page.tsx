@@ -105,7 +105,7 @@ export default async function ServiceAreaDetailPage({
                 {area.projectCount === 1 ? "" : "s"} · {area.solarActivityCount}{" "}
                 solar model{area.solarActivityCount === 1 ? "" : "s"}
                 {area.has_geo_post_enrichment
-                  ? ` · ${area.geoPostEnrichmentCount} project-derived geo-post enrichment${area.geoPostEnrichmentCount === 1 ? "" : "s"}`
+                  ? ` · ${area.geoPostEnrichmentCount} project-derived local update${area.geoPostEnrichmentCount === 1 ? "" : "s"}`
                   : ""}
               </p>
               <p className="homev3-copy">

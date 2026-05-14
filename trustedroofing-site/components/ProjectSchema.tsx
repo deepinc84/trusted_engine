@@ -6,14 +6,12 @@ type Props =
   | { project: Project; geoPost?: never }
   | { geoPost: ResolvedGeoPost; project?: never };
 
-
-
 function buildNeighborhoodGeo(lat: number | null, lng: number | null) {
   if (typeof lat !== "number" || typeof lng !== "number") return undefined;
   return {
     "@type": "GeoCoordinates",
     latitude: Number(lat.toFixed(3)),
-    longitude: Number(lng.toFixed(3))
+    longitude: Number(lng.toFixed(3)),
   };
 }
 
@@ -34,13 +32,18 @@ export default function ProjectSchema(props: Props) {
   if ("geoPost" in props) {
     const geoPost = props.geoPost!;
     slug = geoPost.slug ?? geoPost.id;
-    title = geoPost.title ?? geoPost.slug ?? "Geo post";
+    title = geoPost.title ?? geoPost.slug ?? "Project update";
     summary = geoPost.summary ?? "Location-backed project post.";
     city = geoPost.city ?? "Calgary";
     province = geoPost.province ?? "AB";
     neighborhood = geoPost.neighborhood ?? city;
     serviceSlug = geoPost.service_slug ?? "roofing";
-    imageUrls = geoPost.gallery.length > 0 ? geoPost.gallery : geoPost.heroImage ? [geoPost.heroImage] : [];
+    imageUrls =
+      geoPost.gallery.length > 0
+        ? geoPost.gallery
+        : geoPost.heroImage
+          ? [geoPost.heroImage]
+          : [];
     url = canonicalUrl(`/services/${serviceSlug}`);
     latPublic = geoPost.lat_public ?? null;
     lngPublic = geoPost.lng_public ?? null;
@@ -62,7 +65,9 @@ export default function ProjectSchema(props: Props) {
     lngPublic = project.lng_public ?? null;
   }
 
-  const relatedServiceArea = canonicalUrl(`/service-areas/${neighborhoodSlug(neighborhood)}`);
+  const relatedServiceArea = canonicalUrl(
+    `/service-areas/${neighborhoodSlug(neighborhood)}`,
+  );
 
   const schema = {
     "@context": "https://schema.org",
@@ -76,9 +81,9 @@ export default function ProjectSchema(props: Props) {
         "@type": "PostalAddress",
         addressLocality: city,
         addressRegion: province,
-        addressCountry: "CA"
+        addressCountry: "CA",
       },
-      geo: buildNeighborhoodGeo(latPublic, lngPublic)
+      geo: buildNeighborhoodGeo(latPublic, lngPublic),
     },
     hasPart: {
       "@type": "Project",
@@ -90,16 +95,16 @@ export default function ProjectSchema(props: Props) {
       areaServed: {
         "@type": "Place",
         name: `${neighborhood}, ${city}`,
-        geo: buildNeighborhoodGeo(latPublic, lngPublic)
+        geo: buildNeighborhoodGeo(latPublic, lngPublic),
       },
-      isRelatedTo: [relatedServiceArea]
-    }
+      isRelatedTo: [relatedServiceArea],
+    },
   };
 
   if (projectUrl) {
     (schema.hasPart as Record<string, unknown>).isPartOf = {
       "@type": "WebPage",
-      url: projectUrl
+      url: projectUrl,
     };
     (schema.hasPart as Record<string, unknown>).mentions = [projectUrl];
   }
