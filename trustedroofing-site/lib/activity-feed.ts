@@ -1,9 +1,14 @@
-import { listGeoPosts, listProjects, listRecentInstaquoteAddressQueries } from "./db";
+import {
+  listGeoPosts,
+  listProjects,
+  listRecentInstaquoteAddressQueries,
+  listSolarSuitabilityAnalyses,
+} from "./db";
 import { quoteMaterialLabel, resolvePublicLocation } from "./serviceAreas";
 
 export type LiveActivityItem = {
   id: string;
-  type: "quote" | "project" | "geo_post";
+  type: "quote" | "project" | "project_update" | "solar";
   service: string;
   location: string;
   message: string;
@@ -19,17 +24,24 @@ function titleFromSlug(value: string | null | undefined) {
     .join(" ");
 }
 
-export async function getLiveActivityFeed(limit = 20): Promise<LiveActivityItem[]> {
-  const [quoteRows, projects, geoPosts] = await Promise.all([
+export async function getLiveActivityFeed(
+  limit = 20,
+): Promise<LiveActivityItem[]> {
+  const [quoteRows, projects, geoPosts, solarAnalyses] = await Promise.all([
     listRecentInstaquoteAddressQueries(limit * 2),
     listProjects({ limit: limit * 2, include_unpublished: false }),
-    listGeoPosts(limit * 2)
+    listGeoPosts(limit * 2),
+    listSolarSuitabilityAnalyses({
+      solar_intent_only: true,
+      public_activity_only: true,
+      limit: limit * 2,
+    }),
   ]);
 
   const quoteItems: LiveActivityItem[] = quoteRows.map((row) => {
     const location = resolvePublicLocation({
       neighborhood: row.neighborhood,
-      address: row.address
+      address: row.address,
     });
     const service = quoteMaterialLabel(row.service_type, row.requested_scopes);
 
@@ -40,7 +52,7 @@ export async function getLiveActivityFeed(limit = 20): Promise<LiveActivityItem[
       location: location.label,
       message: `${service} quote generated in ${location.label}`,
       occurredAt: row.queried_at,
-      href: `/quotes#quote-${row.id}`
+      href: `/quotes#quote-${row.id}`,
     };
   });
 
@@ -48,7 +60,7 @@ export async function getLiveActivityFeed(limit = 20): Promise<LiveActivityItem[
     const location = resolvePublicLocation({
       neighborhood: project.neighborhood,
       city: project.city,
-      quadrant: project.quadrant
+      quadrant: project.quadrant,
     });
     const service = titleFromSlug(project.service_slug);
     const occurredAt = project.created_at;
@@ -60,7 +72,7 @@ export async function getLiveActivityFeed(limit = 20): Promise<LiveActivityItem[
       location: location.label,
       message: `New ${service.toLowerCase()} project completed in ${location.label}`,
       occurredAt,
-      href: `/projects/${project.slug}`
+      href: `/projects/${project.slug}`,
     };
   });
 
@@ -68,22 +80,40 @@ export async function getLiveActivityFeed(limit = 20): Promise<LiveActivityItem[
     const location = resolvePublicLocation({
       neighborhood: geoPost.neighborhood,
       city: geoPost.city,
-      address: null
+      address: null,
     });
     const service = titleFromSlug(geoPost.service_slug);
 
     return {
       id: `geo-${geoPost.id}`,
-      type: "geo_post",
+      type: "project_update",
       service,
       location: location.label,
       message: `${service} project published in ${location.label}`,
       occurredAt: geoPost.created_at,
-      href: geoPost.service_slug ? `/services/${geoPost.service_slug}` : "/projects"
+      href: geoPost.service_slug
+        ? `/services/${geoPost.service_slug}`
+        : "/projects",
     };
   });
 
-  return [...quoteItems, ...projectItems, ...geoPostItems]
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+  const solarItems: LiveActivityItem[] = solarAnalyses.map((solar) => ({
+    id: `solar-${solar.id}`,
+    type: "solar",
+    service: "Solar suitability",
+    location:
+      solar.city === "Calgary"
+        ? `${solar.neighborhood}, Calgary`
+        : `${solar.neighborhood}, ${solar.city}`,
+    message: `Solar suitability request modeled in ${solar.neighborhood}`,
+    occurredAt: solar.created_at,
+    href: "/solar",
+  }));
+
+  return [...quoteItems, ...projectItems, ...geoPostItems, ...solarItems]
+    .sort(
+      (a, b) =>
+        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+    )
     .slice(0, limit);
 }
