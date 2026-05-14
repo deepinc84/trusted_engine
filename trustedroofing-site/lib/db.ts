@@ -2253,6 +2253,45 @@ export async function refreshInstaquoteAddressQuery(
   return id;
 }
 
+async function ensureLegacyAddressQueryForInstantQuote(
+  client: SupabaseClient,
+  input: {
+    legacy_address_query_id: string;
+    address: string;
+    service_type: string | null;
+    quote_low: number | null;
+    quote_high: number | null;
+    created_at?: string;
+  },
+) {
+  const { data: existing, error: lookupError } = await client
+    .from("instaquote_address_queries")
+    .select("id")
+    .eq("id", input.legacy_address_query_id)
+    .maybeSingle();
+
+  if (existing || (lookupError && lookupError.code !== "PGRST116")) return;
+
+  const { error: insertError } = await client
+    .from("instaquote_address_queries")
+    .insert({
+      id: input.legacy_address_query_id,
+      address: input.address || "Unknown address",
+      service_type: input.service_type,
+      estimate_low: input.quote_low,
+      estimate_high: input.quote_high,
+      data_source: "instant_quote_submission_repair",
+      queried_at: input.created_at ?? new Date().toISOString(),
+    });
+
+  if (insertError) {
+    console.warn(
+      "instaquote address query repair failed",
+      insertError.message,
+    );
+  }
+}
+
 export async function upsertInstantQuoteFromAddressQuery(input: {
   legacy_address_query_id: string;
   address: string;
@@ -2284,6 +2323,8 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       .eq("legacy_address_query_id", input.legacy_address_query_id)
       .maybeSingle();
     if (existing) return existing as InstantQuoteRecord;
+
+    await ensureLegacyAddressQueryForInstantQuote(client, input);
 
     const { data, error } = await client
       .from("instant_quotes")
