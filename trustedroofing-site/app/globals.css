@@ -1768,6 +1768,25 @@ main {
   scroll-margin-top: 126px;
 }
 
+.quote-card-anchor--hidden {
+  display: none;
+}
+
+.quote-filter-status {
+  margin-top: 10px;
+  border: 1px solid rgba(30, 58, 138, 0.16);
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #1f3d74;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
+.quote-filter-status[hidden] {
+  display: none;
+}
+
 .service-area-shell {
   grid-template-columns: 1.1fr 0.9fr;
 }
