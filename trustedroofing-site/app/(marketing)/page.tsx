@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export const metadata = buildMetadata({
   title: "Roofing & exterior services in Calgary",
   description:
-    "Modern, fast roofing and exterior services with local project insights for Calgary homeowners.",
+    "Calgary roofing and exterior company for roof replacement, repairs, siding, and eavestrough with local project insights and instant online estimates.",
   path: "/"
 });
 

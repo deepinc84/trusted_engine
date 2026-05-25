@@ -5,7 +5,7 @@ import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
   title: "Blog",
-  description: "Roofing and exterior guides for Calgary homeowners.",
+  description: "Calgary roofing and exterior guides with cost context, scope planning, and local project insights for homeowners.",
   path: "/blog"
 });
 
