@@ -208,7 +208,8 @@ const defaultServices: Service[] = [
     id: "seed-soffit-fascia",
     slug: "soffit-fascia",
     title: "Soffit & Fascia",
-    base_sales_copy: "Ventilation-safe soffit and fascia renewal.",
+    base_sales_copy:
+      "Calgary soffit and fascia repairs, replacements, ventilation upgrades, and exterior finishing with local project insights and instant estimates.",
     created_at: new Date().toISOString(),
   },
 ];

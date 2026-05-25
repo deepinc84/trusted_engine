@@ -29,7 +29,7 @@ const quoteBenefits = [
 
 export const metadata = buildMetadata({
   title: "Instant quote",
-  description: "Anonymous instant roofing, siding, and eavestrough estimates for Calgary homeowners.",
+  description: "Get an instant roofing, siding, or eavestrough estimate for Calgary homes using address-level property data and local project insights.",
   path: "/online-estimate",
   imagePath: "/Instant_estimate_hero.png"
 });

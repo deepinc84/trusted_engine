@@ -33,7 +33,7 @@ export async function generateMetadata({
 
   return buildMetadata({
     title: `${area.neighborhood} roofing and exterior activity`,
-    description: `Quote signals, published project proof, and solar-readiness modeling for ${area.neighborhood}, ${area.city}.`,
+    description: `Roofing, siding, and exterior services in ${area.neighborhood}, Calgary with local project insights, recent estimate activity, and instant quote tools.`,
     path: `/service-areas/${normalizedSlug}`,
   });
 }

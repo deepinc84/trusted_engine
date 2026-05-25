@@ -11,7 +11,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Service areas",
   description:
-    "Live Calgary neighborhood coverage based on recent quote activity and project demand.",
+    "Roofing, siding, and exterior services across Calgary neighborhoods with local project insights, recent estimate activity, and instant quote tools.",
   path: "/service-areas",
 });
 
@@ -61,7 +61,7 @@ export default async function ServiceAreasPage() {
           </div>
 
           <section className="mt-10 space-y-6">
-            <h1>Calgary Service Areas for Roofing, Siding, and Eavestrough</h1>
+            <h2>Calgary Service Areas for Roofing, Siding, and Eavestrough</h2>
             <p className="homev3-copy">
               Calgary roofing needs are not one-size-fits-all, even between
               neighborhoods that look similar on a map. Wind exposure, hail
