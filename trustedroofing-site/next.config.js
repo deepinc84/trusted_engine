@@ -35,12 +35,12 @@ const nextConfig = {
     return [
       {
         source: "/geo-posts",
-        destination: "/services",
+        destination: "/online-estimate",
         permanent: true
       },
       {
         source: "/geo-posts/:path*",
-        destination: "/services",
+        destination: "/online-estimate",
         permanent: true
       },
       {
