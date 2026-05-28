@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import BrandText from "@/components/BrandText";
 
 export default function SiteFooter() {
   return (
@@ -11,8 +12,7 @@ export default function SiteFooter() {
             <Image src="/white-transparent-t.png" alt="Trusted" width={56} height={56} className="site-footer__logo" />
             <div>
               <strong className="site-footer__brand-name">
-                <span className="site-footer__brand-name-main">TRUSTED</span>{" "}
-                <span className="site-footer__brand-name-sub">Roofing & Exteriors</span>
+                <BrandText className="brand-text--footer" descriptor="Roofing & Exteriors" />
               </strong>
               <p className="site-footer__brand-location">Calgary, Alberta</p>
             </div>
@@ -43,7 +43,7 @@ export default function SiteFooter() {
 
         <div>
           <h4>Company</h4>
-          <Link href="/">About Trusted</Link>
+          <Link href="/">About <BrandText /></Link>
           <Link href="/projects">Calgary Roofing & Exterior Projects</Link>
           <Link href="/blog">Blog</Link>
           <Link href="/service-areas">Service Areas</Link>
@@ -59,7 +59,9 @@ export default function SiteFooter() {
         </div>
       </div>
       <div className="site-shell site-footer__bottom">
-        <p>© {new Date().getFullYear()} Trusted Roofing and Exteriors Inc. Calgary, AB. All rights reserved.</p>
+        <p>
+          © {new Date().getFullYear()} <BrandText descriptor="Roofing & Exteriors" /> Inc. Calgary, AB. All rights reserved.
+        </p>
         <div className="site-footer__legal">
           <Link href="/service-areas">Serving Calgary & area</Link>
         </div>

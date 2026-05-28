@@ -22,7 +22,7 @@ export default function RootLayout({
         <noscript>
           <link
             rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@500;800&display=swap"
+            href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@600;800&display=swap"
           />
         </noscript>
       </head>
@@ -41,7 +41,7 @@ export default function RootLayout({
               var link = document.createElement('link');
               link.id = 'google-fonts-main';
               link.rel = 'stylesheet';
-              link.href = 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@500;800&display=swap';
+              link.href = 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@600;800&display=swap';
               document.head.appendChild(link);
             })();
           `}

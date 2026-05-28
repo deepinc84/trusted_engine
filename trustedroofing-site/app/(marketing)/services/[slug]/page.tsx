@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
+import BrandText from "@/components/BrandText";
 import PageHero from "@/components/ui/PageHero";
 import ServiceCard from "@/components/ui/ServiceCard";
 import GeoPostCard from "@/components/GeoPostCard";
@@ -84,7 +85,13 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
       <PageHero
         eyebrow="Service detail"
         title={service.title}
-        description={service.base_sales_copy ?? `Trusted delivers ${service.title.toLowerCase()} services across Calgary.`}
+        description={
+          service.base_sales_copy ?? (
+            <>
+              <BrandText /> delivers {service.title.toLowerCase()} services across Calgary.
+            </>
+          )
+        }
         actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
       />
 
