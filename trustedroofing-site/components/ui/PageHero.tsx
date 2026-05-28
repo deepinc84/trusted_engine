@@ -4,7 +4,7 @@ import PageContainer from "./PageContainer";
 type Props = {
   eyebrow?: string;
   title: string;
-  description?: string;
+  description?: ReactNode;
   actions?: ReactNode;
 };
 

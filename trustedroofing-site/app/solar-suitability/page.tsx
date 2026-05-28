@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import BrandText from "@/components/BrandText";
 import SolarSuitabilityForm from "./SolarSuitabilityForm";
 import styles from "./solar-suitability.module.css";
 
@@ -28,7 +29,7 @@ export default function SolarSuitabilityPage() {
           <span className={styles.privateBadge}>Private testing page · noindex</span>
           <h1>Solar suitability review</h1>
           <p>
-            Share the property address, a latest electricity bill, and appointment preferences so Trusted can help review whether the roof is a good candidate for solar planning.
+            Share the property address, a latest electricity bill, and appointment preferences so <BrandText /> can help review whether the roof is a good candidate for solar planning.
           </p>
           <div className={styles.notice}>
             This page is for internal testing and early customer intake. It is not part of the public solar launch.
@@ -59,7 +60,7 @@ export default function SolarSuitabilityPage() {
           <article className={styles.card}>
             <h2>Roof-first planning</h2>
             <p>
-              Roof condition still requires review before installation decisions are made. Trusted can help evaluate whether roofing work should be considered before solar planning proceeds.
+              Roof condition still requires review before installation decisions are made. <BrandText /> can help evaluate whether roofing work should be considered before solar planning proceeds.
             </p>
             <p>
               Final coordination or installation pathways may involve a solar partner. We will avoid making assumptions about rebates, savings, financing, or payback during this suitability review.
