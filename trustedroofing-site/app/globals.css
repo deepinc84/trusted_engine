@@ -1634,6 +1634,7 @@ main {
 .quote-card__meta dd {
   margin: 0;
   font-size: 0.94rem;
+  line-height: 1.45;
   font-weight: 700;
   color: var(--ink);
   overflow-wrap: anywhere;
@@ -1641,6 +1642,11 @@ main {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
+}
+
+.quote-card--compact .quote-card__meta dd {
+  -webkit-line-clamp: unset;
+  overflow: visible;
 }
 
 .quote-card--compact h3 {

@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
+import Link from "next/link";
 import DynamicSchema from "@/components/DynamicSchema";
 import ProjectCard from "@/components/ProjectCard";
 import QuoteCard from "@/components/QuoteCard";
@@ -52,9 +53,9 @@ export default async function ServiceAreaDetailPage({
   const area = await getNeighborhoodActivityBySlug(normalizedSlug);
   if (!area) return notFound();
 
-  const relatedLinks = (await getAllNeighborhoodActivities())
-    .filter((entry) => entry.slug !== area.slug)
-    .slice(0, 3);
+  const relatedLinks = (await getAllNeighborhoodActivities()).filter(
+    (entry) => entry.slug !== area.slug,
+  );
   const narrative = buildServiceAreaNarrative({
     neighborhood: area.neighborhood,
     city: area.city,
@@ -92,8 +93,18 @@ export default async function ServiceAreaDetailPage({
               {narrative.solarContext ? (
                 <p className="homev3-copy">{narrative.solarContext}</p>
               ) : null}
-              {narrative.nearbyContext ? (
-                <p className="homev3-copy">{narrative.nearbyContext}</p>
+              {relatedLinks.length ? (
+                <p className="homev3-copy">
+                  Related active areas include{" "}
+                  {relatedLinks.map((entry, index) => (
+                    <span key={entry.slug}>
+                      <Link href={`/service-areas/${entry.slug}`}>
+                        {entry.neighborhood}
+                      </Link>
+                      {index < relatedLinks.length - 1 ? ", " : "."}
+                    </span>
+                  ))}
+                </p>
               ) : null}
             </article>
 
@@ -125,7 +136,7 @@ export default async function ServiceAreaDetailPage({
           {area.cards.length ? (
             <div className="quote-card-grid" style={{ marginTop: 20 }}>
               {area.cards.slice(0, 6).map((card) => (
-                <QuoteCard key={card.id} quote={card} />
+                <QuoteCard key={card.id} quote={card} variant="compact" />
               ))}
             </div>
           ) : null}
