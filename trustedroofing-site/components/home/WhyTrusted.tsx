@@ -1,4 +1,5 @@
 import Image from "next/image";
+import BrandText from "@/components/BrandText";
 
 const points = [
   {
@@ -24,7 +25,7 @@ export default function WhyTrusted() {
     <section className="homev3-section homev3-section--soft" id="why">
       <div className="homev3-container homev3-why-layout">
         <div>
-          <p className="homev3-eyebrow homev3-eyebrow--dark">Why Trusted</p>
+          <p className="homev3-eyebrow homev3-eyebrow--dark">Why <BrandText className="brand-text--eyebrow" /></p>
           <h2 className="homev3-title">A better roofing experience, start to finish</h2>
           <p className="homev3-copy">
             A cleaner process from first call to final invoice, backed by communication and
