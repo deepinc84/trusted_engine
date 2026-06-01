@@ -802,6 +802,7 @@ main {
 
 .brand-text {
   --brand-main-size: 1em;
+  --brand-descriptor-size: 0.5em;
   display: inline-flex;
   align-items: baseline;
   gap: 0.2em;
@@ -826,33 +827,38 @@ main {
 
 .brand-text__descriptor {
   font-family: inherit;
-  font-size: calc(var(--brand-main-size) * 0.4167);
+  font-size: var(--brand-descriptor-size);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: none;
 }
 
 .brand-text--footer {
-  --brand-main-size: 1.56rem;
+  --brand-main-size: 40px;
+  --brand-descriptor-size: 20px;
   color: #fff;
 }
 
 .brand-text--home-footer {
-  --brand-main-size: 1.55rem;
+  --brand-main-size: 40px;
+  --brand-descriptor-size: 20px;
   color: #fff;
 }
 
 .brand-text--eyebrow {
   --brand-main-size: 0.72rem;
+  --brand-descriptor-size: 0.36rem;
 }
 
 .brand-text--body {
   --brand-main-size: 1em;
+  --brand-descriptor-size: 0.5em;
   color: inherit;
 }
 
 .brand-text--hero-copy {
   --brand-main-size: 1em;
+  --brand-descriptor-size: 0.5em;
   color: inherit;
 }
 
@@ -2579,8 +2585,10 @@ main {
     width: 48px;
   }
 
-  .brand-text--footer {
-    --brand-main-size: 1.3rem;
+  .brand-text--footer,
+  .brand-text--home-footer {
+    --brand-main-size: 32px;
+    --brand-descriptor-size: 16px;
   }
 
   .site-footer__grid--expanded {
