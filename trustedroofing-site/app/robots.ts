@@ -1,12 +1,19 @@
 import type { MetadataRoute } from "next";
 
+const SITE_URL = "https://www.trustedroofingcalgary.com";
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/solar-suitability"]
+      disallow: [
+        "/api/",
+        "/admin/",
+        "/solar-suitability",
+        "/test"
+      ],
     },
-    sitemap: "https://www.trustedroofingcalgary.com/sitemap.xml"
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }
