@@ -1,4 +1,4 @@
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://trustedroofing.ca";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://trustedroofingcalgary.com";
 
 const staticPaths = [
   "",
