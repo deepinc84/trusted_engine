@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/solar-suitability"]
     },
-    sitemap: "https://www.trustedexteriors.ca/sitemap.xml"
+    sitemap: "https://www.trustedroofingcalgary.com/sitemap.xml"
   };
 }
