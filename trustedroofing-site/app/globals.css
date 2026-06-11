@@ -2328,7 +2328,7 @@ main {
 }
 
 .homev3-hero {
-  min-height: calc(100vh - 68px);
+  min-height: clamp(520px, 68vh, 720px);
   background: var(--navy-deep);
 }
 
@@ -3089,12 +3089,18 @@ main {
   box-shadow: none;
   transform: scale(1.02);
   animation: homev3HeroScale 9s ease forwards;
+  filter: none;
 }
 .ui-page-hero__overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(180deg, rgba(12, 21, 40, 0.42), rgba(12, 21, 40, 0.9));
+  background: linear-gradient(
+    90deg,
+    rgba(11, 19, 36, 0.72) 0%,
+    rgba(11, 19, 36, 0.54) 45%,
+    rgba(11, 19, 36, 0.34) 100%
+  );
 }
 .ui-page-hero--with-image .site-shell {
   position: relative;
@@ -3114,4 +3120,180 @@ main {
 @media (max-width: 860px) {
   .ui-page-hero--with-image { min-height: 560px; }
   .ui-page-hero--with-image .ui-page-hero__layout { padding: 150px 0 48px; }
+}
+
+/* Online estimate conversion hero */
+.online-estimate-hero {
+  position: relative;
+  min-height: clamp(520px, 68vh, 720px);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 126px 0 36px;
+  background: var(--navy-deep);
+  color: #fff;
+}
+
+.online-estimate-hero__background {
+  object-fit: cover;
+  object-position: center;
+  filter: none;
+}
+
+.online-estimate-hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(11, 19, 36, 0.74) 0%,
+    rgba(11, 19, 36, 0.58) 42%,
+    rgba(11, 19, 36, 0.44) 100%
+  );
+}
+
+.online-estimate-hero .site-shell {
+  position: relative;
+  z-index: 2;
+}
+
+.online-estimate-hero__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(500px, 1.15fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 72px);
+}
+
+.online-estimate-hero__content {
+  min-width: 0;
+}
+
+.online-estimate-hero__content h1 {
+  max-width: 650px;
+  margin-top: 18px;
+  font-size: clamp(2.5rem, 4.6vw, 4.4rem);
+  line-height: 1.03;
+  color: #fff;
+}
+
+.online-estimate-hero__description {
+  max-width: 600px;
+  margin-top: 20px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(1rem, 1.4vw, 1.16rem);
+}
+
+.online-estimate-hero__trust-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+  list-style: none;
+}
+
+.online-estimate-hero__trust-list li {
+  position: relative;
+  padding-left: 28px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 700;
+}
+
+.online-estimate-hero__trust-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #7dd3fc;
+  font-weight: 800;
+}
+
+.online-estimate-hero__form {
+  min-width: 0;
+}
+
+.online-estimate-hero__form .instant-quote {
+  margin: 0;
+  padding: 20px 22px;
+  color: var(--text);
+  border-top-color: #7dd3fc;
+  box-shadow: 0 24px 70px rgba(2, 8, 23, 0.38);
+}
+
+.online-estimate-hero__form .instant-quote h2 {
+  font-size: clamp(1.7rem, 2.4vw, 2.2rem);
+}
+
+.online-estimate-hero__form .form-grid {
+  gap: 12px;
+}
+
+.online-estimate-hero__form .instant-quote__proposal-callout {
+  padding: 10px 12px;
+}
+
+@media (max-width: 900px) {
+  .online-estimate-hero {
+    min-height: auto;
+    padding: 136px 0 56px;
+  }
+
+  .online-estimate-hero__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .online-estimate-hero__content h1,
+  .online-estimate-hero__description {
+    max-width: 760px;
+  }
+}
+
+@media (max-width: 600px) {
+  .online-estimate-hero {
+    padding: 20px 0 28px;
+  }
+
+  .online-estimate-hero__layout {
+    gap: 18px;
+  }
+
+  .online-estimate-hero__content {
+    padding-top: 0;
+  }
+
+  .online-estimate-hero__content .homev3-eyebrow {
+    font-size: 0.68rem;
+    margin-bottom: 8px;
+  }
+
+  .online-estimate-hero__content h1 {
+    font-size: clamp(3.15rem, 12vw, 4rem);
+    line-height: 0.94;
+    max-width: 7.5em;
+  }
+
+  .online-estimate-hero__description {
+    font-size: 1.08rem;
+    line-height: 1.4;
+    margin-top: 14px;
+    max-width: 24rem;
+  }
+
+  .online-estimate-hero__trust-list {
+    display: none;
+  }
+
+  .online-estimate-hero__form .instant-quote {
+    padding: 22px 18px;
+  }
+
+  .online-estimate-hero__form .instant-quote h2 {
+    font-size: clamp(2.2rem, 9vw, 2.75rem);
+    line-height: 1.02;
+  }
+
+  .online-estimate-hero__form .instant-quote__scope-pill {
+    padding-block: 7px;
+  }
+
+  .online-estimate-hero__form .instant-quote__input-row {
+    grid-template-columns: 1fr;
+  }
 }

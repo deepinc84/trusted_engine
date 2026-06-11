@@ -134,9 +134,10 @@ function parseJsonSafe(text: string) {
 
 type QuoteFlowProps = {
   testMode?: boolean;
+  showNearbyActivity?: boolean;
 };
 
-export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
+export default function QuoteFlow({ testMode = false, showNearbyActivity = true }: QuoteFlowProps) {
   const searchParams = useSearchParams();
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -790,7 +791,7 @@ export default function QuoteFlow({ testMode = false }: QuoteFlowProps) {
       {error ? <p className="instant-quote__error">{error}</p> : null}
 
       {/* Keep nearby cards visible on first render (recent 6 quote signals). */}
-      {testMode ? null : <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} />}
+      {showNearbyActivity && !testMode ? <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} /> : null}
     </div>
   );
 }
