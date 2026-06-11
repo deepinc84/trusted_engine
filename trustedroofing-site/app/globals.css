@@ -3235,22 +3235,33 @@ main {
 
 @media (max-width: 600px) {
   .online-estimate-hero {
-    padding: 104px 0 28px;
+    padding: 20px 0 28px;
   }
 
   .online-estimate-hero__layout {
-    gap: 22px;
+    gap: 18px;
+  }
+
+  .online-estimate-hero__content {
+    padding-top: 0;
+  }
+
+  .online-estimate-hero__content .homev3-eyebrow {
+    font-size: 0.68rem;
+    margin-bottom: 8px;
   }
 
   .online-estimate-hero__content h1 {
-    font-size: clamp(3rem, 13vw, 4.2rem);
-    line-height: 0.98;
+    font-size: clamp(3.15rem, 12vw, 4rem);
+    line-height: 0.94;
+    max-width: 7.5em;
   }
 
   .online-estimate-hero__description {
-    margin-top: 16px;
-    font-size: 1.15rem;
-    line-height: 1.45;
+    font-size: 1.08rem;
+    line-height: 1.4;
+    margin-top: 14px;
+    max-width: 24rem;
   }
 
   .online-estimate-hero__trust-list {
@@ -3262,7 +3273,8 @@ main {
   }
 
   .online-estimate-hero__form .instant-quote h2 {
-    font-size: clamp(2.15rem, 9vw, 2.8rem);
+    font-size: clamp(2.2rem, 9vw, 2.75rem);
+    line-height: 1.02;
   }
 
   .online-estimate-hero__form .instant-quote__scope-pill {
