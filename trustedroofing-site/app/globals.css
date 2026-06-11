@@ -3089,12 +3089,18 @@ main {
   box-shadow: none;
   transform: scale(1.02);
   animation: homev3HeroScale 9s ease forwards;
+  filter: none;
 }
 .ui-page-hero__overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(180deg, rgba(12, 21, 40, 0.42), rgba(12, 21, 40, 0.9));
+  background: linear-gradient(
+    90deg,
+    rgba(11, 19, 36, 0.72) 0%,
+    rgba(11, 19, 36, 0.54) 45%,
+    rgba(11, 19, 36, 0.34) 100%
+  );
 }
 .ui-page-hero--with-image .site-shell {
   position: relative;
@@ -3131,13 +3137,19 @@ main {
 .online-estimate-hero__background {
   object-fit: cover;
   object-position: center;
+  filter: none;
 }
 
 .online-estimate-hero__overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(90deg, rgba(8, 18, 36, 0.94) 0%, rgba(8, 18, 36, 0.82) 46%, rgba(8, 18, 36, 0.68) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(11, 19, 36, 0.74) 0%,
+    rgba(11, 19, 36, 0.58) 42%,
+    rgba(11, 19, 36, 0.44) 100%
+  );
 }
 
 .online-estimate-hero .site-shell {
