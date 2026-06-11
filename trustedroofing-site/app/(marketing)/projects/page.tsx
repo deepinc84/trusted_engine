@@ -16,6 +16,16 @@ const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
 
 const FEATURED_PROJECT_COUNT = 3;
 const PROJECTS_ANCHOR = "remaining-projects";
+const HARDIE_FILTER_SLUG = "james-hardie-siding";
+const HARDIE_PROJECT_SLUGS = new Set([HARDIE_FILTER_SLUG, "hardie-siding", "hardie-board-siding"]);
+const SIDING_PROJECT_SLUGS = new Set(["siding", "vinyl-siding", ...HARDIE_PROJECT_SLUGS]);
+
+function matchesServiceFilter(projectServiceSlug: string, selectedServiceSlug: string | null) {
+  if (!selectedServiceSlug) return true;
+  if (selectedServiceSlug === "siding") return SIDING_PROJECT_SLUGS.has(projectServiceSlug);
+  if (HARDIE_PROJECT_SLUGS.has(selectedServiceSlug)) return HARDIE_PROJECT_SLUGS.has(projectServiceSlug);
+  return projectServiceSlug === selectedServiceSlug;
+}
 
 function toServiceFilterLink(slug: string | null) {
   if (!slug) return `/projects#${PROJECTS_ANCHOR}`;
@@ -48,21 +58,34 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
   const selectedNeighborhood = searchParams?.neighborhood ?? null;
   const hasActiveFilter = Boolean(selectedServiceSlug || selectedNeighborhood);
 
-  const [services, allProjects, filteredProjects] = await Promise.all([
+  const [services, allProjects] = await Promise.all([
     listServices(),
-    listProjects({ include_unpublished: false, limit: 200 }),
-    hasActiveFilter
-      ? listProjects({ service_slug: selectedServiceSlug, neighborhood: selectedNeighborhood, include_unpublished: false, limit: 200 })
-      : Promise.resolve(null)
+    listProjects({ include_unpublished: false, limit: 200 })
   ]);
 
+  const hardieService = services.find((service) => HARDIE_PROJECT_SLUGS.has(service.slug));
+  const projectFilterServices = [
+    ...services.filter((service) => !HARDIE_PROJECT_SLUGS.has(service.slug)),
+    {
+      id: hardieService?.id ?? "project-filter-james-hardie-siding",
+      slug: HARDIE_FILTER_SLUG,
+      title: "James Hardie Siding",
+      base_sales_copy: hardieService?.base_sales_copy ?? null,
+      created_at: hardieService?.created_at ?? new Date(0).toISOString()
+    }
+  ].sort((a, b) => a.title.localeCompare(b.title));
+  const filteredProjects = allProjects.filter(
+    (project) =>
+      matchesServiceFilter(project.service_slug, selectedServiceSlug) &&
+      (!selectedNeighborhood || project.neighborhood === selectedNeighborhood)
+  );
   const featuredProjects = allProjects.slice(0, FEATURED_PROJECT_COUNT);
   const remainingProjects = hasActiveFilter
-    ? filteredProjects ?? []
+    ? filteredProjects
     : allProjects.slice(FEATURED_PROJECT_COUNT);
   const serviceChips = [
     { label: "All services", href: toServiceFilterLink(null) },
-    ...services.map((service) => ({ label: service.title, href: toServiceFilterLink(service.slug) }))
+    ...projectFilterServices.map((service) => ({ label: service.title, href: toServiceFilterLink(service.slug) }))
   ];
   const neighborhoodChips = Array.from(new Set(allProjects.map((project) => project.neighborhood).filter(Boolean)))
     .map((name) => ({ label: name as string, href: toNeighborhoodFilterLink(name as string) }));
@@ -149,7 +172,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
           <ProjectsExplorer
             projects={remainingProjects}
             filterProjects={allProjects}
-            services={services}
+            services={projectFilterServices}
             selectedServiceSlug={selectedServiceSlug}
             selectedNeighborhood={selectedNeighborhood}
           />
