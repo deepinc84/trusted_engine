@@ -34,6 +34,20 @@ export default function PageHero({
     <section
       className={`ui-page-hero${imageSrc ? " ui-page-hero--with-image" : ""}`}
     >
+      {imageSrc ? (
+        <>
+          <Image
+            src={imageSrc}
+            alt={resolvedImageAlt}
+            fill
+            className="ui-page-hero__image"
+            priority={imagePriority}
+            sizes="100vw"
+          />
+          <div className="ui-page-hero__overlay" />
+        </>
+      ) : null}
+
       <PageContainer>
         <div className={imageSrc ? "ui-page-hero__layout" : undefined}>
           <div className={imageSrc ? "ui-page-hero__content" : undefined}>
@@ -51,18 +65,6 @@ export default function PageHero({
               <div className="ui-page-hero__actions">{actions}</div>
             ) : null}
           </div>
-
-          {imageSrc ? (
-            <Image
-              src={imageSrc}
-              alt={resolvedImageAlt}
-              width={720}
-              height={480}
-              className="ui-page-hero__image"
-              priority={imagePriority}
-              sizes="(max-width: 860px) 100vw, 46vw"
-            />
-          ) : null}
         </div>
       </PageContainer>
     </section>

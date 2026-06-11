@@ -8,7 +8,7 @@ import ServiceCard from "@/components/ui/ServiceCard";
 import GeoPostCard from "@/components/GeoPostCard";
 import ServiceSchema from "@/components/ServiceSchema";
 import { getServiceBySlug, listGeoPosts, listProjects, listServices } from "@/lib/db";
-import { getPlaceholderProjectImage } from "@/lib/images";
+import { getPlaceholderProjectImage, selectHeroProjectImage } from "@/lib/images";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -71,11 +71,8 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
 
   const recentGeoPosts = geoPosts.slice(0, 5);
   const olderGeoPosts = geoPosts.slice(5);
-  const projectHeroImage = recentProjects.find((project) => project.photos?.[0])?.photos?.[0]?.public_url;
-  const geoPostHeroImage = allPublishedUpdates.find(
-    (post) => post.service_slug === service.slug && post.primary_image_url
-  )?.primary_image_url;
-  const heroImage = projectHeroImage ?? geoPostHeroImage ?? getPlaceholderProjectImage(service.slug);
+  const heroImage =
+    selectHeroProjectImage(recentProjects) ?? getPlaceholderProjectImage(service.slug);
 
   const related = allServices.filter((item) => item.slug !== service.slug).slice(0, 3);
 
