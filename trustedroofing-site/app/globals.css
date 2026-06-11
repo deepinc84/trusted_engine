@@ -2405,6 +2405,28 @@ main {
   padding: 96px 0 56px;
 }
 
+.ui-page-hero__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 48px;
+}
+
+.ui-page-hero__content {
+  min-width: 0;
+}
+
+.ui-page-hero__media {
+  position: relative;
+  min-height: 360px;
+  overflow: hidden;
+  border-radius: var(--r-xl);
+}
+
+.ui-page-hero__image {
+  object-fit: cover;
+}
+
 .ui-page-section {
   padding: 70px 0;
 }
@@ -2513,6 +2535,15 @@ main {
 
 /* ─── Bugfix pass: mobile header compactness + touch safety ─────────── */
 @media (max-width: 768px) {
+  .ui-page-hero__inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .ui-page-hero__media {
+    min-height: 260px;
+  }
+
   .site-header--v3 {
     position: fixed;
     top: 0;
