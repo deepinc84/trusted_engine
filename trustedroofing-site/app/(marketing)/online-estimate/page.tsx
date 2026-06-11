@@ -80,7 +80,7 @@ export default function QuotePage() {
               </ul>
             </div>
             <div className="online-estimate-hero__form">
-              <QuoteFlow />
+              <QuoteFlow showNearbyActivity={false} />
             </div>
           </div>
         </PageContainer>
