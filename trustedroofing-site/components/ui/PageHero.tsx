@@ -28,7 +28,7 @@ export default function PageHero({
   const imageSrc = typeof image === "string" ? image : image?.src;
   const resolvedImageAlt =
     typeof image === "string" ? imageAlt ?? "" : image?.alt ?? imageAlt ?? "";
-  const imagePriority = typeof image === "string" ? true : image?.priority;
+  const imagePriority = typeof image === "string" ? true : image?.priority ?? true;
 
   return (
     <section
@@ -36,7 +36,7 @@ export default function PageHero({
     >
       <PageContainer>
         <div className={imageSrc ? "ui-page-hero__layout" : undefined}>
-          <div>
+          <div className={imageSrc ? "ui-page-hero__content" : undefined}>
             {eyebrow ? (
               <p className="homev3-eyebrow homev3-eyebrow--dark">
                 {eyebrow}
@@ -60,6 +60,7 @@ export default function PageHero({
               height={480}
               className="ui-page-hero__image"
               priority={imagePriority}
+              sizes="(max-width: 860px) 100vw, 46vw"
             />
           ) : null}
         </div>

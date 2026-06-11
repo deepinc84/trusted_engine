@@ -3041,13 +3041,30 @@ main {
   }
 }
 
+.ui-page-hero--with-image .ui-page-hero__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+}
+
+.ui-page-hero__image {
+  width: 100%;
+  height: clamp(280px, 32vw, 430px);
+  object-fit: cover;
+  border-radius: var(--r-lg);
+  box-shadow: 0 18px 48px rgba(15, 30, 56, 0.16);
+}
+
 @media (max-width: 860px) {
-  .ui-page-hero__layout {
+  .ui-page-hero--with-image .ui-page-hero__layout {
     grid-template-columns: 1fr;
     gap: 28px;
   }
 
   .ui-page-hero__image {
     height: min(64vw, 360px);
+  }
+}
   }
 }
