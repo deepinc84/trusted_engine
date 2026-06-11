@@ -10,6 +10,7 @@ import {
   getAllNeighborhoodActivities,
   getNeighborhoodActivityBySlug,
 } from "@/lib/seo-engine";
+import { getPlaceholderProjectImage } from "@/lib/images";
 import { buildMetadata } from "@/lib/seo";
 import { normalizeNeighborhoodSlug } from "@/lib/serviceAreas";
 import { buildServiceAreaNarrative } from "@/lib/serviceAreaNarratives";
@@ -62,6 +63,21 @@ export default async function ServiceAreaDetailPage({
   const relatedLinks = (await getAllNeighborhoodActivities()).filter(
     (entry) => entry.slug !== area.slug,
   );
+  const cityProjectImage = relatedLinks
+    .filter((entry) => entry.city.toLowerCase() === area.city.toLowerCase())
+    .flatMap((entry) => entry.projects)
+    .find((project) => project.photos?.[0]?.public_url)?.photos?.[0]?.public_url;
+  const heroImage =
+    area.projects.find((project) => project.photos?.[0]?.public_url)?.photos?.[0]
+      ?.public_url ??
+    area.geoPosts.find((post) => post.primary_image_url)?.primary_image_url ??
+    cityProjectImage ??
+    getPlaceholderProjectImage({
+      seed: area.slug,
+      neighborhood: area.neighborhood,
+      quadrant: area.quadrant,
+      city: area.city,
+    });
   const narrative = buildServiceAreaNarrative({
     neighborhood: area.neighborhood,
     city: area.city,
@@ -98,6 +114,8 @@ export default async function ServiceAreaDetailPage({
             </Link>
           </>
         }
+        image={heroImage}
+        imageAlt={`Roofing project serving ${area.neighborhood}, ${area.city}`}
       />
 
       <section className="ui-page-section">

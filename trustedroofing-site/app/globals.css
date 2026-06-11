@@ -1516,6 +1516,22 @@ main {
   flex-wrap: wrap;
 }
 
+.ui-page-hero__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  gap: 44px;
+  align-items: center;
+}
+
+.ui-page-hero__image {
+  display: block;
+  width: 100%;
+  height: clamp(260px, 30vw, 390px);
+  object-fit: cover;
+  border-radius: var(--r-lg);
+  box-shadow: 0 18px 48px rgba(15, 30, 56, 0.18);
+}
+
 .ui-page-section {
   padding: 54px 0;
 }
@@ -2991,5 +3007,16 @@ main {
   .admin-filter-note {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 860px) {
+  .ui-page-hero__layout {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .ui-page-hero__image {
+    height: min(64vw, 360px);
   }
 }
