@@ -10,6 +10,7 @@ import {
   getAllNeighborhoodActivities,
   getNeighborhoodActivityBySlug,
 } from "@/lib/seo-engine";
+import { getPlaceholderProjectImage } from "@/lib/images";
 import { buildMetadata } from "@/lib/seo";
 import { normalizeNeighborhoodSlug } from "@/lib/serviceAreas";
 import { buildServiceAreaNarrative } from "@/lib/serviceAreaNarratives";
@@ -32,9 +33,15 @@ export async function generateMetadata({
     });
   }
 
+  const location = `${area.neighborhood}, ${area.city}`;
+  const title =
+    area.city === "Calgary"
+      ? `Residential Roofing in ${location}`
+      : `Roofing in ${location}`;
+
   return buildMetadata({
-    title: `${area.neighborhood} roofing and exterior activity`,
-    description: `Roofing, siding, and exterior services in ${area.neighborhood}, Calgary with local project insights, recent estimate activity, and instant quote tools.`,
+    title,
+    description: `Get a roofing, siding, or eavestrough estimate in ${location}. See local estimate activity, related projects, and start an instant quote online.`,
     path: `/service-areas/${normalizedSlug}`,
   });
 }
@@ -56,6 +63,21 @@ export default async function ServiceAreaDetailPage({
   const relatedLinks = (await getAllNeighborhoodActivities()).filter(
     (entry) => entry.slug !== area.slug,
   );
+  const cityProjectImage = relatedLinks
+    .filter((entry) => entry.city.toLowerCase() === area.city.toLowerCase())
+    .flatMap((entry) => entry.projects)
+    .find((project) => project.photos?.[0]?.public_url)?.photos?.[0]?.public_url;
+  const heroImage =
+    area.projects.find((project) => project.photos?.[0]?.public_url)?.photos?.[0]
+      ?.public_url ??
+    area.geoPosts.find((post) => post.primary_image_url)?.primary_image_url ??
+    cityProjectImage ??
+    getPlaceholderProjectImage({
+      seed: area.slug,
+      neighborhood: area.neighborhood,
+      quadrant: area.quadrant,
+      city: area.city,
+    });
   const narrative = buildServiceAreaNarrative({
     neighborhood: area.neighborhood,
     city: area.city,
@@ -75,9 +97,25 @@ export default async function ServiceAreaDetailPage({
     <>
       <DynamicSchema quoteData={area} relatedNeighborhoods={relatedLinks} />
       <PageHero
-        eyebrow="Neighborhood activity graph"
-        title={`${area.neighborhood} roofing and exterior activity`}
-        description={`Unified local signals for ${area.neighborhood}: quotes, published projects, and solar suitability enrichment without exposing private addresses.`}
+        eyebrow={`${area.city} service area`}
+        title={
+          area.city === "Calgary"
+            ? `Residential Roofing in ${area.neighborhood}, Calgary`
+            : `Roofing in ${area.neighborhood}, ${area.city}`
+        }
+        description={`See recent roofing, siding, and eavestrough estimate activity in ${area.neighborhood}, then start an instant quote for your own property.`}
+        actions={
+          <>
+            <Link href="/online-estimate" className="button">
+              Get instant quote
+            </Link>
+            <Link href="/projects" className="button button--ghost">
+              View projects
+            </Link>
+          </>
+        }
+        image={heroImage}
+        imageAlt={`Roofing project serving ${area.neighborhood}, ${area.city}`}
       />
 
       <section className="ui-page-section">
@@ -109,12 +147,12 @@ export default async function ServiceAreaDetailPage({
             </article>
 
             <article className="ui-card">
-              <h2>Activity source snapshot</h2>
+              <h2>Local estimate snapshot</h2>
               <p className="homev3-copy">
-                {area.quoteCount} quote signal{area.quoteCount === 1 ? "" : "s"}{" "}
+                {area.quoteCount} estimate{area.quoteCount === 1 ? "" : "s"}{" "}
                 · {area.projectCount} published project
                 {area.projectCount === 1 ? "" : "s"} · {area.solarActivityCount}{" "}
-                solar model{area.solarActivityCount === 1 ? "" : "s"}
+                roof assessment{area.solarActivityCount === 1 ? "" : "s"}
                 {area.has_geo_post_enrichment
                   ? ` · ${area.geoPostEnrichmentCount} project-derived local update${area.geoPostEnrichmentCount === 1 ? "" : "s"}`
                   : ""}
@@ -160,8 +198,8 @@ export default async function ServiceAreaDetailPage({
       </section>
 
       <CtaBand
-        title={`Need a quote in ${area.neighborhood}?`}
-        body="Use instant quote to compare your property to live Calgary neighborhood pricing signals."
+        title={`Need a roofing estimate in ${area.neighborhood}?`}
+        body="Start with an instant online estimate, then request a detailed proposal when you are ready."
       />
     </>
   );

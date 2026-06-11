@@ -7,43 +7,59 @@ type Props = {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
-  image?: {
+  image?: string | {
     src: string;
     alt: string;
     priority?: boolean;
   };
+  imageAlt?: string;
 };
 
-export default function PageHero({ eyebrow, title, description, actions, image }: Props) {
-  const content = (
-    <>
-      {eyebrow ? <p className="homev3-eyebrow homev3-eyebrow--dark">{eyebrow}</p> : null}
-      <h1 className="homev3-title">{title}</h1>
-      {description ? <p className="homev3-copy">{description}</p> : null}
-      {actions ? <div className="ui-page-hero__actions">{actions}</div> : null}
-    </>
-  );
+export default function PageHero({
+  eyebrow,
+  title,
+  description,
+  actions,
+  image,
+  imageAlt,
+}: Props) {
+  const imageSrc = typeof image === "string" ? image : image?.src;
+  const resolvedImageAlt =
+    typeof image === "string" ? imageAlt ?? "" : image?.alt ?? imageAlt ?? "";
+  const imagePriority = typeof image === "string" ? true : image?.priority;
 
   return (
-    <section className="ui-page-hero">
+    <section className={`ui-page-hero${imageSrc ? " ui-page-hero--with-image" : ""}`}>
       <PageContainer>
-        {image ? (
-          <div className="ui-page-hero__inner">
-            <div className="ui-page-hero__content">{content}</div>
-            <div className="ui-page-hero__media">
-              <Image
-                className="ui-page-hero__image"
-                src={image.src}
-                alt={image.alt}
-                fill
-                priority={image.priority}
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </div>
+        <div className={imageSrc ? "ui-page-hero__layout" : undefined}>
+          <div>
+            {eyebrow ? (
+              <p className="homev3-eyebrow homev3-eyebrow--dark">
+                {eyebrow}
+              </p>
+            ) : null}
+            <h1 className="homev3-title">{title}</h1>
+            {description ? <p className="homev3-copy">{description}</p> : null}
+            {actions ? (
+              <div className="ui-page-hero__actions">{actions}</div>
+            ) : null}
           </div>
-        ) : (
-          content
-        )}
+
+          {imageSrc ? (
+            <Image
+              src={imageSrc}
+              alt={resolvedImageAlt}
+              width={720}
+              height={480}
+              className="ui-page-hero__image"
+              priority={imagePriority}
+            />
+          ) : null}
+        </div>
+      </PageContainer>
+    </section>
+  );
+}
       </PageContainer>
     </section>
   );
