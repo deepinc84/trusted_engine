@@ -89,33 +89,31 @@ export function buildServiceAreaNarrative(
 
   const sourceDescription =
     input.quoteCount > 0 && input.projectCount > 0
-      ? "quote demand and completed project proof"
+      ? "recent homeowner estimates and completed roofing or exterior projects"
       : input.quoteCount > 0
-        ? "instant quote demand"
+        ? "recent homeowner estimates"
         : input.projectCount > 0
-          ? "published project activity"
-          : "solar suitability activity";
+          ? "completed roofing or exterior projects"
+          : "available property roof assessments";
 
   const summaryParts = [
-    `${input.neighborhood} is represented in Trusted's local activity graph through ${sourceDescription}`,
+    `Homeowners in ${input.neighborhood} can use Trusted for roofing, siding, and eavestrough estimates informed by ${sourceDescription}`,
   ];
   if (input.solarCount > 0)
     summaryParts.push(
-      "with solar suitability modeling available as background roof-readiness context",
+      "with roof orientation and sun-exposure details available where relevant",
     );
   if (input.geoPostCount > 0)
-    summaryParts.push(
-      "and project-derived local project updates tied to completed work",
-    );
+    summaryParts.push("and local updates from completed work");
 
   const activityContext =
     input.quoteCount > 0 && input.projectCount > 0
-      ? `${input.neighborhood} combines ${input.quoteCount} recent quote signal${input.quoteCount === 1 ? "" : "s"} with ${input.projectCount} published project${input.projectCount === 1 ? "" : "s"}, so the page reflects both planning demand and real job history.`
+      ? `${input.neighborhood} combines ${input.quoteCount} recent estimate request${input.quoteCount === 1 ? "" : "s"} with ${input.projectCount} published project${input.projectCount === 1 ? "" : "s"}, so the page reflects both planning demand and real job history.`
       : input.quoteCount > 0
-        ? `${input.neighborhood} is currently quote-led, with ${input.quoteCount} recent estimate signal${input.quoteCount === 1 ? "" : "s"} shaping the service-area context.`
+        ? `${input.neighborhood} is currently quote-led, with ${input.quoteCount} recent estimate request${input.quoteCount === 1 ? "" : "s"} shaping the service-area context.`
         : input.projectCount > 0
           ? `${input.neighborhood} is currently project-led, with ${input.projectCount} published project${input.projectCount === 1 ? "" : "s"} anchoring this service-area page.`
-          : `${input.neighborhood} is currently represented by solar suitability analysis data, which can inform roof-readiness planning without exposing private addresses.`;
+          : `${input.neighborhood} currently has property roof assessments that can help homeowners begin planning roofing and exterior work without exposing private addresses.`;
 
   const roofContextParts: string[] = [];
   if (topService.toLowerCase().includes("siding"))
@@ -137,7 +135,7 @@ export function buildServiceAreaNarrative(
 
   if (avgRoofArea !== null && avgRoofArea >= 2400)
     roofContextParts.push(
-      `Modeled roof areas trend large, averaging about ${formatArea(avgRoofArea)} across available signals.`,
+      `Modeled roof areas trend large, averaging about ${formatArea(avgRoofArea)} across available property assessments.`,
     );
   else if (avgRoofArea !== null)
     roofContextParts.push(
@@ -154,7 +152,7 @@ export function buildServiceAreaNarrative(
     );
   if (complexCount > 0)
     roofContextParts.push(
-      `${complexCount} quote signal${complexCount === 1 ? "" : "s"} include complex roof characteristics.`,
+      `${complexCount} estimate${complexCount === 1 ? "" : "s"} include complex roof characteristics.`,
     );
 
   const solarIntentCount = input.solarAnalyses.filter(
@@ -163,12 +161,12 @@ export function buildServiceAreaNarrative(
   const solarContext =
     input.solarCount > 0
       ? solarIntentCount > 0
-        ? `${solarIntentCount} public solar-intent signal${solarIntentCount === 1 ? "" : "s"} exist for this area. Other solar modeling may be quote- or project-derived background enrichment.`
-        : "Solar suitability modeling exists here as background enrichment for roof orientation, sun exposure, and future solar-readiness planning; it does not mean a homeowner requested solar or that Trusted installed solar."
+        ? `${solarIntentCount} public request${solarIntentCount === 1 ? "" : "s"} included interest in future solar planning. Other roof-assessment details may come from estimates or completed projects.`
+        : "Available roof assessments may include orientation and sun-exposure details that help with future planning; they do not mean a homeowner requested solar or that Trusted installed solar."
       : null;
 
   return {
-    headline: `${input.neighborhood} local activity summary`,
+    headline: `Roofing and exterior estimates in ${input.neighborhood}`,
     summary: `${summaryParts.join(" ")}.`,
     activityContext,
     roofContext: roofContextParts.length ? roofContextParts.join(" ") : null,
