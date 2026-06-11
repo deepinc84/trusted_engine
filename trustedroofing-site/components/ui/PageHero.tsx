@@ -7,11 +7,13 @@ type Props = {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
-  image?: string | {
-    src: string;
-    alt: string;
-    priority?: boolean;
-  };
+  image?:
+    | string
+    | {
+        src: string;
+        alt: string;
+        priority?: boolean;
+      };
   imageAlt?: string;
 };
 
@@ -29,7 +31,9 @@ export default function PageHero({
   const imagePriority = typeof image === "string" ? true : image?.priority;
 
   return (
-    <section className={`ui-page-hero${imageSrc ? " ui-page-hero--with-image" : ""}`}>
+    <section
+      className={`ui-page-hero${imageSrc ? " ui-page-hero--with-image" : ""}`}
+    >
       <PageContainer>
         <div className={imageSrc ? "ui-page-hero__layout" : undefined}>
           <div>
@@ -38,8 +42,11 @@ export default function PageHero({
                 {eyebrow}
               </p>
             ) : null}
+
             <h1 className="homev3-title">{title}</h1>
+
             {description ? <p className="homev3-copy">{description}</p> : null}
+
             {actions ? (
               <div className="ui-page-hero__actions">{actions}</div>
             ) : null}
@@ -56,10 +63,6 @@ export default function PageHero({
             />
           ) : null}
         </div>
-      </PageContainer>
-    </section>
-  );
-}
       </PageContainer>
     </section>
   );
