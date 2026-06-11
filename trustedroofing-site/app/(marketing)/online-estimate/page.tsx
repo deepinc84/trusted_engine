@@ -55,21 +55,34 @@ export default function QuotePage() {
   return (
     <>
       <QuoteApplicationSchema />
-      <section className="ui-page-hero ui-page-hero--quote">
+      <section className="online-estimate-hero">
+        <Image
+          className="online-estimate-hero__background"
+          src="/Instant_estimate_hero.png"
+          alt=""
+          fill
+          sizes="100vw"
+          priority
+        />
+        <div className="online-estimate-hero__overlay" />
         <PageContainer>
-          <p className="homev3-eyebrow homev3-eyebrow--dark">Instant quote</p>
-          <h1 className="homev3-title">Instant Roofing & Exterior Estimates for Calgary Homeowners</h1>
-          <p className="homev3-copy">
-            Address-level pricing for roofing, siding, and eavestroughs in Calgary.
-          </p>
-          <Image
-            src="/Instant_estimate_hero.png"
-            alt="Trusted Roofing instant estimate roof measurement preview"
-            width={2048}
-            height={1116}
-            style={{ width: "100%", height: "auto", borderRadius: "1rem", marginTop: "1rem" }}
-            priority
-          />
+          <div className="online-estimate-hero__layout">
+            <div className="online-estimate-hero__content">
+              <p className="homev3-eyebrow">Instant quote</p>
+              <h1>Instant Roofing & Exterior Estimates for Calgary Homeowners</h1>
+              <p className="online-estimate-hero__description">
+                Enter your address for instant roofing, siding, and eavestrough pricing based on your Calgary home.
+              </p>
+              <ul className="online-estimate-hero__trust-list">
+                {quoteBenefits.map((benefit) => (
+                  <li key={benefit.title}>{benefit.title}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="online-estimate-hero__form">
+              <QuoteFlow />
+            </div>
+          </div>
         </PageContainer>
       </section>
       <section className="ui-page-section ui-page-section--soft ui-page-section--quote">
@@ -88,12 +101,6 @@ export default function QuotePage() {
                 ))}
               </div>
             </section>
-
-            <div className="quote-shell">
-              <div className="quote-shell__form">
-                <QuoteFlow />
-              </div>
-            </div>
 
             <div className="quote-support-stack">
               <article className="ui-card quote-support-card">
