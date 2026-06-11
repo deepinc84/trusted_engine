@@ -10,7 +10,10 @@ import {
   getAllNeighborhoodActivities,
   getNeighborhoodActivityBySlug,
 } from "@/lib/seo-engine";
-import { getPlaceholderProjectImage } from "@/lib/images";
+import {
+  getPlaceholderProjectImage,
+  selectHeroProjectImage,
+} from "@/lib/images";
 import { buildMetadata } from "@/lib/seo";
 import { normalizeNeighborhoodSlug } from "@/lib/serviceAreas";
 import { buildServiceAreaNarrative } from "@/lib/serviceAreaNarratives";
@@ -63,14 +66,13 @@ export default async function ServiceAreaDetailPage({
   const relatedLinks = (await getAllNeighborhoodActivities()).filter(
     (entry) => entry.slug !== area.slug,
   );
-  const cityProjectImage = relatedLinks
-    .filter((entry) => entry.city.toLowerCase() === area.city.toLowerCase())
-    .flatMap((entry) => entry.projects)
-    .find((project) => project.photos?.[0]?.public_url)?.photos?.[0]?.public_url;
+  const cityProjectImage = selectHeroProjectImage(
+    relatedLinks
+      .filter((entry) => entry.city.toLowerCase() === area.city.toLowerCase())
+      .flatMap((entry) => entry.projects),
+  );
   const heroImage =
-    area.projects.find((project) => project.photos?.[0]?.public_url)?.photos?.[0]
-      ?.public_url ??
-    area.geoPosts.find((post) => post.primary_image_url)?.primary_image_url ??
+    selectHeroProjectImage(area.projects) ??
     cityProjectImage ??
     getPlaceholderProjectImage({
       seed: area.slug,
