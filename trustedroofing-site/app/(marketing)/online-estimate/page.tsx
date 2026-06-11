@@ -80,7 +80,11 @@ export default function QuotePage() {
               </ul>
             </div>
             <div className="online-estimate-hero__form">
-              <QuoteFlow showNearbyActivity={false} />
+              <QuoteFlow
+                mode="start"
+                resultTargetId="online-estimate-result"
+                nearbyActivityTargetId="online-estimate-activity"
+              />
             </div>
           </div>
         </PageContainer>
@@ -101,6 +105,10 @@ export default function QuotePage() {
                 ))}
               </div>
             </section>
+
+            <div id="online-estimate-result" className="quote-page-result" aria-live="polite" />
+
+            <div id="online-estimate-activity" className="quote-page-activity" />
 
             <div className="quote-support-stack">
               <article className="ui-card quote-support-card">

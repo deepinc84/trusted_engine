@@ -3297,3 +3297,7 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+.quote-page-result {
+  scroll-margin-top: 120px;
+}

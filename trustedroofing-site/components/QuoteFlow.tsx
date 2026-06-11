@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { quoteScopes, type QuoteScope } from "@/lib/quote";
 import { buildPublicQuoteDisplay, buildQuoteStructuredData } from "@/lib/publicQuoteDisplay";
 import dynamic from "next/dynamic";
@@ -132,13 +133,43 @@ function parseJsonSafe(text: string) {
   }
 }
 
+type QuoteFlowMode = "full" | "start" | "result";
+
 type QuoteFlowProps = {
   testMode?: boolean;
+  mode?: QuoteFlowMode;
   showNearbyActivity?: boolean;
+  resultTargetId?: string;
+  nearbyActivityTargetId?: string;
 };
 
-export default function QuoteFlow({ testMode = false, showNearbyActivity = true }: QuoteFlowProps) {
+type QuoteFlowPortalProps = {
+  children: ReactNode;
+  targetId?: string;
+};
+
+function QuoteFlowPortal({ children, targetId }: QuoteFlowPortalProps) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setTarget(targetId ? document.getElementById(targetId) : null);
+  }, [targetId]);
+
+  if (!targetId) return children;
+  return target ? createPortal(children, target) : null;
+}
+
+export default function QuoteFlow({
+  testMode = false,
+  mode = "full",
+  showNearbyActivity = true,
+  resultTargetId,
+  nearbyActivityTargetId
+}: QuoteFlowProps) {
   const searchParams = useSearchParams();
+  const quoteStartRef = useRef<HTMLDivElement>(null);
+  const resultSectionRef = useRef<HTMLElement | null>(null);
+  const hasAutoScrolledRef = useRef(false);
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [status, setStatus] = useState<string | null>(null);
@@ -458,7 +489,24 @@ export default function QuoteFlow({ testMode = false, showNearbyActivity = true 
     setSubmitting(false);
   };
 
+  useEffect(() => {
+    if (mode !== "start" || step !== 2 || !estimate || !resultTargetId || hasAutoScrolledRef.current) return;
+
+    resultSectionRef.current = document.getElementById(resultTargetId);
+    hasAutoScrolledRef.current = true;
+    window.requestAnimationFrame(() => {
+      resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [estimate, mode, resultTargetId, step]);
+
+  const scrollToQuoteStart = () => {
+    window.requestAnimationFrame(() => {
+      quoteStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   const restartFromStep2 = () => {
+    hasAutoScrolledRef.current = false;
     setStep(1);
     setEstimate(null);
     setAddress("");
@@ -479,9 +527,11 @@ export default function QuoteFlow({ testMode = false, showNearbyActivity = true 
     setIsResumedEstimate(false);
     setStatus(null);
     setError(null);
+    if (mode === "start") scrollToQuoteStart();
   };
 
   const resetAll = () => {
+    hasAutoScrolledRef.current = false;
     setStep(1);
     setEstimate(null);
     setAddress("");
@@ -502,6 +552,7 @@ export default function QuoteFlow({ testMode = false, showNearbyActivity = true 
     setIsResumedEstimate(false);
     setStatus(null);
     setError(null);
+    if (mode === "start") scrollToQuoteStart();
   };
 
   const downloadEstimatePdf = async () => {
@@ -542,7 +593,9 @@ export default function QuoteFlow({ testMode = false, showNearbyActivity = true 
   };
 
   return (
-    <div className="instant-quote form-grid">
+    <div ref={quoteStartRef} className="instant-quote form-grid">
+      {mode !== "result" ? (
+        <>
       <h2>Instant {quoteHeadlineByScope[selectedScope]} Quote</h2>
       <p className="instant-quote__subhead">Address first, instant estimate second, follow-up third.</p>
       <div className="instant-quote__proposal-callout" role="note" aria-live="polite">
@@ -568,7 +621,7 @@ export default function QuoteFlow({ testMode = false, showNearbyActivity = true 
         ))}
       </div>
 
-      {step === 1 ? (
+      {step === 1 || mode === "start" ? (
         <form
           className="form-grid"
           onSubmit={(event) => {
@@ -648,7 +701,11 @@ export default function QuoteFlow({ testMode = false, showNearbyActivity = true 
           ) : null}
         </form>
       ) : null}
+        </>
+      ) : null}
 
+      <QuoteFlowPortal targetId={mode === "start" ? resultTargetId : undefined}>
+        {step === 2 || step === 3 || status || (mode !== "start" && error) ? <div className={mode === "start" ? "instant-quote form-grid" : "form-grid"}>
       {step === 2 && estimate ? (
         <>
           {quoteStructuredData ? (
@@ -788,10 +845,16 @@ export default function QuoteFlow({ testMode = false, showNearbyActivity = true 
       ) : null}
 
       {status ? <p className="instant-quote__meta">{status}</p> : null}
-      {error ? <p className="instant-quote__error">{error}</p> : null}
+      {mode !== "start" && error ? <p className="instant-quote__error">{error}</p> : null}
+        </div> : null}
+      </QuoteFlowPortal>
+
+      {mode === "start" && error ? <p className="instant-quote__error">{error}</p> : null}
 
       {/* Keep nearby cards visible on first render (recent 6 quote signals). */}
-      {showNearbyActivity && !testMode ? <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} /> : null}
+      <QuoteFlowPortal targetId={mode === "start" ? nearbyActivityTargetId : undefined}>
+        {showNearbyActivity && !testMode ? <NearbyQuotesCarousel coords={estimateCoords} address={nearbyAddress} /> : null}
+      </QuoteFlowPortal>
     </div>
   );
 }
