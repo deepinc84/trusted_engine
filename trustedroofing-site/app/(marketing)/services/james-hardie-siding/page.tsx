@@ -9,8 +9,8 @@ import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "James Hardie Siding Service",
-  description: "James Hardie fiber cement siding installation in Calgary with attention to flashing, moisture control, layout, and climate-specific detailing.",
+  title: "James Hardie Siding Calgary | Fiber Cement Siding Install",
+  description: "James Hardie siding installation in Calgary for homeowners comparing fiber cement, vinyl siding, hail damage repairs, wall detailing, flashing, and exterior upgrades.",
   path: "/services/james-hardie-siding"
 });
 
@@ -69,6 +69,7 @@ export default async function JamesHardieSidingPage() {
   });
 
 
+  const heroImage = geoPosts.find((post) => post.primary_image_url)?.primary_image_url;
   const faqSchema = buildHardieFaqSchema();
 
   return (
@@ -78,19 +79,50 @@ export default async function JamesHardieSidingPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <PageHero
-        eyebrow="James Hardie siding service"
-        title="Fiber cement siding when the wall needs a heavier finish"
-        description="James Hardie siding is usually chosen by homeowners who want a more substantial look, stronger visual lines, and a cladding system that feels more rigid on the wall."
-        actions={<Link href="/online-estimate" className="button">Start instant quote</Link>}
+        eyebrow="James Hardie siding Calgary"
+        title="James Hardie Siding Installation in Calgary"
+        description="Compare fiber cement siding against vinyl, see recent Calgary Hardie projects, and start an instant exterior estimate before requesting a detailed proposal."
+        actions={
+          <>
+            <Link href="/online-estimate" className="button">Get instant siding quote</Link>
+            <Link href="/projects?service_slug=james-hardie-siding#remaining-projects" className="button button--ghost">View Hardie projects</Link>
+          </>
+        }
+        image={
+          heroImage
+            ? {
+                src: heroImage,
+                alt: "James Hardie siding project in Calgary",
+                priority: true
+              }
+            : undefined
+        }
       />
 
-
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="ui-grid ui-grid--services">
+            <article className="ui-card">
+              <h2>Built for Calgary exposure</h2>
+              <p>Plan the siding, flashing, clearances, and trim package around hail, wind, sun, and freeze-thaw conditions.</p>
+            </article>
+            <article className="ui-card">
+              <h2>Fiber cement vs vinyl guidance</h2>
+              <p>Compare appearance, installation requirements, durability goals, and budget before choosing a wall system.</p>
+            </article>
+            <article className="ui-card">
+              <h2>Real project documentation</h2>
+              <p>Review recent Calgary James Hardie siding work and the exterior details that shaped each project.</p>
+            </article>
+          </div>
+        </PageContainer>
+      </section>
 
       <section className="ui-page-section">
         <PageContainer>
           <div className="ui-detail-grid">
             <article className="ui-card">
-              <h2>What fiber cement siding is</h2>
+              <h2>What James Hardie fiber cement siding is</h2>
               <p>
                 Fiber cement siding is a manufactured cladding product designed to give the wall a heavier, more solid
                 appearance than many lightweight systems. Homeowners usually end up here because they want stronger lines,
@@ -103,7 +135,7 @@ export default async function JamesHardieSidingPage() {
             </article>
 
             <article className="ui-card">
-              <h2>Why homeowners choose it</h2>
+              <h2>Why Calgary homeowners choose Hardie siding</h2>
               <p>
                 The draw is usually a combination of appearance, stability, and long-term finish expectations. Homeowners
                 who do not like the lighter look of vinyl often prefer fiber cement because the wall reads cleaner and more
@@ -122,7 +154,7 @@ export default async function JamesHardieSidingPage() {
         <PageContainer>
           <div className="ui-detail-grid">
             <article className="ui-card">
-              <h2>Calgary-specific performance</h2>
+              <h2>How Hardie siding performs in Calgary weather</h2>
               <p>
                 Calgary walls deal with hail, sun, chinook swings, freeze-thaw movement, and strong wind exposure. Those
                 conditions punish weak joints, sloppy flashing, and trim packages that do not shed water cleanly.
@@ -134,10 +166,10 @@ export default async function JamesHardieSidingPage() {
             </article>
 
             <article className="ui-card">
-              <h2>Installation considerations</h2>
+              <h2>Hardie siding installation details that matter</h2>
               <p>
                 Hardie work is not just about hanging boards. Cutting, fastening, flashing, joint planning, and moisture
-                management need to be handled with discipline. Openings, roof-to-wall transitions, and clearance details all
+                management need to be handled with discipline. Openings, <Link href="/services/roofing">roof-to-wall transitions</Link>, and clearance details all
                 matter because the wall is only as good as the weak point around it.
               </p>
               <p>
@@ -167,7 +199,7 @@ export default async function JamesHardieSidingPage() {
             </article>
 
             <article className="ui-card">
-              <h2>Budget comparison</h2>
+              <h2>James Hardie vs vinyl siding cost comparison</h2>
               <p>
                 In a lot of cases, the decision comes down to budget more than anything else. Fiber cement systems carry a
                 higher material and installation cost, and not every project needs that level of build. When the goal is to
@@ -196,10 +228,11 @@ export default async function JamesHardieSidingPage() {
 
 
       <CtaBand
-        title="Trying to decide between vinyl and Hardie?"
-        body="Start with the instant quote, then we can sort out whether the added cost of a fiber cement system actually fits the project."
+        title="Compare James Hardie and vinyl siding pricing"
+        body="Start with an instant siding estimate, then we can help decide whether fiber cement or vinyl makes more sense for the project."
+        primaryLabel="Get instant siding quote"
       />
-      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent James Hardie siding jobs in Calgary" />
+      <ServiceGeoPosts geoPosts={geoPosts} heading="Recent James Hardie siding projects in Calgary" />
     </>
   );
 }
