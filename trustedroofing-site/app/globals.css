@@ -2328,7 +2328,7 @@ main {
 }
 
 .homev3-hero {
-  min-height: calc(100vh - 68px);
+  min-height: clamp(520px, 68vh, 720px);
   background: var(--navy-deep);
 }
 
@@ -3119,7 +3119,7 @@ main {
 /* Online estimate conversion hero */
 .online-estimate-hero {
   position: relative;
-  min-height: 100svh;
+  min-height: clamp(520px, 68vh, 720px);
   display: flex;
   align-items: center;
   overflow: hidden;
@@ -3200,6 +3200,7 @@ main {
 .online-estimate-hero__form .instant-quote {
   margin: 0;
   padding: 20px 22px;
+  color: var(--text);
   border-top-color: #7dd3fc;
   box-shadow: 0 24px 70px rgba(2, 8, 23, 0.38);
 }
