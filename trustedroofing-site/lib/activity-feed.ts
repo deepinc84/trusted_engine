@@ -24,21 +24,21 @@ function titleFromSlug(value: string | null | undefined) {
     .join(" ");
 }
 
-export async function getLiveActivityFeed(
+function sortAndLimit(items: LiveActivityItem[], limit: number) {
+  return items
+    .sort(
+      (a, b) =>
+        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+    )
+    .slice(0, limit);
+}
+
+export async function getRecentQuoteSignals(
   limit = 20,
 ): Promise<LiveActivityItem[]> {
-  const [quoteRows, projects, geoPosts, solarAnalyses] = await Promise.all([
-    listRecentInstaquoteAddressQueries(limit * 2),
-    listProjects({ limit: limit * 2, include_unpublished: false }),
-    listGeoPosts(limit * 2),
-    listSolarSuitabilityAnalyses({
-      solar_intent_only: true,
-      public_activity_only: true,
-      limit: limit * 2,
-    }),
-  ]);
+  const quoteRows = await listRecentInstaquoteAddressQueries(limit);
 
-  const quoteItems: LiveActivityItem[] = quoteRows.map((row) => {
+  return quoteRows.map((row) => {
     const location = resolvePublicLocation({
       neighborhood: row.neighborhood,
       address: row.address,
@@ -55,6 +55,20 @@ export async function getLiveActivityFeed(
       href: `/quotes#quote-${row.id}`,
     };
   });
+}
+
+export async function getRecentRoofingExteriorActivity(
+  limit = 20,
+): Promise<LiveActivityItem[]> {
+  const [projects, projectUpdates, solarAnalyses] = await Promise.all([
+    listProjects({ limit: limit * 2, include_unpublished: false }),
+    listGeoPosts(limit * 2),
+    listSolarSuitabilityAnalyses({
+      solar_intent_only: true,
+      public_activity_only: true,
+      limit: limit * 2,
+    }),
+  ]);
 
   const projectItems: LiveActivityItem[] = projects.map((project) => {
     const location = resolvePublicLocation({
@@ -63,7 +77,6 @@ export async function getLiveActivityFeed(
       quadrant: project.quadrant,
     });
     const service = titleFromSlug(project.service_slug);
-    const occurredAt = project.created_at;
 
     return {
       id: `project-${project.id}`,
@@ -71,29 +84,27 @@ export async function getLiveActivityFeed(
       service,
       location: location.label,
       message: `New ${service.toLowerCase()} project completed in ${location.label}`,
-      occurredAt,
+      occurredAt: project.created_at,
       href: `/projects/${project.slug}`,
     };
   });
 
-  const geoPostItems: LiveActivityItem[] = geoPosts.map((geoPost) => {
+  const projectUpdateItems: LiveActivityItem[] = projectUpdates.map((update) => {
     const location = resolvePublicLocation({
-      neighborhood: geoPost.neighborhood,
-      city: geoPost.city,
+      neighborhood: update.neighborhood,
+      city: update.city,
       address: null,
     });
-    const service = titleFromSlug(geoPost.service_slug);
+    const service = titleFromSlug(update.service_slug);
 
     return {
-      id: `geo-${geoPost.id}`,
+      id: `project-update-${update.id}`,
       type: "project_update",
       service,
       location: location.label,
-      message: `${service} project published in ${location.label}`,
-      occurredAt: geoPost.created_at,
-      href: geoPost.service_slug
-        ? `/services/${geoPost.service_slug}`
-        : "/projects",
+      message: `New ${service.toLowerCase()} update from ${location.label}`,
+      occurredAt: update.created_at,
+      href: update.service_slug ? `/services/${update.service_slug}` : "/services",
     };
   });
 
@@ -107,13 +118,11 @@ export async function getLiveActivityFeed(
         : `${solar.neighborhood}, ${solar.city}`,
     message: `Solar suitability request modeled in ${solar.neighborhood}`,
     occurredAt: solar.created_at,
-    href: "/solar",
+    href: "/solar-suitability",
   }));
 
-  return [...quoteItems, ...projectItems, ...geoPostItems, ...solarItems]
-    .sort(
-      (a, b) =>
-        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
-    )
-    .slice(0, limit);
+  return sortAndLimit(
+    [...projectItems, ...projectUpdateItems, ...solarItems],
+    limit,
+  );
 }

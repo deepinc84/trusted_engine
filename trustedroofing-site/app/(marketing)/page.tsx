@@ -10,7 +10,10 @@ import WhyTrusted from "@/components/home/WhyTrusted";
 import type { HomeMetric, HomeProject, HomeService } from "@/components/home/types";
 import { countLiveQuoteSignals, listProjects, listServices } from "@/lib/db";
 import { getPlaceholderProjectImage } from "@/lib/images";
-import { getLiveActivityFeed } from "@/lib/activity-feed";
+import {
+  getRecentQuoteSignals,
+  getRecentRoofingExteriorActivity,
+} from "@/lib/activity-feed";
 import { getTopQuoteNeighborhoods } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
@@ -31,12 +34,13 @@ function toTitle(slug: string) {
 }
 
 export default async function HomePage() {
-  const [projects, services, quoteCount, topAreas, activity] = await Promise.all([
+  const [projects, services, quoteCount, topAreas, quoteSignals, activity] = await Promise.all([
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
     countLiveQuoteSignals(),
     getTopQuoteNeighborhoods(20),
-    getLiveActivityFeed(12)
+    getRecentQuoteSignals(5),
+    getRecentRoofingExteriorActivity(12)
   ]);
 
   const metrics: HomeMetric[] = [
@@ -100,7 +104,7 @@ export default async function HomePage() {
   return (
     <>
       <LocalBusinessSchema />
-      <HeroSection metrics={metrics} activity={activity} />
+      <HeroSection metrics={metrics} quoteSignals={quoteSignals} />
       <ProofStrip metrics={metrics} />
       <ServicesGrid services={homeServices} />
       <ActivitySection activity={activity} />

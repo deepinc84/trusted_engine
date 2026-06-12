@@ -5,10 +5,10 @@ import type { HomeActivity, HomeMetric } from "./types";
 
 type Props = {
   metrics: HomeMetric[];
-  activity: HomeActivity[];
+  quoteSignals: HomeActivity[];
 };
 
-export default function HeroSection({ metrics, activity }: Props) {
+export default function HeroSection({ metrics, quoteSignals }: Props) {
   return (
     <section className="homev3-hero" id="top">
       <Image
@@ -42,11 +42,11 @@ export default function HeroSection({ metrics, activity }: Props) {
         </div>
         <aside className="homev3-activity-card">
           <div className="homev3-activity-card__head">
-            <h3>Recent activity</h3>
+            <h3>Recent quote signals</h3>
             <span>Live</span>
           </div>
           <ul>
-            {activity.slice(0, 5).map((item) => (
+            {quoteSignals.map((item) => (
               <li key={item.id}>
                 <div>
                   <strong><Link href={item.href}>{item.message}</Link></strong>
