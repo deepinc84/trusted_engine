@@ -11,20 +11,20 @@ export default function ActivitySection({
     <section className="homev3-section homev3-section--dark" id="activity">
       <div className="homev3-container homev3-activity-layout">
         <div>
-          <p className="homev3-eyebrow">Live trust feed</p>
+          <p className="homev3-eyebrow">Recent activity</p>
           <h2 className="homev3-title">
-            Recent quote, project, and publish activity across Calgary
+            Recent roofing and exterior activity
           </h2>
           <p className="homev3-copy homev3-copy--muted">
-            Live Supabase-backed activity shows fresh estimate signals, newly
-            completed projects, and local project updates in real time.
+            See newly completed projects and local roofing and exterior updates
+            from across the Calgary area.
           </p>
           <div className="homev3-hero__actions">
-            <Link href="/online-estimate" className="button">
-              Get your quote
+            <Link href="/projects" className="button">
+              View recent projects
             </Link>
-            <Link href="/quotes" className="button button--ghost">
-              Browse quote archive
+            <Link href="/services" className="button button--ghost">
+              Explore services
             </Link>
           </div>
         </div>
