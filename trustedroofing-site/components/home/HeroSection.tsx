@@ -21,15 +21,15 @@ export default function HeroSection({ metrics, activity }: Props) {
       <div className="homev3-hero__overlay" />
       <div className="homev3-container homev3-hero__content">
         <div>
-          <p className="homev3-eyebrow">Calgary roofing & exteriors specialists</p>
-          <h1>Your home&apos;s exterior, done once. Done right.</h1>
+          <p className="homev3-eyebrow">Calgary roofing & exterior estimates</p>
+          <h1>Calgary Roofing & Exterior Estimates, Started Online</h1>
           <p className="homev3-hero__sub">
-            Fast quotes, dependable workmanship, and clear communication for roofing,
-            siding, and eavestrough projects.
+            Get an instant roofing, siding, or eavestrough estimate for your Calgary-area home,
+            then request a detailed proposal when ready.
           </p>
           <div className="homev3-hero__actions">
-            <Link href="/online-estimate" className="button">Start instant quote</Link>
-            <Link href="/projects" className="button button--ghost">View projects</Link>
+            <Link href="/online-estimate" className="button">Get instant roof quote</Link>
+            <Link href="/projects" className="button button--ghost">View recent projects</Link>
           </div>
           <div className="homev3-hero__proof">
             {metrics.slice(0, 4).map((metric) => (
