@@ -38,7 +38,7 @@ function HomeHero({ metrics, quoteSignals }: { metrics: HomeMetric[]; quoteSigna
         priority
       />
       <div className="homev3-hero__overlay" />
-      <div className="homev3-container homev3-hero__content">
+      <div className="homev3-container homev3-hero__content home-seo-hero">
         <div>
           <p className="homev3-eyebrow">Calgary roofing company</p>
           <h1>Calgary Roofing Company for Roof Replacement, Repairs & Exterior Estimates</h1>
@@ -94,7 +94,7 @@ function RoofingContractorsSection() {
           scope. Trusted Roofing & Exteriors helps Calgary homeowners price roof replacement, roof
           repair, siding, eavestrough, soffit, fascia, and full exterior work from one place.
         </p>
-        <div className="homev3-services-grid">
+        <div className="homev3-services-grid home-seo-support-grid">
           <article className="homev3-service-card">
             <h3>Roofing contractors for replacement and repairs</h3>
             <p>
@@ -224,6 +224,35 @@ export default async function HomePage() {
   return (
     <>
       <LocalBusinessSchema />
+      <style>{`
+        .home-seo-hero {
+          grid-template-columns: minmax(0, 1.35fr) minmax(280px, 360px);
+        }
+
+        .home-seo-hero h1 {
+          font-size: clamp(2.35rem, 4.5vw, 3.6rem);
+        }
+
+        .home-seo-hero .homev3-activity-card {
+          align-self: start;
+        }
+
+        .home-seo-support-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        @media (max-width: 980px) {
+          .home-seo-hero {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 680px) {
+          .home-seo-support-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
       <HomeHero metrics={metrics} quoteSignals={quoteSignals} />
       <ProofStrip metrics={metrics} />
       <RoofingContractorsSection />
