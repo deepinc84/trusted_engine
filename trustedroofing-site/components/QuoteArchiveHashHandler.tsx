@@ -102,17 +102,15 @@ function focusHashTarget(rawHash: string) {
     return;
   }
 
-  clearAggregateFilters();
-
-  const target = document.getElementById(`quote-${hash}`) ?? document.getElementById(hash);
+  const target = document.getElementById(hash) ?? document.getElementById(`quote-${hash}`);
   if (!target) return;
 
   target.scrollIntoView({ behavior: "smooth", block: "start" });
   const flashTarget = target.classList.contains("quote-card")
     ? target
     : target.closest(".quote-card");
-  flashTarget?.classList.add("quote-card--flash");
-  window.setTimeout(() => flashTarget?.classList.remove("quote-card--flash"), 1800);
+  flashTarget?.classList.add("quote-card--highlighted");
+  window.setTimeout(() => flashTarget?.classList.remove("quote-card--highlighted"), 4000);
 }
 
 export default function QuoteArchiveHashHandler() {
