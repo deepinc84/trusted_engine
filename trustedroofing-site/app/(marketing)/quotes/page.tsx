@@ -1,5 +1,6 @@
 import Link from "next/link";
 import QuoteArchiveHashHandler from "@/components/QuoteArchiveHashHandler";
+import QuoteExplorerFilters from "@/components/QuoteExplorerFilters";
 import QuoteCard from "@/components/QuoteCard";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
@@ -8,8 +9,8 @@ import { buildMetadata, canonicalUrl } from "@/lib/seo";
 import { getAllQuoteNeighborhoods, getQuoteArchiveByMaterial } from "@/lib/seo-engine";
 
 export const metadata = buildMetadata({
-  title: "Calgary quote archive",
-  description: "Every recent instant quote signal published across Calgary neighborhoods, materials, and exterior project scopes.",
+  title: "Calgary Roofing Quotes & Exterior Estimate Examples",
+  description: "Browse recent Calgary roofing, siding, Hardie siding, and eavestrough estimate examples, then start your own instant quote.",
   path: "/quotes"
 });
 
@@ -182,6 +183,7 @@ export default async function QuotesArchivePage() {
   const sections = await getQuoteArchiveByMaterial();
   const cards = sections.flatMap((section) => section.cards);
   const cityCount = new Set(cards.map((card) => card.city)).size;
+  const areaOptions = Array.from(new Map(cards.map((card) => [card.locality.toLowerCase().replace(/[^a-z0-9]+/g, "-"), card.locationLabel])).entries()).sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }));
 
   const neighborhoods = await getAllQuoteNeighborhoods();
   const neighborhoodGeoByKey = neighborhoods.reduce<Record<string, { lat: number; lng: number }>>((acc, item) => {
@@ -209,9 +211,13 @@ export default async function QuotesArchivePage() {
       <QuoteArchiveHashHandler />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <PageHero
-        eyebrow="Quote archive"
-        title="Every recent quote signal in one place"
-        description="A crawlable archive of roofing, siding, Hardie, and eavestrough estimate signals generated from live address-level modeled outputs."
+        eyebrow="Calgary roofing quote examples"
+        title="Calgary Roofing Quotes & Exterior Estimate Examples"
+        description="Browse recent roofing, siding, Hardie siding, and eavestrough estimate examples from Calgary-area homes, then start your own instant online quote when you are ready."
+        actions={<>
+          <Link className="ui-button ui-button--primary" href="/online-estimate">Start your instant quote</Link>
+          <Link className="ui-button ui-button--secondary" href="/services/roofing">View roofing services</Link>
+        </>}
       />
 
       <section className="ui-page-section">
@@ -234,6 +240,10 @@ export default async function QuotesArchivePage() {
               <p className="homev3-copy">{lastUpdated ?? "Live updates appear here as new quotes are generated."}</p>
             </article>
           </div>
+
+          <QuoteExplorerFilters areas={areaOptions} />
+
+          <h2 className="homev3-title quote-results-title">Recent Calgary estimate examples</h2>
 
           <section className="quote-quick-nav" aria-label="Quote archive quick navigation">
             <h2 className="homev3-title" style={{ fontSize: "1.6rem" }}>Jump to the quote section you need</h2>
@@ -275,6 +285,9 @@ export default async function QuotesArchivePage() {
                       id={card.slug}
                       className="quote-card-anchor"
                       data-quote-material={section.material.toLowerCase().replace(/\s+/g, "-")}
+                      data-quote-service={section.material === "Roofing" ? "roofing" : section.material === "Hardie siding" ? "james-hardie" : section.material === "Eavestrough" ? "eavestrough" : "siding"}
+                      data-quote-area={card.locality.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+                      data-quote-search={`${card.title} ${card.description} ${card.material} ${card.city} ${card.locality} ${card.locationLabel}`.toLowerCase()}
                       data-quote-city={card.city}
                       data-quote-quadrant={card.quadrant ?? ""}
                       data-quote-neighborhood-key={`${card.city}|${card.locality}`}
