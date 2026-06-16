@@ -26,10 +26,12 @@ export default function SiteFooter() {
           <h4>Services</h4>
           <Link href="/services/roofing">Roof Replacement</Link>
           <Link href="/services/roof-repair">Roof Repair</Link>
-          <Link href="/services/gutters">Eavestrough</Link>
-          <Link href="/services/siding">Vinyl Siding</Link>
+          <Link href="/services/siding">Siding</Link>
+          <Link href="/services/vinyl-siding">Vinyl Siding</Link>
           <Link href="/services/james-hardie-siding">James Hardie Siding</Link>
+          <Link href="/services/eavestrough">Eavestrough</Link>
           <Link href="/services/soffit-fascia">Soffit & Fascia</Link>
+          <Link href="/online-estimate">Online Estimate</Link>
         </div>
 
         <div>

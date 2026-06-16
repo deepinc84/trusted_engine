@@ -11,11 +11,13 @@ const links = [
 ];
 const serviceLinks = [
   { href: "/services/roofing", label: "Roofing" },
-  { href: "/services/roof-repair", label: "Roof repair" },
-  { href: "/services/gutters", label: "Eavestrough" },
+  { href: "/services/roof-repair", label: "Roof Repair" },
   { href: "/services/siding", label: "Siding" },
-  { href: "/services/james-hardie-siding", label: "James Hardie siding" },
-  { href: "/services/soffit-fascia", label: "Soffit & fascia" }
+  { href: "/services/vinyl-siding", label: "Vinyl Siding" },
+  { href: "/services/james-hardie-siding", label: "James Hardie Siding" },
+  { href: "/services/eavestrough-soffit-fascia", label: "Eavestrough, Soffit & Fascia" },
+  { href: "/services/eavestrough", label: "Eavestrough" },
+  { href: "/services/soffit-fascia", label: "Soffit & Fascia" }
 ];
 
 export default async function SiteHeader() {

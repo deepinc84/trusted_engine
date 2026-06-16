@@ -75,7 +75,7 @@ export default async function JamesHardieSidingPage() {
   return (
     <>
       {/* Service schema is handled by ServiceSchema. FAQ schema is emitted once below. Do not duplicate the Service schema here. */}
-      <ServiceSchema serviceName="James Hardie Siding Service" serviceSlug="james-hardie-siding" serviceType="Fiber cement siding" />
+      <ServiceSchema serviceName="James Hardie Siding" serviceSlug="james-hardie-siding" serviceType="Fiber cement siding" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <PageHero
@@ -84,7 +84,7 @@ export default async function JamesHardieSidingPage() {
         description="Compare fiber cement siding against vinyl, see recent Calgary Hardie projects, and start an instant exterior estimate before requesting a detailed proposal."
         actions={
           <>
-            <Link href="/online-estimate" className="button">Get instant siding quote</Link>
+            <Link href="/online-estimate" className="button">Get instant exterior estimate</Link>
             <Link href="/projects?service_slug=james-hardie-siding#remaining-projects" className="button button--ghost">View Hardie projects</Link>
           </>
         }
@@ -193,8 +193,8 @@ export default async function JamesHardieSidingPage() {
               </p>
               <p>
                 It is not automatically the best answer when the main goal is to solve a practical siding problem without
-                pushing the budget too far. In those cases, <Link href="/services/siding">vinyl siding Calgary</Link> is
-                often the more balanced direction.
+                pushing the budget too far. In those cases, the <Link href="/services/vinyl-siding">vinyl siding page</Link> is
+                often the more balanced direction. You can also compare both materials on the <Link href="/services/siding">siding services hub</Link>.
               </p>
             </article>
 
@@ -227,10 +227,20 @@ export default async function JamesHardieSidingPage() {
       
 
 
+      <section className="ui-page-section">
+        <PageContainer>
+          <article className="ui-card">
+            <h2>Compare siding paths</h2>
+            <p>Not sure whether fiber cement is the right fit? Compare options on the <Link href="/services/siding">siding services hub</Link> or review the cost-controlled <Link href="/services/vinyl-siding">vinyl siding replacement page</Link>.</p>
+            <p><Link href="/online-estimate" className="button">Get instant exterior estimate</Link></p>
+          </article>
+        </PageContainer>
+      </section>
+
       <CtaBand
         title="Compare James Hardie and vinyl siding pricing"
         body="Start with an instant siding estimate, then we can help decide whether fiber cement or vinyl makes more sense for the project."
-        primaryLabel="Get instant siding quote"
+        primaryLabel="Get instant exterior estimate"
       />
       <ServiceGeoPosts geoPosts={geoPosts} heading="Recent James Hardie siding projects in Calgary" />
     </>
