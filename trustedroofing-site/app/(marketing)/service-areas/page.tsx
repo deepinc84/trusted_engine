@@ -202,7 +202,7 @@ export default async function ServiceAreasPage() {
                 roof replacement Calgary service details
               </Link>
               , then evaluate water management options in our{" "}
-              <Link href="/services/gutters">
+              <Link href="/services/eavestrough">
                 Calgary eavestrough and gutter service page
               </Link>
               . For exterior envelope upgrades beyond the roof, see{" "}

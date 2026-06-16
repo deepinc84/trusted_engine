@@ -48,11 +48,15 @@ const nextConfig = {
         destination: "/online-estimate",
         permanent: true
       },
-      {
-        source: "/services/hardie-siding",
-        destination: "/services/james-hardie-siding",
-        permanent: true
-      }
+      { source: "/services/hardie-siding", destination: "/services/james-hardie-siding", permanent: true },
+      { source: "/services/hardie-board-siding", destination: "/services/james-hardie-siding", permanent: true },
+      { source: "/services/fiber-cement-siding", destination: "/services/james-hardie-siding", permanent: true },
+      { source: "/services/gutters", destination: "/services/eavestrough", permanent: true },
+      { source: "/services/eavestroughs", destination: "/services/eavestrough", permanent: true },
+      { source: "/services/soft-metal", destination: "/services/eavestrough-soffit-fascia", permanent: true },
+      { source: "/services/soft-metal-exteriors", destination: "/services/eavestrough-soffit-fascia", permanent: true },
+      { source: "/services/fascia-soffit", destination: "/services/soffit-fascia", permanent: true },
+      { source: "/services/vinyl-siding-calgary", destination: "/services/vinyl-siding", permanent: true }
     ];
   }
 };

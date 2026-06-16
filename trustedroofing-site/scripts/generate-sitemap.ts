@@ -5,6 +5,12 @@ const staticPaths = [
   "/services",
   "/services/roofing",
   "/services/roof-repair",
+  "/services/siding",
+  "/services/vinyl-siding",
+  "/services/james-hardie-siding",
+  "/services/eavestrough-soffit-fascia",
+  "/services/eavestrough",
+  "/services/soffit-fascia",
   "/services/solar",
   "/projects",
   "/online-estimate"

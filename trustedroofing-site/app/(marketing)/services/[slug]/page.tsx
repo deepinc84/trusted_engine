@@ -22,14 +22,14 @@ const benefits = [
 const serviceFamilySlugs = (slug: string) => {
   if (slug === "roofing" || slug === "roof-repair") return ["roofing", "roof-repair", "roof-replacement", "shingles"];
   if (slug === "siding" || slug === "james-hardie-siding") return ["siding", "james-hardie-siding", "vinyl-siding", "hardie-board-siding"];
-  if (slug === "gutters" || slug === "eavestrough") return ["gutters", "eavestrough", "downspout", "drainage"];
+  if (slug === "gutters" || slug === "eavestrough" || slug === "eavestrough-soffit-fascia" || slug === "soffit-fascia") return ["gutters", "eavestrough", "eavestrough-soffit-fascia", "soffit-fascia", "downspout", "drainage"];
   return [slug];
 };
 
 const serviceFamilyKeywords = (slug: string) => {
   if (slug === "roofing" || slug === "roof-repair") return ["roof", "roofing", "roof repair", "roof replacement", "shingle"];
   if (slug === "siding" || slug === "james-hardie-siding") return ["siding", "hardie", "vinyl siding", "board and batten", "cladding"];
-  if (slug === "gutters" || slug === "eavestrough") return ["gutter", "eavestrough", "downspout", "drainage"];
+  if (slug === "gutters" || slug === "eavestrough" || slug === "eavestrough-soffit-fascia" || slug === "soffit-fascia") return ["gutter", "eavestrough", "soffit", "fascia", "downspout", "drainage"];
   return [slug.replace(/-/g, " ")];
 };
 
@@ -131,6 +131,18 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
           </div>
         </PageContainer>
       </section>
+
+      {service.slug === "soffit-fascia" ? (
+        <section className="ui-page-section">
+          <PageContainer>
+            <article className="ui-card">
+              <h2>Related eavestrough, soffit, and fascia services</h2>
+              <p>Soffit and fascia are part of the larger roofline system. Review the <Link href="/services/eavestrough-soffit-fascia">eavestrough, soffit, and fascia hub</Link> for the full drainage and ventilation picture, or compare the customer-facing <Link href="/services/eavestrough">eavestrough replacement page</Link> if runoff and downspouts are the main concern.</p>
+              <p><Link href="/online-estimate" className="button">Get instant exterior estimate</Link></p>
+            </article>
+          </PageContainer>
+        </section>
+      ) : null}
 
       <section className="ui-page-section ui-page-section--soft">
         <PageContainer>
