@@ -73,6 +73,23 @@ export default async function ServicesPage() {
   };
 
   const serviceCards = services.flatMap((service) => {
+    if (service.slug === "roofing") {
+      return [
+        {
+          ...service,
+          title: "Roofing Services",
+          base_sales_copy: "Choose between roof replacement, repair, inspection, and maintenance for Calgary homes."
+        },
+        {
+          ...service,
+          id: `${service.id}-replacement`,
+          slug: "roof-replacement",
+          title: "Roof Replacement",
+          base_sales_copy: "Residential reroofing and asphalt shingle replacement with instant online pricing."
+        }
+      ];
+    }
+
     if (service.slug === "gutters") {
       return [{
         ...service,
@@ -156,7 +173,7 @@ export default async function ServicesPage() {
           <article className="ui-card" style={{ marginTop: 24 }}>
             <h2>Roofing, Siding, and Eavestrough Services Explained</h2>
             <p className="homev3-copy">Each service on this page is separated for a reason.</p>
-            <p className="homev3-copy"><Link href="/services/roofing">Roofing</Link> covers full replacements and complete roof system installs. That includes everything from tear-off to new materials, ventilation adjustments, and tying the system together properly.</p>
+            <p className="homev3-copy"><Link href="/services/roofing">Roofing services</Link> helps you choose between <Link href="/services/roof-replacement">roof replacement</Link>, repair, and inspection work. Roof replacement covers full reroofing and complete roof system installs. That includes everything from tear-off to new materials, ventilation adjustments, and tying the system together properly.</p>
             <p className="homev3-copy"><Link href="/services/roof-repair">Roof repair</Link> is more targeted. It focuses on leaks, storm damage, and localized failures where the rest of the roof may still have life left.</p>
             <p className="homev3-copy"><Link href="/services/eavestrough">Eavestrough and drainage work</Link> controls how water moves off the roof and away from the house. When that fails, it can cause ongoing problems even if the roof itself is still in decent condition.</p>
             <p className="homev3-copy"><Link href="/services/siding">Siding</Link>, <Link href="/services/soffit-fascia">soffit, and fascia</Link> are tied into both protection and appearance. They affect how the home handles moisture, airflow, and long-term durability.</p>

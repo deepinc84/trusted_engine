@@ -24,8 +24,10 @@ export default function SiteFooter() {
 
         <div>
           <h4>Services</h4>
-          <Link href="/services/roofing">Roof Replacement</Link>
+          <Link href="/services/roof-replacement">Roof Replacement</Link>
           <Link href="/services/roof-repair">Roof Repair</Link>
+          <Link href="/services/roof-inspection-maintenance">Roof Inspection & Maintenance</Link>
+          <Link href="/services/roofing">Roofing Services</Link>
           <Link href="/services/siding">Siding</Link>
           <Link href="/services/vinyl-siding">Vinyl Siding</Link>
           <Link href="/services/james-hardie-siding">James Hardie Siding</Link>
