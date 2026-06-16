@@ -39,8 +39,8 @@ export async function generateMetadata({
   const location = `${area.neighborhood}, ${area.city}`;
   const title =
     area.city === "Calgary"
-      ? `Residential Roofing in ${location}`
-      : `Roofing in ${location}`;
+      ? `Roofing in ${area.neighborhood} Calgary | Trusted`
+      : `Roofing in ${area.neighborhood} | Trusted`;
 
   return buildMetadata({
     title,

@@ -21,7 +21,7 @@ import { formatRelativeTime } from "@/lib/time";
 export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
-  title: "Calgary Roofing Company | Roofers & Exterior Estimates",
+  title: "Calgary Roofing Company | Roofers & Estimates",
   description:
     "Trusted Roofing & Exteriors is a Calgary roofing company helping homeowners with roof replacement, roof repair, siding, eavestrough, soffit, fascia, and instant online estimates.",
   path: "/"

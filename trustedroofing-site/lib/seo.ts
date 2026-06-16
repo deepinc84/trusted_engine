@@ -19,7 +19,7 @@ export function buildMetadata({
   robots?: Metadata["robots"];
   imagePath?: string;
 }): Metadata {
-  const fullTitle = `${title} | Trusted Roofing & Exteriors`;
+  const fullTitle = title;
   const imageUrl = imagePath ? canonicalUrl(imagePath) : undefined;
 
   return {

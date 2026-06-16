@@ -47,6 +47,11 @@ const nextConfig = {
         source: "/quote",
         destination: "/online-estimate",
         permanent: true
+      },
+      {
+        source: "/services/hardie-siding",
+        destination: "/services/james-hardie-siding",
+        permanent: true
       }
     ];
   }

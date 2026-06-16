@@ -3,7 +3,7 @@ import { buildMetadata, canonicalUrl } from "@/lib/seo";
 import styles from "./page.module.css";
 
 export const metadata = buildMetadata({
-  title: "How Much Does a Roof Replacement Cost in Calgary in 2026?",
+  title: "Roof Replacement Cost Calgary 2026 | Trusted",
   description: "Learn what affects roof replacement costs in Calgary in 2026, including size, pitch, materials, and real local estimate ranges.",
   path: "/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026"
 });
