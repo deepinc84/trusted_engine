@@ -41,6 +41,55 @@ function escapeXml(value: string) {
     .replace(/'/g, "&apos;");
 }
 
+
+const redirectedServicePaths = new Set([
+  "/services/roofing/roof-repair",
+  "/services/roofing/roof-replacement",
+  "/services/roofing/roof-inspection",
+  "/services/roofing/roof-maintenance",
+  "/services/roof-replacements",
+  "/services/roof-replacement-calgary",
+  "/services/residential-roofing",
+  "/services/asphalt-shingles",
+  "/services/asphalt-shingle-roofing",
+  "/services/shingle-roofing",
+  "/services/roof-repairs",
+  "/services/leak-repair",
+  "/services/roof-leak-repair",
+  "/services/emergency-roof-repair",
+  "/services/storm-damage-roof-repair",
+  "/services/hail-damage-roof-repair",
+  "/services/roof-inspection",
+  "/services/roof-inspections",
+  "/services/roof-maintenance",
+  "/services/roof-maintenance-calgary",
+  "/services/hail-damage-roof-inspection",
+  "/services/gutters",
+  "/services/hardie-siding",
+  "/services/hardie-board-siding",
+  "/services/fiber-cement-siding",
+  "/services/eavestroughs",
+  "/services/soft-metal",
+  "/services/soft-metal-exteriors",
+  "/services/fascia-soffit",
+  "/services/vinyl-siding-calgary"
+]);
+
+const serviceSlugToPublicPath = (slug: string) => {
+  if (slug === "gutters") return "/services/eavestrough";
+  return `/services/${slug}`;
+};
+
+function uniqueUrls(urls: SitemapEntry[]) {
+  const seen = new Set<string>();
+  return urls.filter((url) => {
+    if (redirectedServicePaths.has(new URL(url.loc).pathname)) return false;
+    if (seen.has(url.loc)) return false;
+    seen.add(url.loc);
+    return true;
+  });
+}
+
 function buildUrlset(urls: SitemapEntry[]) {
   const entries = urls.map((url) => [
     "<url>",
@@ -111,8 +160,13 @@ export async function GET() {
   const urls: SitemapEntry[] = [
     { loc: canonicalUrl("/"), lastmod: latestSiteActivityLastmod, changefreq: "daily", priority: 1.0 },
     { loc: canonicalUrl("/services"), lastmod: latestIso(latestGeoPostLastmod, latestProjectLastmod) ?? latestSiteActivityLastmod, changefreq: "weekly", priority: 0.9 },
-    ...services.map((service) => ({ loc: canonicalUrl(`/services/${service.slug}`), lastmod: servicePageLastmod(service.slug, service.created_at), changefreq: "weekly" as const, priority: 0.8 })),
+    ...services.map((service) => ({ loc: canonicalUrl(serviceSlugToPublicPath(service.slug)), lastmod: servicePageLastmod(service.slug, service.created_at), changefreq: "weekly" as const, priority: 0.8 })),
+    { loc: canonicalUrl("/services/roof-replacement"), lastmod: servicePageLastmod("roofing"), changefreq: "weekly", priority: 0.8 },
+    { loc: canonicalUrl("/services/roof-inspection-maintenance"), lastmod: servicePageLastmod("roofing"), changefreq: "weekly", priority: 0.8 },
+    { loc: canonicalUrl("/services/vinyl-siding"), lastmod: servicePageLastmod("vinyl-siding"), changefreq: "weekly", priority: 0.8 },
     { loc: canonicalUrl("/services/james-hardie-siding"), lastmod: servicePageLastmod("james-hardie-siding"), changefreq: "weekly", priority: 0.8 },
+    { loc: canonicalUrl("/services/eavestrough-soffit-fascia"), lastmod: servicePageLastmod("eavestrough-soffit-fascia"), changefreq: "weekly", priority: 0.8 },
+    { loc: canonicalUrl("/services/eavestrough"), lastmod: servicePageLastmod("gutters"), changefreq: "weekly", priority: 0.8 },
     { loc: canonicalUrl("/blog"), lastmod: latestSiteActivityLastmod, changefreq: "weekly", priority: 0.7 },
     { loc: canonicalUrl("/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026"), lastmod: latestSiteActivityLastmod, changefreq: "monthly", priority: 0.6 },
     { loc: canonicalUrl("/projects"), lastmod: latestIso(latestProjectLastmod, latestGeoPostLastmod) ?? latestSiteActivityLastmod, changefreq: "hourly", priority: 0.95 },
@@ -133,7 +187,7 @@ export async function GET() {
     }))
   ];
 
-  return new Response(buildUrlset(urls), {
+  return new Response(buildUrlset(uniqueUrls(urls)), {
     headers: {
       "Content-Type": "application/xml",
       "Cache-Control": "no-store, max-age=0"

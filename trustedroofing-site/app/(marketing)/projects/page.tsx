@@ -127,7 +127,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
           <article className="ui-card">
             <p>
               You can use these projects to compare what was actually done, what materials were used, and how similar homes were handled.
-              Whether you’re looking at a full <Link href="/services/roofing">roof replacement</Link>, <Link href="/services/roof-repair">repair</Link>, <Link href="/services/gutters">eavestrough</Link>, or <Link href="/services/james-hardie-siding">siding work</Link>, this is meant to give you something real to compare against before you book a quote.
+              Whether you’re looking at a full <Link href="/services/roofing">roof replacement</Link>, <Link href="/services/roof-repair">repair</Link>, <Link href="/services/eavestrough">eavestrough</Link>, or <Link href="/services/james-hardie-siding">siding work</Link>, this is meant to give you something real to compare against before you book a quote.
             </p>
           </article>
           <div className="ui-detail-grid" style={{ marginTop: 20 }}>

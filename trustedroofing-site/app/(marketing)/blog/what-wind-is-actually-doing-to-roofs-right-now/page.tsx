@@ -214,7 +214,7 @@ export default function WindDamageBlogPost() {
               <li>fascia and soffit areas become more vulnerable</li>
             </ul>
             <p>
-              If your roofline looks off, it&apos;s worth addressing <Link href="/services/gutters">eavestrough repair in Calgary</Link> before it leads to bigger problems.
+              If your roofline looks off, it&apos;s worth addressing <Link href="/services/eavestrough">eavestrough repair in Calgary</Link> before it leads to bigger problems.
             </p>
             <img className={styles.inlineImage} src="/gutter-wind-damage-fallen-tree.jpg" alt="Gutter deformation caused by wind-driven debris and branch contact" loading="lazy" />
             <p className={styles.imgCap}>Eavestrough deformation from branch contact and wind-driven debris impact.</p>
