@@ -9,7 +9,7 @@ import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "James Hardie Siding Calgary | Fiber Cement Siding Install",
+  title: "James Hardie Siding Calgary | Trusted",
   description: "James Hardie siding installation in Calgary for homeowners comparing fiber cement, vinyl siding, hail damage repairs, wall detailing, flashing, and exterior upgrades.",
   path: "/services/james-hardie-siding"
 });

@@ -40,6 +40,19 @@ function resolvePhotoStage(photo: { stage: string | null; caption: string | null
   return "before";
 }
 
+function formatServiceForTitle(serviceSlug: string) {
+  const normalized = serviceSlug.toLowerCase();
+  if (normalized.includes("repair")) return "Roof Repair";
+  if (normalized.includes("gutter") || normalized.includes("eavestrough")) return "Eavestrough Repair";
+  if (normalized.includes("siding") || normalized.includes("hardie")) return "Siding Replacement";
+  return "Roof Replacement";
+}
+
+function buildProjectMetadataTitle(project: { service_slug: string; neighborhood: string | null; city: string }) {
+  const area = project.neighborhood ?? project.city;
+  return `${area} ${formatServiceForTitle(project.service_slug)} | Trusted`;
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const project = await getProjectBySlug(params.slug);
   if (!project) {
@@ -51,7 +64,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 
   return buildMetadata({
-    title: project.title,
+    title: buildProjectMetadataTitle(project),
     description: project.summary,
     path: `/projects/${project.slug}`
   });

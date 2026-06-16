@@ -59,7 +59,7 @@ export default function QuotePage() {
         <Image
           className="online-estimate-hero__background"
           src="/Instant_estimate_hero.png"
-          alt=""
+          alt="Roof measurement diagram used for Calgary instant roofing estimates"
           fill
           sizes="100vw"
           priority
