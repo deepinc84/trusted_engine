@@ -4,7 +4,7 @@ import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import ServiceCard from "@/components/ui/ServiceCard";
 import GeoPostCard from "@/components/GeoPostCard";
-import { listGeoPosts, listServices } from "@/lib/db";
+import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
 
@@ -49,16 +49,13 @@ const faqs = [
 ] as const;
 
 export const metadata = buildMetadata({
-  title: "Services",
-  description: "Calgary roofing, siding, and eavestrough services explained in practical terms, with clear scope, material options, and next steps.",
+  title: "Calgary Roofing & Exterior Services | Trusted",
+  description: "Explore Calgary roofing, roof repair, roof replacement, siding, eavestrough, soffit, and fascia services, then start an instant online estimate.",
   path: "/services"
 });
 
 export default async function ServicesPage() {
-  const [services, recentGeoPosts] = await Promise.all([
-    listServices(),
-    listGeoPosts(5)
-  ]);
+  const recentGeoPosts = await listGeoPosts(5);
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -72,67 +69,86 @@ export default async function ServicesPage() {
     }))
   };
 
-  const serviceCards = services.flatMap((service) => {
-    if (service.slug === "roofing") {
-      return [
+  const serviceHierarchy = [
+    {
+      heading: "Roofing Services",
+      intro: "Start here for full roof systems, targeted repairs, and roof condition planning on Calgary homes.",
+      services: [
         {
-          ...service,
+          slug: "roofing",
           title: "Roofing Services",
-          base_sales_copy: "Choose between roof replacement, repair, inspection, and maintenance for Calgary homes."
+          description: "Compare roof replacement, roof repair, inspection, and maintenance options before deciding what your home needs."
         },
         {
-          ...service,
-          id: `${service.id}-replacement`,
           slug: "roof-replacement",
           title: "Roof Replacement",
-          base_sales_copy: "Residential reroofing and asphalt shingle replacement with instant online pricing."
+          description: "Plan a complete reroof with practical guidance on tear-off, shingles, ventilation, and roof system details."
+        },
+        {
+          slug: "roof-repair",
+          title: "Roof Repair",
+          description: "Fix leaks, missing shingles, storm damage, and localized roof failures when the whole roof may not need replacing."
+        },
+        {
+          slug: "roof-inspection-maintenance",
+          title: "Roof Inspection & Maintenance",
+          description: "Check roof condition, maintenance priorities, and problem areas before small issues turn into larger repairs."
         }
-      ];
+      ]
+    },
+    {
+      heading: "Siding Services",
+      intro: "Compare siding materials and exterior wall upgrades based on budget, durability, and the look you want long term.",
+      services: [
+        {
+          slug: "siding",
+          title: "Siding Services",
+          description: "Review Calgary siding replacement options and how siding ties into moisture control, trim, and exterior protection."
+        },
+        {
+          slug: "vinyl-siding",
+          title: "Vinyl Siding",
+          description: "Choose a cost-controlled siding update with clean trim, flashing, and finish details for Calgary homes."
+        },
+        {
+          slug: "james-hardie-siding",
+          title: "James Hardie Siding",
+          description: "Explore fiber cement siding for homeowners who want a heavier, more architectural exterior finish."
+        }
+      ]
+    },
+    {
+      heading: "Eavestrough, Soffit & Fascia",
+      intro: "Protect the roof edge, ventilation path, and drainage system with connected exterior metal and finishing services.",
+      services: [
+        {
+          slug: "eavestrough-soffit-fascia",
+          title: "Eavestrough, Soffit & Fascia",
+          description: "See how drainage, roof-edge ventilation, fascia, and soffit work together as one exterior system."
+        },
+        {
+          slug: "eavestrough",
+          title: "Eavestrough",
+          description: "Replace or upgrade gutters, downspouts, slope, and drainage paths so water moves away from the house."
+        },
+        {
+          slug: "soffit-fascia",
+          title: "Soffit & Fascia",
+          description: "Repair or replace soffit and fascia details that support ventilation, protect roof edges, and finish the exterior."
+        }
+      ]
     }
-
-    if (service.slug === "gutters") {
-      return [{
-        ...service,
-        slug: "eavestrough",
-        title: "Eavestrough",
-        base_sales_copy: "Eavestrough and gutter replacement focused on drainage, downspouts, and roofline protection."
-      }];
-    }
-
-    if (service.slug !== "siding") return [service];
-
-    return [
-      {
-        ...service,
-        title: "Siding Services",
-        base_sales_copy: "Compare vinyl siding and James Hardie siding options for Calgary homes."
-      },
-      {
-        ...service,
-        id: `${service.id}-vinyl`,
-        slug: "vinyl-siding",
-        title: "Vinyl Siding",
-        base_sales_copy: "Vinyl siding replacement focused on trim, flashing, and clean finish details."
-      },
-      {
-        ...service,
-        id: `${service.id}-hardie`,
-        slug: "james-hardie-siding",
-        title: "James Hardie Siding",
-        base_sales_copy: "Fiber cement siding for homeowners who want a heavier finish and a more architectural exterior."
-      }
-    ];
-  });
+  ] as const;
 
   return (
     <>
       <PageHero
         eyebrow="Services"
-        title="Roofing and Exterior Services in Calgary, Alberta"
-        description="This is where to start if you need roofing, siding, or eavestrough work on your home in Calgary.  Each service below breaks down what the work actually involves, when it’s needed, and how it’s handled on real homes. Whether you’re dealing with a leak, planning a full roof replacement, or trying to fix drainage or exterior issues, this page is meant to give you a clear direction before you move forward."
+        title="Calgary Roofing and Exterior Services"
+        description="Trusted Roofing & Exteriors helps Calgary homeowners compare roofing, siding, eavestrough, soffit, fascia, repair, replacement, and maintenance scopes before starting an instant online estimate."
         actions={
           <>
-            <Link href="/online-estimate" className="button">Get an instant quote</Link>
+            <Link href="/online-estimate" className="button">Get instant exterior estimate</Link>
             <Link href="/projects" className="button button--ghost">Browse projects</Link>
           </>
         }
@@ -140,14 +156,28 @@ export default async function ServicesPage() {
 
       <section className="ui-page-section">
         <PageContainer>
-          <div className="ui-grid ui-grid--services">
-            {serviceCards.map((service) => (
-              <ServiceCard
-                key={service.slug}
-                slug={service.slug}
-                title={service.title}
-                description={service.base_sales_copy ?? "Real Calgary exterior service guidance and project-backed planning."}
-              />
+          <article className="ui-card" style={{ marginBottom: 24 }}>
+            <h2>Start with an instant exterior estimate</h2>
+            <p className="homev3-copy">If you already know the area of the home you want priced, use the instant estimate first. You can compare roof replacement, repair, siding, eavestrough, soffit, and fascia scopes before booking the next step.</p>
+            <Link href="/online-estimate" className="button">Get instant exterior estimate</Link>
+          </article>
+
+          <div style={{ display: "grid", gap: 24 }}>
+            {serviceHierarchy.map((section) => (
+              <article className="ui-card" key={section.heading}>
+                <h2>{section.heading}</h2>
+                <p className="homev3-copy">{section.intro}</p>
+                <div className="ui-grid ui-grid--services" style={{ marginTop: 20 }}>
+                  {section.services.map((service) => (
+                    <ServiceCard
+                      key={service.slug}
+                      slug={service.slug}
+                      title={service.title}
+                      description={service.description}
+                    />
+                  ))}
+                </div>
+              </article>
             ))}
           </div>
 
@@ -205,8 +235,8 @@ export default async function ServicesPage() {
       </section>
 
       <CtaBand
-        title="Need pricing before you book a visit?"
-        body="Start with the instant quote to get a realistic range for your home, then we can narrow the scope and materials based on your house."
+        title="Ready to compare exterior pricing?"
+        body="Get instant exterior estimate pricing first, then we can narrow the scope and materials based on your house."
       />
 
       <script

@@ -1,4 +1,4 @@
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://trustedroofingcalgary.com";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.trustedroofingcalgary.com";
 
 const staticPaths = [
   "",
@@ -13,9 +13,11 @@ const staticPaths = [
   "/services/eavestrough-soffit-fascia",
   "/services/eavestrough",
   "/services/soffit-fascia",
-  "/services/solar",
+  "/online-estimate",
   "/projects",
-  "/online-estimate"
+  "/quotes",
+  "/service-areas",
+  "/blog"
 ];
 
 const knownProjectSlugs = [
