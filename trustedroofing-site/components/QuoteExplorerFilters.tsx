@@ -3,22 +3,31 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+function normalizeFilterParam(value: string | null) {
+  if (!value || value === "all") return "";
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 const services = [
   ["", "All"], ["roofing", "Roofing"], ["roof-repair", "Roof repair"], ["siding", "Siding"],
   ["james-hardie", "James Hardie"], ["eavestrough", "Eavestrough"]
 ] as const;
 
-export default function QuoteExplorerFilters({ areas }: { areas: Array<{ value: string; label: string }> }) {
+export default function QuoteExplorerFilters({ areas, totalCount }: { areas: Array<{ value: string; label: string }>; totalCount: number }) {
   const [service, setService] = useState("");
   const [area, setArea] = useState("");
+  const [city, setCity] = useState("");
+  const [quadrant, setQuadrant] = useState("");
   const [search, setSearch] = useState("");
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(totalCount);
   const [linkedOutsideFilters, setLinkedOutsideFilters] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setService(params.get("service") ?? "");
-    setArea(params.get("area") ?? "");
+    setService(normalizeFilterParam(params.get("service")));
+    setArea(normalizeFilterParam(params.get("area")));
+    setCity(normalizeFilterParam(params.get("city")));
+    setQuadrant(normalizeFilterParam(params.get("quadrant")));
   }, []);
 
   useEffect(() => {
@@ -30,8 +39,11 @@ export default function QuoteExplorerFilters({ areas }: { areas: Array<{ value: 
     const query = search.trim().toLowerCase();
 
     cards.forEach((card) => {
-      const matches = (!service || card.dataset.quoteService === service)
+      const normalizedService = service === "hardie-siding" ? "james-hardie" : service;
+      const matches = (!normalizedService || card.dataset.quoteService === normalizedService)
         && (!area || card.dataset.quoteArea === area)
+        && (!city || card.dataset.quoteCity === city)
+        && (!quadrant || card.dataset.quoteQuadrant === quadrant)
         && (!query || card.dataset.quoteSearch?.includes(query));
       const isTarget = !!target && (card === target || card.contains(target));
       card.classList.toggle("quote-card-anchor--hidden", !matches && !isTarget);
@@ -44,11 +56,13 @@ export default function QuoteExplorerFilters({ areas }: { areas: Array<{ value: 
     const params = new URLSearchParams(window.location.search);
     service ? params.set("service", service) : params.delete("service");
     area ? params.set("area", area) : params.delete("area");
+    city ? params.set("city", city) : params.delete("city");
+    quadrant ? params.set("quadrant", quadrant) : params.delete("quadrant");
     const next = `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`;
     window.history.replaceState(null, "", next);
-  }, [service, area, search]);
+  }, [service, area, city, quadrant, search]);
 
-  const reset = () => { setService(""); setArea(""); setSearch(""); };
+  const reset = () => { setService(""); setArea(""); setCity(""); setQuadrant(""); setSearch(""); };
 
   return <section className="quote-explorer" aria-labelledby="quote-explorer-title">
     <div className="quote-explorer__heading">
