@@ -37,7 +37,7 @@ export default async function SidingServicesPage() {
             <article className="ui-card">
               <h2>James Hardie siding</h2>
               <p>James Hardie fiber cement siding is usually chosen when homeowners want a more substantial wall finish, stronger shadow lines, and a more architectural look. It costs more to install, so the house, budget, and finish goals should justify the upgrade.</p>
-              <Link href="/services/james-hardie-siding" className="button button--ghost">Explore James Hardie siding</Link>
+              <Link href="/services/james-hardie-siding" className="button button--ghost">James Hardie siding options</Link>
             </article>
           </div>
         </PageContainer>
