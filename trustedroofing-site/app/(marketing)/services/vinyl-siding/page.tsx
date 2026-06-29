@@ -148,7 +148,7 @@ export default async function VinylSidingPage() {
               </p>
               <p>
                 Homeowners usually end up comparing budget, wall condition, and the finished look. If you want the heavier
-                fiber cement option, review <Link href="/services/james-hardie-siding">James Hardie siding Calgary</Link>. For a side-by-side overview, start with the <Link href="/services/siding">siding services hub</Link>.
+                fiber cement option, <Link href="/services/james-hardie-siding">Compare vinyl siding with James Hardie siding options</Link>. For a side-by-side overview, start with the <Link href="/services/siding">siding services hub</Link>.
               </p>
             </article>
           </div>
@@ -210,7 +210,7 @@ export default async function VinylSidingPage() {
         <PageContainer>
           <article className="ui-card">
             <h2>Compare siding options</h2>
-            <p>Still deciding? Compare vinyl and fiber cement on the <Link href="/services/siding">siding services page</Link>, or review the heavier <Link href="/services/james-hardie-siding">James Hardie siding option</Link>.</p>
+            <p>Still deciding? Compare vinyl and fiber cement on the <Link href="/services/siding">siding services page</Link>, then start an estimate when you are ready to narrow the exterior scope.</p>
             <p><Link href="/online-estimate" className="button">Get instant exterior estimate</Link></p>
           </article>
         </PageContainer>

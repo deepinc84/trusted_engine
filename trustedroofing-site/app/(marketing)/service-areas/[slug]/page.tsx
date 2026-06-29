@@ -18,6 +18,32 @@ import { buildMetadata } from "@/lib/seo";
 import { normalizeNeighborhoodSlug } from "@/lib/serviceAreas";
 import { buildServiceAreaNarrative } from "@/lib/serviceAreaNarratives";
 
+
+function getHardieServiceAreaCard(areaSlug: string, areaName: string) {
+  const titleOptions = [
+    "James Hardie Siding",
+    "Fiber Cement Siding",
+    "Hardie Siding Installer",
+    "Exterior Siding Upgrade",
+  ];
+  const anchorOptions = [
+    `James Hardie siding in ${areaName}`,
+    `James Hardie installer in ${areaName}`,
+    `fiber cement siding installation in ${areaName}`,
+    `Hardie siding contractor serving ${areaName}`,
+    `James Hardie siding options for ${areaName} homes`,
+  ];
+  const variationIndex = Array.from(areaSlug).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return {
+    title: titleOptions[variationIndex % titleOptions.length],
+    anchor: anchorOptions[variationIndex % anchorOptions.length],
+  };
+}
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
@@ -94,6 +120,7 @@ export default async function ServiceAreaDetailPage({
     solarAnalyses: area.solarAnalyses,
     nearbyAreas: relatedLinks,
   });
+  const hardieCard = getHardieServiceAreaCard(area.slug, area.neighborhood);
 
   return (
     <>
@@ -170,6 +197,19 @@ export default async function ServiceAreaDetailPage({
                   : "N/A"}
                 .
               </p>
+            </article>
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <article className="ui-card">
+              <h2>{hardieCard.title}</h2>
+              <p className="homev3-copy">
+                Compare James Hardie siding, fiber cement siding, trim planning,
+                and exterior upgrade scope for homes in {area.neighborhood}.
+              </p>
+              <Link href="/services/james-hardie-siding" className="button button--ghost">
+                {hardieCard.anchor}
+              </Link>
             </article>
           </div>
 
