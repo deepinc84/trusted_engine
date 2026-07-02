@@ -23,6 +23,10 @@ Copy `.env.example` to `.env.local` and set values:
 - `GBP_WORKER_TOKEN` (protects `/api/gbp/worker`)
 - `INDEXING_TOKEN` (protects internal indexing trigger endpoint `/api/index-project`)
 - `GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON` (placeholder for future Google Indexing API wiring)
+- `RESEND_API_KEY` / `RESEND_FROM_EMAIL` for transactional email delivery
+- `QUOTE_EVENT_NOTIFICATION_TO` comma-separated internal recipients for instant quote, lead, and PDF download notifications
+- `QUOTE_EVENT_NOTIFICATION_CC` optional comma-separated CC recipients (reserved for email-provider support)
+- `QUOTE_EVENT_NOTIFICATION_FROM` optional quote notification sender override
 - `NEXT_PUBLIC_SITE_URL` (optional; canonical defaults are hardcoded to trustedroofingcalgary.com)
 - `GOOGLE_SOLAR_API_KEY` (server-only, Solar building insights for InstantQuote)
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (client Google Maps script key for future map widgets)

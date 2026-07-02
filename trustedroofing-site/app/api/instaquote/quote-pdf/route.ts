@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { buildPublicQuoteDisplay } from "@/lib/publicQuoteDisplay";
 import { canonicalUrl } from "@/lib/seo";
 import { createQuoteResumeToken } from "@/lib/quoteResumeToken";
+import { listAdminInstantQuotes, recordInstantQuotePdfDownload, updateInstantQuoteNotificationState } from "@/lib/db";
+import { sendQuotePdfDownloadedEmail } from "@/lib/email";
 import { resolvePublicLocation } from "@/lib/serviceAreas";
 import {
   getRelatedProjects,
@@ -1333,6 +1335,20 @@ export async function POST(request: Request) {
     }
 
     const pdf = finalizeDocument(builder, includeSolarPage ? [page1, page2, page3, page4] : [page1, page2, page3]);
+    const bodyRecord = body as Record<string, unknown>;
+    const quoteId = typeof bodyRecord.addressQueryId === "string"
+      ? bodyRecord.addressQueryId
+      : typeof (estimate as EstimatePayload & { addressQueryId?: unknown }).addressQueryId === "string"
+        ? (estimate as EstimatePayload & { addressQueryId: string }).addressQueryId
+        : null;
+    if (quoteId && !testMode) {
+      const { timestamp } = await recordInstantQuotePdfDownload(quoteId);
+      const [quote] = await listAdminInstantQuotes({ q: quoteId, limit: 25 }).then((rows) => rows.filter((row) => row.legacy_address_query_id === quoteId || row.id === quoteId));
+      if (quote && !quote.pdf_download_notification_sent_at) {
+        await sendQuotePdfDownloadedEmail({ ...quote, pdf_downloaded_at: timestamp, pdf_available: true }, timestamp);
+        await updateInstantQuoteNotificationState(quoteId, { pdf_download_notification_sent_at: new Date().toISOString() });
+      }
+    }
 
     return new Response(pdf, {
       headers: {
