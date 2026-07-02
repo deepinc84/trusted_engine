@@ -13,7 +13,7 @@ export async function sendEmail(input: {
   html: string;
 }): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL ?? "Trusted Roofing <noreply@trustedexteriors.ca>";
+  const from = process.env.QUOTE_EVENT_NOTIFICATION_FROM ?? process.env.RESEND_FROM_EMAIL ?? "Trusted Roofing <noreply@trustedexteriors.ca>";
   if (!apiKey) {
     return { ok: false, error: "RESEND_API_KEY missing" };
   }
@@ -232,4 +232,107 @@ export async function sendSolarSuitabilityLeadEmail(input: {
 <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:760px;">${htmlRows}</table>
 <p style="color:#64748b;font-size:13px;">The bill link is a private Supabase signed URL and may expire.</p>`
   });
+}
+
+function notificationRecipients() {
+  return [
+    process.env.QUOTE_EVENT_NOTIFICATION_TO ?? process.env.LEAD_NOTIFICATION_TO ?? "info@trustedexteriors.ca",
+    process.env.QUOTE_EVENT_NOTIFICATION_CC ?? "",
+  ].join(",")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function areaOrCity(address: string | null | undefined) {
+  const parts = String(address ?? "Calgary").split(",").map((part) => part.trim()).filter(Boolean);
+  return parts[1] || parts[0] || "Calgary";
+}
+
+function sourceRows(quote: Partial<InstantQuoteRecord>) {
+  return [
+    { label: "Source type", value: quote.source_type ?? "Direct/Unknown" },
+    { label: "Landing page", value: quote.landing_page ?? "n/a" },
+    { label: "Referrer", value: quote.referrer ?? "n/a" },
+    { label: "UTM source", value: quote.utm_source ?? "n/a" },
+    { label: "UTM medium", value: quote.utm_medium ?? "n/a" },
+    { label: "UTM campaign", value: quote.utm_campaign ?? "n/a" },
+    { label: "UTM term", value: quote.utm_term ?? "n/a" },
+    { label: "UTM content", value: quote.utm_content ?? "n/a" },
+    { label: "First page path", value: quote.first_page_path ?? "n/a" },
+    { label: "Current page path", value: quote.current_page_path ?? "n/a" },
+    { label: "Device category", value: quote.device_category ?? "n/a" },
+    { label: "Browser / UA", value: quote.user_agent_summary ?? "n/a" },
+  ];
+}
+
+function adminQuoteLink(id: string) {
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "";
+  return base ? `${base.replace(/\/$/, "")}/admin/instant-quotes?q=${encodeURIComponent(id)}` : `/admin/instant-quotes?q=${encodeURIComponent(id)}`;
+}
+
+async function sendQuoteNotification(input: { quote: InstantQuoteRecord; subject: string; rows: Array<{ label: string; value: unknown }> }) {
+  const rows = input.rows;
+  const text = rows.map((row) => `${row.label}: ${row.value ?? "n/a"}`).join("\n");
+  const htmlRows = rows.map((row) => `<tr><th align="left" style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(row.label)}</th><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(row.value ?? "n/a")}</td></tr>`).join("");
+  for (const to of notificationRecipients()) {
+    await sendEmail({ to, subject: input.subject, text, html: `<h2>${escapeHtml(input.subject)}</h2><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:760px;">${htmlRows}</table>` });
+  }
+}
+
+export async function sendQuoteEventCreatedEmail(quote: InstantQuoteRecord) {
+  const subject = `New instant quote event: ${serviceLabel(quote.service_type)} - ${areaOrCity(quote.address)}`;
+  const adminLink = adminQuoteLink(quote.legacy_address_query_id ?? quote.id);
+  await sendQuoteNotification({ quote, subject, rows: [
+    { label: "Full entered address", value: quote.address },
+    { label: "Service / scope", value: serviceLabel(quote.service_type) },
+    { label: "Estimate range", value: currencyRange(quote.quote_low, quote.quote_high) },
+    { label: "Quote event ID", value: quote.legacy_address_query_id ?? quote.id },
+    { label: "Created timestamp", value: quote.created_at },
+    { label: "Quote status", value: quote.project_id ? `Linked project: ${quote.project_id}` : quote.has_contact_submission ? "Lead submitted" : "Quote only" },
+    { label: "Contact submitted", value: yesNo(quote.has_contact_submission) },
+    { label: "PDF available", value: yesNo(quote.pdf_available === true) },
+    { label: "PDF downloaded", value: quote.pdf_downloaded_at ? "Yes" : "Not yet" },
+    { label: "PDF downloaded timestamp", value: quote.pdf_downloaded_at ?? "n/a" },
+    { label: "Internal admin PDF link", value: adminLink },
+    { label: "Marked for marketing", value: yesNo(quote.is_marketing) },
+    ...sourceRows(quote),
+    { label: "Admin link", value: adminLink },
+  ] });
+}
+
+export async function sendQuoteLeadSubmittedEmail(quote: InstantQuoteRecord, form: Record<string, unknown>) {
+  const subject = `New quote lead submitted: ${serviceLabel(quote.service_type)} - ${areaOrCity(quote.address)}`;
+  await sendQuoteNotification({ quote, subject, rows: [
+    { label: "Full entered address", value: quote.address },
+    { label: "Service / scope", value: serviceLabel(quote.service_type) },
+    { label: "Estimate range", value: currencyRange(quote.quote_low, quote.quote_high) },
+    { label: "Quote event ID", value: quote.legacy_address_query_id ?? quote.id },
+    { label: "Created timestamp", value: quote.created_at },
+    { label: "Quote status", value: quote.project_id ? `Linked project: ${quote.project_id}` : "Lead submitted" },
+    { label: "Contact submitted", value: "Yes" },
+    { label: "Name", value: form.name ?? quote.contact_name },
+    { label: "Email", value: form.email ?? quote.contact_email },
+    { label: "Phone", value: form.phone ?? quote.contact_phone },
+    { label: "Message", value: form.message ?? form.timeline ?? "n/a" },
+    { label: "PDF available", value: yesNo(quote.pdf_available === true) },
+    { label: "PDF downloaded", value: quote.pdf_downloaded_at ? "Yes" : "Not yet" },
+    { label: "PDF downloaded timestamp", value: quote.pdf_downloaded_at ?? "n/a" },
+    ...sourceRows(quote),
+    { label: "Admin link", value: adminQuoteLink(quote.legacy_address_query_id ?? quote.id) },
+  ] });
+}
+
+export async function sendQuotePdfDownloadedEmail(quote: InstantQuoteRecord, downloadedAt: string) {
+  const subject = `PDF downloaded: ${serviceLabel(quote.service_type)} estimate - ${areaOrCity(quote.address)}`;
+  await sendQuoteNotification({ quote, subject, rows: [
+    { label: "Quote event ID", value: quote.legacy_address_query_id ?? quote.id },
+    { label: "Full entered address", value: quote.address },
+    { label: "Service / scope", value: serviceLabel(quote.service_type) },
+    { label: "Estimate range", value: currencyRange(quote.quote_low, quote.quote_high) },
+    { label: "Download timestamp", value: downloadedAt },
+    { label: "Contact submitted", value: yesNo(quote.has_contact_submission) },
+    ...sourceRows(quote),
+    { label: "Admin link", value: adminQuoteLink(quote.legacy_address_query_id ?? quote.id) },
+  ] });
 }

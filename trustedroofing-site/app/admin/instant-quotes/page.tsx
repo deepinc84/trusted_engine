@@ -16,6 +16,8 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
   const q = typeof searchParams.q === "string" ? searchParams.q : "";
   const from = typeof searchParams.from === "string" ? searchParams.from : "";
   const to = typeof searchParams.to === "string" ? searchParams.to : "";
+  const pdf = typeof searchParams.pdf === "string" ? searchParams.pdf : "all";
+  const sourceType = typeof searchParams.source_type === "string" ? searchParams.source_type : "all";
 
   const quotes = await listAdminInstantQuotes({
     status: status as "all" | "quote_only" | "lead_submitted" | "linked_project",
@@ -23,6 +25,8 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
     q,
     from: from || null,
     to: to || null,
+    pdf: pdf as "all" | "downloaded",
+    source_type: sourceType as "all" | "organic",
     limit: 500
   });
   const leads = await listLeadsByInstantQuoteIds(quotes.map((quote) => quote.id));
@@ -83,6 +87,20 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
             <option value="internal">Internal</option>
           </select>
         </label>
+        <label>
+          <span>PDF</span>
+          <select className="input" name="pdf" defaultValue={pdf}>
+            <option value="all">All PDF statuses</option>
+            <option value="downloaded">PDF downloaded</option>
+          </select>
+        </label>
+        <label>
+          <span>Source</span>
+          <select className="input" name="source_type" defaultValue={sourceType}>
+            <option value="all">All sources</option>
+            <option value="organic">Organic search</option>
+          </select>
+        </label>
         <div className="admin-filter-panel__actions">
           <button className="button" type="submit">Apply filters</button>
           <Link className="button button--ghost" href="/admin/instant-quotes">Reset</Link>
@@ -100,7 +118,7 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
       {quotes.length > 0 ? (
         <div className="admin-quote-table" role="table" aria-label="Instant quote records">
           <div className="admin-quote-table__head" role="row">
-            <span>Address</span><span>Estimate</span><span>Status</span><span>Lead / project</span><span>Actions</span>
+            <span>Address</span><span>Estimate</span><span>Status</span><span>Lead / project</span><span>Source / PDF</span><span>Actions</span>
           </div>
           {quotes.map((quote) => {
             const lead = leadByQuoteId.get(quote.id);
@@ -134,6 +152,13 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
                   ) : (
                     <span className="admin-muted">No contact submitted</span>
                   )}
+                </div>
+                <div role="cell">
+                  <strong>{quote.source_type ?? "Direct/Unknown"}</strong>
+                  <span>Landing: {quote.landing_page ?? quote.first_page_path ?? "n/a"}</span>
+                  <span>Referrer: {quote.utm_source ?? quote.referrer ?? "n/a"}</span>
+                  <span>PDF: {quote.pdf_available ? "available" : "not yet"} · {quote.pdf_downloaded_at ? "downloaded" : "not downloaded"} · {quote.pdf_download_count ?? 0} download{quote.pdf_download_count === 1 ? "" : "s"}</span>
+                  <span>Contact: {quote.has_contact_submission || leadIds.has(quote.id) ? "Yes" : "No"} · Marketing: {quote.is_marketing ? "Yes" : "No"}</span>
                 </div>
                 <div className="admin-action-row" role="cell">
                   {quote.source === "quote_events" ? (

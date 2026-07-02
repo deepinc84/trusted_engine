@@ -14,6 +14,7 @@ const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCaro
 
 type BudgetResponse = "yes" | "financing" | "too_expensive";
 type SidingMaterial = "vinyl" | "hardie";
+type SourceMetadata = Record<string, string | null>;
 
 type EstimateResult = {
   ok: true;
@@ -194,6 +195,7 @@ export default function QuoteFlow({
   const [benchmarkQuotedAmount, setBenchmarkQuotedAmount] = useState<string>("");
   const [benchmarkLabel, setBenchmarkLabel] = useState<string>("");
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [sourceMetadata, setSourceMetadata] = useState<SourceMetadata>({});
   const [isResumedEstimate, setIsResumedEstimate] = useState(false);
 
   const selectedLabel = useMemo(
@@ -373,6 +375,30 @@ export default function QuoteFlow({
     });
   }, [estimate, primaryRange, publicQuoteDisplay, selectedScope]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storageKey = "trusted_quote_source";
+    const params = new URLSearchParams(window.location.search);
+    const existing = JSON.parse(window.localStorage.getItem(storageKey) || "{}") as SourceMetadata;
+    const firstPage = existing.first_page_path || window.location.pathname + window.location.search;
+    const metadata: SourceMetadata = {
+      ...existing,
+      landing_page: existing.landing_page || firstPage,
+      first_page_path: firstPage,
+      current_page_path: window.location.pathname + window.location.search,
+      referrer: existing.referrer || document.referrer || null,
+      utm_source: params.get("utm_source") || existing.utm_source || null,
+      utm_medium: params.get("utm_medium") || existing.utm_medium || null,
+      utm_campaign: params.get("utm_campaign") || existing.utm_campaign || null,
+      utm_term: params.get("utm_term") || existing.utm_term || null,
+      utm_content: params.get("utm_content") || existing.utm_content || null,
+      device_category: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : /iPad|Tablet/i.test(navigator.userAgent) ? "tablet" : "desktop",
+      user_agent_summary: navigator.userAgent.slice(0, 240),
+    };
+    window.localStorage.setItem(storageKey, JSON.stringify(metadata));
+    setSourceMetadata(metadata);
+  }, []);
+
   const submitStep1 = async () => {
     setSubmitting(true);
     setError(null);
@@ -386,7 +412,7 @@ export default function QuoteFlow({
           "Content-Type": "application/json",
           ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
         },
-        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode })
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode, sourceMetadata: { ...sourceMetadata, current_page_path: window.location.pathname + window.location.search } })
       });
 
       const text = await res.text();
@@ -467,7 +493,8 @@ export default function QuoteFlow({
           quoteLeadSource: isResumedEstimate ? "resumed_step_2" : "initial_step_2",
           isResumedLead: isResumedEstimate,
           pdfDownloaded,
-          pdfDownloadStatus: pdfDownloaded ? "downloaded_before_submission" : "not_downloaded_before_submission"
+          pdfDownloadStatus: pdfDownloaded ? "downloaded_before_submission" : "not_downloaded_before_submission",
+          sourceMetadata: { ...sourceMetadata, current_page_path: window.location.pathname + window.location.search }
         })
       });
 
@@ -570,7 +597,8 @@ export default function QuoteFlow({
           sidingMaterial,
           primaryLow: primaryRange.low,
           primaryHigh: primaryRange.high,
-          estimate
+          estimate,
+          addressQueryId: estimate.addressQueryId
         })
       });
       if (!res.ok) {

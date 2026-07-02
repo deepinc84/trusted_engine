@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import {
   createInstaquoteLead,
   listAdminInstantQuotes,
-  upsertLifecycleLeadFromSubmission
+  upsertLifecycleLeadFromSubmission,
+  updateInstantQuoteNotificationState
 } from "@/lib/db";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
-import { processLeadSubmissionEmails } from "@/lib/email";
+import { processLeadSubmissionEmails, sendQuoteLeadSubmittedEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   const ip = requestIp(request);
@@ -87,6 +88,10 @@ export async function POST(request: Request) {
         instantQuote,
         submittedForm: body
       });
+      if (!instantQuote.lead_notification_sent_at) {
+        await sendQuoteLeadSubmittedEmail({ ...instantQuote, has_contact_submission: true }, body);
+        await updateInstantQuoteNotificationState(String(body.addressQueryId), { lead_notification_sent_at: new Date().toISOString() });
+      }
     } else {
       console.error("instaquote lead email skipped: instant quote record not found", {
         addressQueryId: body.addressQueryId,
