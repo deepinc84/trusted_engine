@@ -9,9 +9,9 @@ import {
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Service areas",
+  title: "Calgary Roofing Service Areas | Trusted",
   description:
-    "Roofing, siding, and exterior services across Calgary neighborhoods with local project insights, recent estimate activity, and instant quote tools.",
+    "Explore Calgary roofing service areas by neighbourhood, including roof replacement, roof repair, siding, James Hardie, eavestrough, and instant online estimates.",
   path: "/service-areas",
 });
 
@@ -26,9 +26,9 @@ export default async function ServiceAreasPage() {
   return (
     <>
       <PageHero
-        eyebrow="Coverage engine"
-        title="Calgary service areas"
-        description="Neighborhood pages update from quote, project, and solar suitability activity to keep local landing pages current."
+        eyebrow="Calgary roofing service areas"
+        title="Calgary Roofing and Exterior Service Areas"
+        description="Explore roofing, roof replacement, roof repair, siding, James Hardie, eavestrough, soffit, and fascia estimate activity across Calgary neighbourhoods, then start an instant online estimate for your own address."
       />
 
       <section className="ui-page-section">
@@ -102,7 +102,7 @@ export default async function ServiceAreasPage() {
               with install-quality issues; others are older and need staged
               repairs before full replacement. Drainage design is a major factor
               in this quadrant—improperly pitched gutters or weak downspout
-              routing can keep water too close to wall transitions and lower
+              routing can keep runoff too close to wall transitions and lower
               roof edges. For roof replacement Calgary work in the NE, install
               quality and drainage corrections are often as important as shingle
               selection itself.
@@ -131,7 +131,7 @@ export default async function ServiceAreasPage() {
               tied to detail execution—edge metal integration, valley treatment,
               or accessory flashing around vents and stacks. Drainage patterns
               in newer developments also matter because grading and downspout
-              paths can move water aggressively during storms. For Calgary
+              paths can direct runoff aggressively during storms. For Calgary
               eavestrough and roofing planning in the SE, reliable runoff
               control is usually a core part of the scope, not an optional
               add-on.

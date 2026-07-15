@@ -47,17 +47,39 @@ const serviceAreaCards: ServiceAreaCardDefinition[] = [
     body: (area) =>
       `Review Trusted Roofing & Exteriors' roofing approach, exterior services, and local planning support for ${area.neighborhood} homes.`,
     variants: [
-      "Calgary roofing company",
+      "roofing companies Calgary",
+      "Calgary roofing companies",
       "roofing company in Calgary",
-      "roofing contractors in Calgary",
-      "local roofing contractor",
+      "Calgary roofing company",
+      "roofing contractors Calgary",
+      "roofing contractor Calgary",
       "roofing company serving {areaName}",
+      "local roofing contractor",
       "Calgary roofers",
     ],
     nonCalgaryVariants: [
       "Calgary roofing company serving {city}",
       "roofing contractor serving {city}",
       "roofing company near {city}",
+    ],
+  },
+  {
+    title: "Roofing Services",
+    href: "/services/roofing",
+    body: (area) =>
+      `Compare roofing service options, residential roofing scopes, and local roof planning details for ${area.neighborhood} homes.`,
+    variants: [
+      "roofing services in {areaName}",
+      "residential roofing in {areaName}",
+      "Calgary roofing services",
+      "residential roofing Calgary",
+      "Calgary roofing options",
+      "roofing services for {areaName} homes",
+    ],
+    nonCalgaryVariants: [
+      "roofing services serving {city}",
+      "residential roofing near {city}",
+      "Calgary roofing services serving {city}",
     ],
   },
   {
