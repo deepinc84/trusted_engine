@@ -204,7 +204,7 @@ export default async function HomePage() {
     copy: service.base_sales_copy ?? "Exterior service tailored for Calgary homes."
   }));
 
-  const featuredProjects: HomeProject[] = projects.slice(0, 3).map((project) => ({
+  const featuredProjects: HomeProject[] = projects.slice(0, 4).map((project) => ({
     id: project.id,
     slug: project.slug,
     title: project.title,

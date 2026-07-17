@@ -73,41 +73,60 @@ export function getPlaceholderProjectImage(input: PlaceholderImageInput) {
   return placeholderImages[hashPlaceholderIndex(context.seed)];
 }
 
-const heroStagePriority: Record<
-  Exclude<ProjectPhoto["stage"], null>,
-  number
-> = {
+const HERO_STAGE_ORDER = ["after", "installation", "tear_off_prep"] as const;
+type HeroStage = (typeof HERO_STAGE_ORDER)[number];
+
+const heroStagePriority: Record<HeroStage, number> = {
   after: 0,
   installation: 1,
   tear_off_prep: 2,
-  detail_issue: 3,
-  before: 4,
 };
 
-/** Selects a landscape after/during photo; before and issue photos are never heroes. */
+function inferHeroStageFromText(value: string): HeroStage | null {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("before") || normalized.includes("issue")) return null;
+  if (normalized.includes("after")) return "after";
+  if (normalized.includes("install")) return "installation";
+  if (normalized.includes("tear") || normalized.includes("prep")) return "tear_off_prep";
+  return null;
+}
+
+function resolveHeroStage(photo: ProjectPhoto): HeroStage | null {
+  if (photo.stage && HERO_STAGE_ORDER.includes(photo.stage as HeroStage)) {
+    return photo.stage as HeroStage;
+  }
+
+  return inferHeroStageFromText(
+    `${photo.caption ?? ""} ${photo.description ?? ""} ${photo.file_name ?? ""}`,
+  );
+}
+
+/** Selects an after, installation, or prep photo for heroes; before photos are never heroes. */
 export function selectHeroProjectPhoto(
   photos: ProjectPhoto[] | null | undefined,
 ): ProjectPhoto | null {
   return (
     [...(photos ?? [])]
-      .filter(
-        (photo) =>
-          photo.stage !== null &&
-          photo.stage !== "before" &&
-          photo.stage !== "detail_issue" &&
-          photo.width !== null &&
-          photo.height !== null &&
-          photo.width > photo.height,
+      .map((photo) => ({ photo, heroStage: resolveHeroStage(photo) }))
+      .filter((entry): entry is { photo: ProjectPhoto; heroStage: HeroStage } =>
+        entry.heroStage !== null,
       )
       .sort(
         (a, b) =>
-          heroStagePriority[a.stage as Exclude<ProjectPhoto["stage"], null>] -
-            heroStagePriority[
-              b.stage as Exclude<ProjectPhoto["stage"], null>
-            ] ||
-          Number(b.is_primary) - Number(a.is_primary) ||
-          a.sort_order - b.sort_order,
-      )[0] ?? null
+          heroStagePriority[a.heroStage] - heroStagePriority[b.heroStage] ||
+          Number(b.photo.is_primary) - Number(a.photo.is_primary) ||
+          Number(
+            b.photo.width !== null &&
+              b.photo.height !== null &&
+              b.photo.width > b.photo.height,
+          ) -
+            Number(
+              a.photo.width !== null &&
+                a.photo.height !== null &&
+                a.photo.width > a.photo.height,
+            ) ||
+          a.photo.sort_order - b.photo.sort_order,
+      )[0]?.photo ?? null
   );
 }
 
