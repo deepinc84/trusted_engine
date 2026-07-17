@@ -55,14 +55,19 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
   const service = await getServiceBySlug(params.slug);
   if (!service) return notFound();
 
-  const [recentProjects, allServices, allPublishedUpdates] = await Promise.all([
+  const serviceSlugs = serviceFamilySlugs(service.slug);
+  const keywords = serviceFamilyKeywords(service.slug);
+  const [exactRecentProjects, allProjects, allServices, allPublishedUpdates] = await Promise.all([
     listProjects({ service_slug: service.slug, limit: 3 }),
+    listProjects({ limit: 30 }),
     listServices(),
     listGeoPosts(null)
   ]);
 
-  const serviceSlugs = serviceFamilySlugs(service.slug);
-  const keywords = serviceFamilyKeywords(service.slug);
+  const familyProjects = allProjects.filter((project) => serviceSlugs.includes(project.service_slug));
+  const recentProjects = exactRecentProjects.length
+    ? exactRecentProjects
+    : familyProjects.slice(0, 3);
   const geoPosts = allPublishedUpdates.filter((post) => {
     if (post.service_slug && serviceSlugs.includes(post.service_slug)) return true;
     const haystack = `${post.title ?? ""} ${post.summary ?? ""} ${post.content ?? ""}`.toLowerCase();
@@ -72,7 +77,9 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
   const recentGeoPosts = geoPosts.slice(0, 5);
   const olderGeoPosts = geoPosts.slice(5);
   const heroImage =
-    selectHeroProjectImage(recentProjects) ?? getPlaceholderProjectImage(service.slug);
+    selectHeroProjectImage(recentProjects) ??
+    selectHeroProjectImage(familyProjects) ??
+    getPlaceholderProjectImage(service.slug);
 
   const related = allServices.filter((item) => item.slug !== service.slug).slice(0, 3);
 
