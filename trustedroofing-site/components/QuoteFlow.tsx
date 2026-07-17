@@ -12,6 +12,33 @@ const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCaro
   loading: () => <p className="instant-quote__meta">Loading nearby quote activity…</p>
 });
 
+type GtagFunction = (command: "event", eventName: string, parameters: Record<string, unknown>) => void;
+
+declare global {
+  interface Window {
+    gtag?: GtagFunction;
+  }
+}
+
+const GOOGLE_ADS_CONVERSION_EVENT = "ads_conversion_Request_quote_1";
+
+function gtagSendEvent(url?: string) {
+  if (typeof window === "undefined" || typeof window.gtag !== "function") return true;
+
+  const callback = () => {
+    if (typeof url === "string") {
+      window.location.href = url;
+    }
+  };
+
+  window.gtag("event", GOOGLE_ADS_CONVERSION_EVENT, {
+    event_callback: callback,
+    event_timeout: 2000
+  });
+
+  return false;
+}
+
 type BudgetResponse = "yes" | "financing" | "too_expensive";
 type SidingMaterial = "vinyl" | "hardie";
 type SourceMetadata = Record<string, string | null>;
@@ -507,6 +534,7 @@ export default function QuoteFlow({
         return;
       }
 
+      gtagSendEvent();
       setStep(3);
       setStatus("Thanks — your request is in.");
     } catch {
