@@ -8,6 +8,23 @@ import {
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { processLeadSubmissionEmails, sendQuoteLeadSubmittedEmail } from "@/lib/email";
 
+function sourceTypeFromSubmission(body: Record<string, unknown>) {
+  const metadata = body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata as Record<string, unknown> : null;
+  if (!metadata) return "Direct/Unknown";
+  if (metadata.utm_source || metadata.utm_medium || metadata.utm_campaign) return metadata.utm_medium === "organic" ? "Organic Search" : "Campaign / UTM";
+  const referrer = String(metadata.referrer ?? "").toLowerCase();
+  return /(google|bing|duckduckgo|yahoo|ecosia)/.test(referrer) ? "Organic Search" : referrer ? "Referral" : "Direct/Unknown";
+}
+
+function sourceMetadataFromSubmission(body: Record<string, unknown>): Record<string, string | null> | undefined {
+  const metadata = body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata as Record<string, string | null> : undefined;
+  if (!metadata) return undefined;
+  return {
+    ...metadata,
+    source_type: metadata.source_type ?? sourceTypeFromSubmission(body)
+  };
+}
+
 export async function POST(request: Request) {
   const ip = requestIp(request);
   const limit = checkRateLimit(`instaquote-save-lead:${ip}`, 12, 60_000);
@@ -30,6 +47,7 @@ export async function POST(request: Request) {
 
   try {
     const serviceType = typeof body.serviceScope === "string" ? body.serviceScope : null;
+    const sourceMetadata = sourceMetadataFromSubmission(body);
     let legacyLeadError: string | null = null;
     try {
       await createInstaquoteLead({
@@ -77,26 +95,50 @@ export async function POST(request: Request) {
       timeline: (body.timeline as string) || null,
       service_type: serviceType,
       quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
-      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null
+      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      source_metadata: sourceMetadata
     });
 
-    const [instantQuote] = await listAdminInstantQuotes({ q: String(body.address), limit: 50 })
+    const [matchedInstantQuote] = await listAdminInstantQuotes({ q: String(body.address), limit: 50 })
       .then((rows) => rows.filter((row) => row.legacy_address_query_id === String(body.addressQueryId)).slice(0, 1));
-    if (instantQuote) {
-      await processLeadSubmissionEmails({
-        lead: lifecycleLead,
-        instantQuote,
-        submittedForm: body
-      });
-      if (!instantQuote.lead_notification_sent_at) {
-        await sendQuoteLeadSubmittedEmail({ ...instantQuote, has_contact_submission: true }, body);
-        await updateInstantQuoteNotificationState(String(body.addressQueryId), { lead_notification_sent_at: new Date().toISOString() });
-      }
-    } else {
-      console.error("instaquote lead email skipped: instant quote record not found", {
+    const instantQuote = matchedInstantQuote ?? {
+      id: lifecycleLead.instant_quote_id,
+      legacy_address_query_id: String(body.addressQueryId),
+      address: String(body.address),
+      service_type: serviceType,
+      quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
+      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      has_contact_submission: true,
+      project_id: null,
+      is_marketing: false,
+      created_at: lifecycleLead.created_at,
+      source: "instant_quotes" as const,
+      contact_name: String(body.name),
+      contact_email: String(body.email),
+      contact_phone: String(body.phone),
+      source_type: sourceMetadata?.source_type ?? null,
+      landing_page: sourceMetadata?.landing_page ?? null,
+      referrer: sourceMetadata?.referrer ?? null,
+      first_page_path: sourceMetadata?.first_page_path ?? null,
+      current_page_path: sourceMetadata?.current_page_path ?? null,
+      lead_notification_sent_at: null
+    };
+
+    if (!matchedInstantQuote) {
+      console.warn("instaquote lead email using submission fallback quote record", {
         addressQueryId: body.addressQueryId,
         legacyLeadError
       });
+    }
+
+    await processLeadSubmissionEmails({
+      lead: lifecycleLead,
+      instantQuote,
+      submittedForm: body
+    });
+    if (!instantQuote.lead_notification_sent_at) {
+      await sendQuoteLeadSubmittedEmail({ ...instantQuote, has_contact_submission: true }, body);
+      await updateInstantQuoteNotificationState(String(body.addressQueryId), { lead_notification_sent_at: new Date().toISOString() });
     }
 
     return NextResponse.json({ ok: true, legacyLeadWarning: legacyLeadError });

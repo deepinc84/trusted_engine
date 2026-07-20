@@ -46,9 +46,9 @@ function toSentenceCase(value: string | null | undefined) {
 
 function defaultDataSourceLabel(value: string | null | undefined) {
   const source = (value ?? "").toLowerCase();
-  if (source.includes("google_solar") || source.includes("solar")) return "Trusted internal roof modeling";
-  if (source.includes("regional")) return "Trusted regional intelligence model";
-  return "Trusted internal pricing model";
+  if (source.includes("google_solar") || source.includes("solar")) return "Trusted instant quote roof model";
+  if (source.includes("regional")) return "Trusted instant quote regional model";
+  return "Trusted instant quote pricing model";
 }
 
 function inferServiceType(input: PublicQuoteDisplayInput): "roofing" | "siding" | "eaves" | "all" {
@@ -139,7 +139,7 @@ function buildRoofingItems(input: PublicQuoteDisplayInput): PublicQuoteDetailIte
   const area = formatRoofSize(toFiniteNumber(input.roofAreaSqft), toFiniteNumber(input.roofSquares));
   const pitch = formatPitch(input.pitchRatio, toFiniteNumber(input.pitchDegrees));
   const complexity = toSentenceCase(input.complexityBand);
-  const dataSourceLabel = "Trusted internal roof modeling";
+  const dataSourceLabel = "Trusted instant quote roof model";
   const items: PublicQuoteDetailItem[] = [];
   if (area) items.push({ key: "roof_size", label: "Roof size", value: area, rawValue: toFiniteNumber(input.roofAreaSqft) });
   if (pitch) items.push({ key: "pitch", label: "Pitch", value: pitch, rawValue: pitch });

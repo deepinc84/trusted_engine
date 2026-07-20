@@ -2497,6 +2497,14 @@ export async function createInstaquoteLead(
     email_sent: false,
     ...input,
   };
+  const submittedServiceType =
+    typeof payload.raw_json?.serviceScope === "string"
+      ? payload.raw_json.serviceScope
+      : payload.data_source ?? null;
+  const submittedSourceMetadata =
+    payload.raw_json?.sourceMetadata && typeof payload.raw_json.sourceMetadata === "object"
+      ? payload.raw_json.sourceMetadata as QuoteSourceMetadata
+      : undefined;
 
   if (getDataMode() === "supabase") {
     const client = getServiceClient() ?? getAnonClient();
@@ -2513,10 +2521,11 @@ export async function createInstaquoteLead(
       linkedInstantQuote = await upsertInstantQuoteFromAddressQuery({
         legacy_address_query_id: payload.address_query_id,
         address: payload.address,
-        service_type: payload.data_source ?? null,
+        service_type: submittedServiceType,
         quote_low: payload.good_low,
         quote_high: payload.good_high,
         created_at: payload.created_at,
+        source_metadata: submittedSourceMetadata,
       });
 
       const leadNotes = [
@@ -2553,7 +2562,7 @@ export async function createInstaquoteLead(
         phone: payload.phone,
         budget_response: payload.budget_response,
         timeline: payload.timeline,
-        service_type: payload.data_source ?? null,
+        service_type: submittedServiceType,
         quote_low: payload.good_low,
         quote_high: payload.good_high,
         submitted_at: payload.created_at,
@@ -2582,10 +2591,11 @@ export async function createInstaquoteLead(
     ? await upsertInstantQuoteFromAddressQuery({
         legacy_address_query_id: payload.address_query_id,
         address: payload.address,
-        service_type: payload.data_source ?? null,
+        service_type: submittedServiceType,
         quote_low: payload.good_low,
         quote_high: payload.good_high,
         created_at: payload.created_at,
+        source_metadata: submittedSourceMetadata,
       })
     : null;
   if (linkedInstantQuote) {
@@ -2598,7 +2608,7 @@ export async function createInstaquoteLead(
       phone: payload.phone,
       budget_response: payload.budget_response,
       timeline: payload.timeline,
-      service_type: payload.data_source ?? null,
+      service_type: submittedServiceType,
       quote_low: payload.good_low,
       quote_high: payload.good_high,
       submitted_at: payload.created_at,
@@ -3266,6 +3276,7 @@ export async function upsertLifecycleLeadFromSubmission(input: {
   service_type: string | null;
   quote_low: number | null;
   quote_high: number | null;
+  source_metadata?: QuoteSourceMetadata;
 }) {
   const instantQuote = await upsertInstantQuoteFromAddressQuery({
     legacy_address_query_id: input.legacy_address_query_id,
@@ -3273,6 +3284,7 @@ export async function upsertLifecycleLeadFromSubmission(input: {
     service_type: input.service_type,
     quote_low: input.quote_low,
     quote_high: input.quote_high,
+    source_metadata: input.source_metadata,
   });
 
   if (getDataMode() === "supabase") {
