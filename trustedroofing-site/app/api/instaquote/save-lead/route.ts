@@ -80,23 +80,41 @@ export async function POST(request: Request) {
       quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null
     });
 
-    const [instantQuote] = await listAdminInstantQuotes({ q: String(body.address), limit: 50 })
+    const [matchedInstantQuote] = await listAdminInstantQuotes({ q: String(body.address), limit: 50 })
       .then((rows) => rows.filter((row) => row.legacy_address_query_id === String(body.addressQueryId)).slice(0, 1));
-    if (instantQuote) {
-      await processLeadSubmissionEmails({
-        lead: lifecycleLead,
-        instantQuote,
-        submittedForm: body
-      });
-      if (!instantQuote.lead_notification_sent_at) {
-        await sendQuoteLeadSubmittedEmail({ ...instantQuote, has_contact_submission: true }, body);
-        await updateInstantQuoteNotificationState(String(body.addressQueryId), { lead_notification_sent_at: new Date().toISOString() });
-      }
-    } else {
-      console.error("instaquote lead email skipped: instant quote record not found", {
+    const instantQuote = matchedInstantQuote ?? {
+      id: lifecycleLead.instant_quote_id,
+      legacy_address_query_id: String(body.addressQueryId),
+      address: String(body.address),
+      service_type: serviceType,
+      quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
+      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      has_contact_submission: true,
+      project_id: null,
+      is_marketing: false,
+      created_at: lifecycleLead.created_at,
+      source: "instant_quotes" as const,
+      contact_name: String(body.name),
+      contact_email: String(body.email),
+      contact_phone: String(body.phone),
+      lead_notification_sent_at: null
+    };
+
+    if (!matchedInstantQuote) {
+      console.warn("instaquote lead email using submission fallback quote record", {
         addressQueryId: body.addressQueryId,
         legacyLeadError
       });
+    }
+
+    await processLeadSubmissionEmails({
+      lead: lifecycleLead,
+      instantQuote,
+      submittedForm: body
+    });
+    if (!instantQuote.lead_notification_sent_at) {
+      await sendQuoteLeadSubmittedEmail({ ...instantQuote, has_contact_submission: true }, body);
+      await updateInstantQuoteNotificationState(String(body.addressQueryId), { lead_notification_sent_at: new Date().toISOString() });
     }
 
     return NextResponse.json({ ok: true, legacyLeadWarning: legacyLeadError });
