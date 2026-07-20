@@ -247,6 +247,11 @@ const mockQuoteContacts: Array<{
   preferred_contact: string | null;
   created_at: string;
 }> = [];
+
+function isMissingColumnError(error: { message?: string; code?: string } | null | undefined) {
+  const message = error?.message ?? "";
+  return error?.code === "PGRST204" || /Could not find .* column|schema cache|column .* does not exist/i.test(message);
+}
 const defaultHomepageMetrics: HomepageMetric[] = [
   {
     id: "metric-homes",
@@ -2146,7 +2151,7 @@ export async function createInstaquoteAddressQuery(
     let quoteEventsErrorMessage: string | null = null;
     const sourceMetadata = options?.sourceMetadata ?? {};
     for (const client of clients) {
-      const { error } = await client!.from("quote_events").upsert({
+      const quoteEventPayload = {
         id: payload.id,
         created_at: payload.queried_at,
         updated_at: payload.queried_at,
@@ -2182,7 +2187,15 @@ export async function createInstaquoteAddressQuery(
           place_id: payload.place_id,
           ...(options?.notesExtras ? { extras: options.notesExtras } : {}),
         }),
+      };
+      let { error } = await client!.from("quote_events").upsert({
+        ...quoteEventPayload,
+        ...sourceMetadata,
       });
+      if (isMissingColumnError(error) && Object.keys(sourceMetadata).length > 0) {
+        const retry = await client!.from("quote_events").upsert(quoteEventPayload);
+        error = retry.error;
+      }
 
       if (!error) {
         quoteEventsErrorMessage = null;
@@ -2249,44 +2262,54 @@ export async function refreshInstaquoteAddressQuery(
 
     const { city, province, postal } = parseAddressParts(input.address);
     const sourceMetadata = options?.sourceMetadata ?? {};
-    const { error: eventError } = await client
-      .from("quote_events")
-      .update({
-        updated_at: queriedAt,
-        status: "instaquote_estimated",
+    const quoteEventPatch = {
+      updated_at: queriedAt,
+      status: "instaquote_estimated",
+      service_type:
+        options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+      requested_scopes: options?.requestedScopes ??
+        input.requested_scopes ?? ["roof"],
+      address: input.address,
+      city,
+      province,
+      postal,
+      lat: input.lat,
+      lng: input.lng,
+      estimate_low: input.estimate_low,
+      estimate_high: input.estimate_high,
+      notes: JSON.stringify({
+        source: input.data_source,
+        neighborhood: input.neighborhood,
         service_type:
           options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
         requested_scopes: options?.requestedScopes ??
           input.requested_scopes ?? ["roof"],
-        address: input.address,
-        city,
-        province,
-        postal,
-        lat: input.lat,
-        lng: input.lng,
         estimate_low: input.estimate_low,
         estimate_high: input.estimate_high,
+        area_source: input.area_source,
+        solar_status: input.solar_status,
+        solar_debug: input.solar_debug,
+        complexity_band: input.complexity_band,
+        roof_area_sqft: input.roof_area_sqft,
+        pitch_degrees: input.pitch_degrees,
+        place_id: input.place_id,
+        ...(options?.notesExtras ? { extras: options.notesExtras } : {}),
+      }),
+    };
+    let { error: eventError } = await client
+      .from("quote_events")
+      .update({
+        ...quoteEventPatch,
         ...sourceMetadata,
-        notes: JSON.stringify({
-          source: input.data_source,
-          neighborhood: input.neighborhood,
-          service_type:
-            options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
-          requested_scopes: options?.requestedScopes ??
-            input.requested_scopes ?? ["roof"],
-          estimate_low: input.estimate_low,
-          estimate_high: input.estimate_high,
-          area_source: input.area_source,
-          solar_status: input.solar_status,
-          solar_debug: input.solar_debug,
-          complexity_band: input.complexity_band,
-          roof_area_sqft: input.roof_area_sqft,
-          pitch_degrees: input.pitch_degrees,
-          place_id: input.place_id,
-          ...(options?.notesExtras ? { extras: options.notesExtras } : {}),
-        }),
       })
       .eq("id", id);
+    if (isMissingColumnError(eventError) && Object.keys(sourceMetadata).length > 0) {
+      const retry = await client
+        .from("quote_events")
+        .update(quoteEventPatch)
+        .eq("id", id);
+      eventError = retry.error;
+    }
     if (eventError) throw new Error(eventError.message);
 
     await storeSolarSuitabilityForQuote({ id, ...input }, id);
@@ -2372,11 +2395,33 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
 
     await ensureLegacyAddressQueryForInstantQuote(client, input);
 
-    const { data, error } = await client
+    let { data, error } = await client
       .from("instant_quotes")
       .insert(payload)
       .select("*")
       .single();
+    if (isMissingColumnError(error) && input.source_metadata) {
+      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, ...legacyPayload } = payload;
+      void source_type;
+      void landing_page;
+      void referrer;
+      void utm_source;
+      void utm_medium;
+      void utm_campaign;
+      void utm_term;
+      void utm_content;
+      void first_page_path;
+      void current_page_path;
+      void device_category;
+      void user_agent_summary;
+      const retry = await client
+        .from("instant_quotes")
+        .insert(legacyPayload)
+        .select("*")
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
     return data as InstantQuoteRecord;
   }
