@@ -2221,7 +2221,6 @@ export async function createInstaquoteAddressQuery(
         lng: payload.lng,
         estimate_low: payload.estimate_low,
         estimate_high: payload.estimate_high,
-        ...sourceMetadata,
         notes: JSON.stringify({
           source: payload.data_source,
           neighborhood: payload.neighborhood,
