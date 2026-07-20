@@ -8,6 +8,23 @@ import {
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { processLeadSubmissionEmails, sendQuoteLeadSubmittedEmail } from "@/lib/email";
 
+function sourceTypeFromSubmission(body: Record<string, unknown>) {
+  const metadata = body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata as Record<string, unknown> : null;
+  if (!metadata) return "Direct/Unknown";
+  if (metadata.utm_source || metadata.utm_medium || metadata.utm_campaign) return metadata.utm_medium === "organic" ? "Organic Search" : "Campaign / UTM";
+  const referrer = String(metadata.referrer ?? "").toLowerCase();
+  return /(google|bing|duckduckgo|yahoo|ecosia)/.test(referrer) ? "Organic Search" : referrer ? "Referral" : "Direct/Unknown";
+}
+
+function sourceMetadataFromSubmission(body: Record<string, unknown>): Record<string, string | null> | undefined {
+  const metadata = body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata as Record<string, string | null> : undefined;
+  if (!metadata) return undefined;
+  return {
+    ...metadata,
+    source_type: metadata.source_type ?? sourceTypeFromSubmission(body)
+  };
+}
+
 export async function POST(request: Request) {
   const ip = requestIp(request);
   const limit = checkRateLimit(`instaquote-save-lead:${ip}`, 12, 60_000);
@@ -30,6 +47,7 @@ export async function POST(request: Request) {
 
   try {
     const serviceType = typeof body.serviceScope === "string" ? body.serviceScope : null;
+    const sourceMetadata = sourceMetadataFromSubmission(body);
     let legacyLeadError: string | null = null;
     try {
       await createInstaquoteLead({
@@ -77,7 +95,8 @@ export async function POST(request: Request) {
       timeline: (body.timeline as string) || null,
       service_type: serviceType,
       quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
-      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null
+      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      source_metadata: sourceMetadata
     });
 
     const [matchedInstantQuote] = await listAdminInstantQuotes({ q: String(body.address), limit: 50 })
@@ -97,6 +116,11 @@ export async function POST(request: Request) {
       contact_name: String(body.name),
       contact_email: String(body.email),
       contact_phone: String(body.phone),
+      source_type: sourceMetadata?.source_type ?? null,
+      landing_page: sourceMetadata?.landing_page ?? null,
+      referrer: sourceMetadata?.referrer ?? null,
+      first_page_path: sourceMetadata?.first_page_path ?? null,
+      current_page_path: sourceMetadata?.current_page_path ?? null,
       lead_notification_sent_at: null
     };
 

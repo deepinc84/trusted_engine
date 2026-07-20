@@ -56,6 +56,8 @@ type EstimateResult = {
   pitchRatio?: string;
   dataSource: string;
   dataSourceLabel?: string;
+  serviceAreaServed?: boolean;
+  serviceAreaNotice?: string | null;
   areaSource: string;
   complexityBand: string;
   complexityScore: number;
@@ -461,9 +463,9 @@ export default function QuoteFlow({
       setIsResumedEstimate(false);
       setPdfDownloaded(false);
       setStatus(
-        result.areaSource === "regional"
+        result.serviceAreaNotice ?? (result.areaSource === "regional"
           ? `Estimate ready using trusted regional intelligence fallback. Model debug: ${result.solarDebug ?? "no debug message"} (trace: ${result.solarRequestId ?? "n/a"})`
-          : "Estimate ready with trusted internal roof modeling. Complete your details to lock in next steps."
+          : "Estimate ready with Trusted instant quote modeling. Complete your details to lock in next steps.")
       );
     } catch {
       setError("Unable to calculate estimate right now.");
@@ -516,6 +518,9 @@ export default function QuoteFlow({
           sidingHigh: selectedSidingRange?.high ?? estimate.extras.sidingVinyl.high,
           leadScore: estimate.complexityScore,
           dataSource: estimate.dataSource,
+          dataSourceLabel: estimate.dataSourceLabel,
+          serviceAreaServed: estimate.serviceAreaServed,
+          serviceAreaNotice: estimate.serviceAreaNotice,
           serviceScope: selectedScope,
           quoteLeadSource: isResumedEstimate ? "resumed_step_2" : "initial_step_2",
           isResumedLead: isResumedEstimate,

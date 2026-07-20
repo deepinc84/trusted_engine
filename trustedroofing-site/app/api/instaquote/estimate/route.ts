@@ -30,6 +30,13 @@ function sourceType(metadata: Record<string, string | null> | undefined) {
   return /(google|bing|duckduckgo|yahoo|ecosia)/.test(referrer) ? "Organic Search" : referrer ? "Referral" : "Direct/Unknown";
 }
 
+function isLikelyServedLocation(address: string) {
+  const normalized = address.toLowerCase();
+  if (/\b(ontario|on)\b/.test(normalized)) return false;
+  if (/\b(alberta|ab)\b/.test(normalized)) return true;
+  return /\b(calgary|airdrie|cochrane|chestermere|okotoks|strathmore|foothills|rocky view)\b/.test(normalized);
+}
+
 type ComplexityBand = "simple" | "moderate" | "complex";
 
 type SolarSegmentSummary = {
@@ -156,10 +163,10 @@ function normalizeNeighborhood(value: string | null | undefined) {
 }
 
 function dataSourceLabel(code: string) {
-  if (code.includes("solar")) return "Trusted internal roof modeling";
-  if (code.includes("historical")) return "Trusted internal historical model";
-  if (code.includes("regional")) return "Trusted regional intelligence model";
-  return "Trusted internal pricing model";
+  if (code.includes("solar")) return "Trusted instant quote roof model";
+  if (code.includes("historical")) return "Trusted instant quote historical model";
+  if (code.includes("regional")) return "Trusted instant quote regional model";
+  return "Trusted instant quote pricing model";
 }
 
 async function geocodeAddress(address: string) {
@@ -1132,10 +1139,14 @@ export async function POST(request: Request) {
     });
   }
 
+  const serviceAreaServed = isLikelyServedLocation(normalizedAddress || "Calgary, AB");
+
   return NextResponse.json({
     ok: true,
     addressQueryId,
     address: normalizedAddress || "Calgary, AB",
+    serviceAreaServed,
+    serviceAreaNotice: serviceAreaServed ? null : "Thank you for using Trusted Exteriors instant quote. Here is your instant quote, but we only serve Calgary and surrounding areas for the time being.",
     placeId,
     lat,
     lng,
