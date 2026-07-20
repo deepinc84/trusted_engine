@@ -4,8 +4,10 @@ import {
   createInstaquoteAddressQuery,
   findHistoricalRoofProfile,
   refreshInstaquoteAddressQuery,
-  upsertInstantQuoteFromAddressQuery
+  upsertInstantQuoteFromAddressQuery,
+  updateInstantQuoteNotificationState
 } from "@/lib/db";
+import { sendQuoteEventCreatedEmail } from "@/lib/email";
 import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 
@@ -18,7 +20,15 @@ type EstimateBody = {
   benchmarkQuotedAmount?: number | null;
   benchmarkLabel?: string | null;
   serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
+  sourceMetadata?: Record<string, string | null>;
 };
+
+function sourceType(metadata: Record<string, string | null> | undefined) {
+  if (!metadata) return "Direct/Unknown";
+  if (metadata.utm_source || metadata.utm_medium || metadata.utm_campaign) return metadata.utm_medium === "organic" ? "Organic Search" : "Campaign / UTM";
+  const referrer = String(metadata.referrer ?? "").toLowerCase();
+  return /(google|bing|duckduckgo|yahoo|ecosia)/.test(referrer) ? "Organic Search" : referrer ? "Referral" : "Direct/Unknown";
+}
 
 type ComplexityBand = "simple" | "moderate" | "complex";
 
@@ -892,6 +902,11 @@ export async function POST(request: Request) {
   const serviceScope = body.serviceScope ?? "roofing";
   const requestedScopes = mapScopeToRequestedScopes(serviceScope);
   const serviceType = mapScopeToServiceType(serviceScope);
+  const sourceMetadata = {
+    ...(body.sourceMetadata ?? {}),
+    source_type: sourceType(body.sourceMetadata),
+    user_agent_summary: request.headers.get("user-agent")?.slice(0, 240) ?? body.sourceMetadata?.user_agent_summary ?? null,
+  };
 
   let normalizedAddress = body.address?.trim() ?? "";
   let placeId = body.placeId ?? null;
@@ -1078,21 +1093,26 @@ export async function POST(request: Request) {
       if (historicalProfileMatch) {
         if (estimateResult.dataSource.startsWith("internal_model_historical_")) {
           addressQueryId = historicalProfileMatch.queryId;
-          await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, queryOptions);
+          await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, { ...queryOptions, sourceMetadata });
         } else {
-          addressQueryId = await createInstaquoteAddressQuery(queryPayload, queryOptions);
+          addressQueryId = await createInstaquoteAddressQuery(queryPayload, { ...queryOptions, sourceMetadata });
         }
       } else {
-        addressQueryId = await createInstaquoteAddressQuery(queryPayload, queryOptions);
+        addressQueryId = await createInstaquoteAddressQuery(queryPayload, { ...queryOptions, sourceMetadata });
       }
 
-      await upsertInstantQuoteFromAddressQuery({
+      const instantQuote = await upsertInstantQuoteFromAddressQuery({
         legacy_address_query_id: addressQueryId,
         address: normalizedAddress || "Calgary, AB",
         service_type: serviceType,
         quote_low: selectedQuotedRange.low,
-        quote_high: selectedQuotedRange.high
+        quote_high: selectedQuotedRange.high,
+        source_metadata: sourceMetadata
       });
+      if (!instantQuote.quote_event_notified_at) {
+        await sendQuoteEventCreatedEmail(instantQuote);
+        await updateInstantQuoteNotificationState(addressQueryId, { quote_event_notified_at: new Date().toISOString() });
+      }
     } catch (error) {
       console.error("instaquote estimate query insert failed", error);
     }

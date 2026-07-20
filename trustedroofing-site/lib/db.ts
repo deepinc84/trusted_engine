@@ -153,7 +153,22 @@ export type ResolvedGeoPost = GeoPost & {
   gallery: string[];
 };
 
-type QuoteEventStep1 = {
+export type QuoteSourceMetadata = {
+  source_type?: string | null;
+  landing_page?: string | null;
+  referrer?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_term?: string | null;
+  utm_content?: string | null;
+  first_page_path?: string | null;
+  current_page_path?: string | null;
+  device_category?: string | null;
+  user_agent_summary?: string | null;
+};
+
+type QuoteEventStep1 = QuoteSourceMetadata & {
   service_slug: string | null;
   place_id: string | null;
   address_private: string | null;
@@ -232,6 +247,11 @@ const mockQuoteContacts: Array<{
   preferred_contact: string | null;
   created_at: string;
 }> = [];
+
+function isMissingColumnError(error: { message?: string; code?: string } | null | undefined) {
+  const message = error?.message ?? "";
+  return error?.code === "PGRST204" || /Could not find .* column|schema cache|column .* does not exist/i.test(message);
+}
 const defaultHomepageMetrics: HomepageMetric[] = [
   {
     id: "metric-homes",
@@ -1949,6 +1969,28 @@ export type InstantQuoteRecord = {
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  source_type?: string | null;
+  landing_page?: string | null;
+  referrer?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_term?: string | null;
+  utm_content?: string | null;
+  first_page_path?: string | null;
+  current_page_path?: string | null;
+  device_category?: string | null;
+  user_agent_summary?: string | null;
+  pdf_available?: boolean | null;
+  pdf_generated_at?: string | null;
+  pdf_downloaded_at?: string | null;
+  pdf_download_count?: number | null;
+  last_pdf_downloaded_at?: string | null;
+  quote_event_notified_at?: string | null;
+  lead_notification_sent_at?: string | null;
+  pdf_download_notification_sent_at?: string | null;
+  marketing_tagged_at?: string | null;
+  marketing_tagged_by?: string | null;
 };
 
 export type LeadRecord = {
@@ -2080,6 +2122,7 @@ export async function createInstaquoteAddressQuery(
     notesExtras?: Record<string, unknown>;
     requestedScopes?: string[];
     serviceType?: string;
+    sourceMetadata?: QuoteSourceMetadata;
   },
 ) {
   const payload = {
@@ -2106,8 +2149,9 @@ export async function createInstaquoteAddressQuery(
 
     const { city, province, postal } = parseAddressParts(payload.address);
     let quoteEventsErrorMessage: string | null = null;
+    const sourceMetadata = options?.sourceMetadata ?? {};
     for (const client of clients) {
-      const { error } = await client!.from("quote_events").upsert({
+      const quoteEventPayload = {
         id: payload.id,
         created_at: payload.queried_at,
         updated_at: payload.queried_at,
@@ -2142,7 +2186,15 @@ export async function createInstaquoteAddressQuery(
           place_id: payload.place_id,
           ...(options?.notesExtras ? { extras: options.notesExtras } : {}),
         }),
+      };
+      let { error } = await client!.from("quote_events").upsert({
+        ...quoteEventPayload,
+        ...sourceMetadata,
       });
+      if (isMissingColumnError(error) && Object.keys(sourceMetadata).length > 0) {
+        const retry = await client!.from("quote_events").upsert(quoteEventPayload);
+        error = retry.error;
+      }
 
       if (!error) {
         quoteEventsErrorMessage = null;
@@ -2189,6 +2241,7 @@ export async function refreshInstaquoteAddressQuery(
     notesExtras?: Record<string, unknown>;
     requestedScopes?: string[];
     serviceType?: string;
+    sourceMetadata?: QuoteSourceMetadata;
   },
 ) {
   const queriedAt = new Date().toISOString();
@@ -2207,43 +2260,55 @@ export async function refreshInstaquoteAddressQuery(
     if (queryError) throw new Error(queryError.message);
 
     const { city, province, postal } = parseAddressParts(input.address);
-    const { error: eventError } = await client
-      .from("quote_events")
-      .update({
-        updated_at: queriedAt,
-        status: "instaquote_estimated",
+    const sourceMetadata = options?.sourceMetadata ?? {};
+    const quoteEventPatch = {
+      updated_at: queriedAt,
+      status: "instaquote_estimated",
+      service_type:
+        options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
+      requested_scopes: options?.requestedScopes ??
+        input.requested_scopes ?? ["roof"],
+      address: input.address,
+      city,
+      province,
+      postal,
+      lat: input.lat,
+      lng: input.lng,
+      estimate_low: input.estimate_low,
+      estimate_high: input.estimate_high,
+      notes: JSON.stringify({
+        source: input.data_source,
+        neighborhood: input.neighborhood,
         service_type:
           options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
         requested_scopes: options?.requestedScopes ??
           input.requested_scopes ?? ["roof"],
-        address: input.address,
-        city,
-        province,
-        postal,
-        lat: input.lat,
-        lng: input.lng,
         estimate_low: input.estimate_low,
         estimate_high: input.estimate_high,
-        notes: JSON.stringify({
-          source: input.data_source,
-          neighborhood: input.neighborhood,
-          service_type:
-            options?.serviceType ?? input.service_type ?? "InstantQuote:Roof",
-          requested_scopes: options?.requestedScopes ??
-            input.requested_scopes ?? ["roof"],
-          estimate_low: input.estimate_low,
-          estimate_high: input.estimate_high,
-          area_source: input.area_source,
-          solar_status: input.solar_status,
-          solar_debug: input.solar_debug,
-          complexity_band: input.complexity_band,
-          roof_area_sqft: input.roof_area_sqft,
-          pitch_degrees: input.pitch_degrees,
-          place_id: input.place_id,
-          ...(options?.notesExtras ? { extras: options.notesExtras } : {}),
-        }),
+        area_source: input.area_source,
+        solar_status: input.solar_status,
+        solar_debug: input.solar_debug,
+        complexity_band: input.complexity_band,
+        roof_area_sqft: input.roof_area_sqft,
+        pitch_degrees: input.pitch_degrees,
+        place_id: input.place_id,
+        ...(options?.notesExtras ? { extras: options.notesExtras } : {}),
+      }),
+    };
+    let { error: eventError } = await client
+      .from("quote_events")
+      .update({
+        ...quoteEventPatch,
+        ...sourceMetadata,
       })
       .eq("id", id);
+    if (isMissingColumnError(eventError) && Object.keys(sourceMetadata).length > 0) {
+      const retry = await client
+        .from("quote_events")
+        .update(quoteEventPatch)
+        .eq("id", id);
+      eventError = retry.error;
+    }
     if (eventError) throw new Error(eventError.message);
 
     await storeSolarSuitabilityForQuote({ id, ...input }, id);
@@ -2300,6 +2365,7 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
   quote_low: number | null;
   quote_high: number | null;
   created_at?: string;
+  source_metadata?: QuoteSourceMetadata;
 }) {
   const payload: InstantQuoteRecord = {
     id: crypto.randomUUID(),
@@ -2312,6 +2378,7 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
     project_id: null,
     is_marketing: false,
     created_at: input.created_at ?? new Date().toISOString(),
+    ...(input.source_metadata ?? {}),
   };
 
   if (getDataMode() === "supabase") {
@@ -2327,11 +2394,33 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
 
     await ensureLegacyAddressQueryForInstantQuote(client, input);
 
-    const { data, error } = await client
+    let { data, error } = await client
       .from("instant_quotes")
       .insert(payload)
       .select("*")
       .single();
+    if (isMissingColumnError(error) && input.source_metadata) {
+      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, ...legacyPayload } = payload;
+      void source_type;
+      void landing_page;
+      void referrer;
+      void utm_source;
+      void utm_medium;
+      void utm_campaign;
+      void utm_term;
+      void utm_content;
+      void first_page_path;
+      void current_page_path;
+      void device_category;
+      void user_agent_summary;
+      const retry = await client
+        .from("instant_quotes")
+        .insert(legacyPayload)
+        .select("*")
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
     return data as InstantQuoteRecord;
   }
@@ -2762,7 +2851,7 @@ type QuoteEventAdminRow = {
   name?: string | null;
   email?: string | null;
   phone?: string | null;
-};
+} & Partial<InstantQuoteRecord>;
 
 function normalizeInstantQuote(row: InstantQuoteRecord): InstantQuoteRecord {
   return { ...row, source: row.source ?? "instant_quotes" };
@@ -2797,6 +2886,28 @@ function mapQuoteEventToInstantQuote(
     contact_name: row.name ?? null,
     contact_email: row.email ?? null,
     contact_phone: row.phone ?? null,
+    source_type: row.source_type ?? null,
+    landing_page: row.landing_page ?? null,
+    referrer: row.referrer ?? null,
+    utm_source: row.utm_source ?? null,
+    utm_medium: row.utm_medium ?? null,
+    utm_campaign: row.utm_campaign ?? null,
+    utm_term: row.utm_term ?? null,
+    utm_content: row.utm_content ?? null,
+    first_page_path: row.first_page_path ?? null,
+    current_page_path: row.current_page_path ?? null,
+    device_category: row.device_category ?? null,
+    user_agent_summary: row.user_agent_summary ?? null,
+    pdf_available: row.pdf_available ?? false,
+    pdf_generated_at: row.pdf_generated_at ?? null,
+    pdf_downloaded_at: row.pdf_downloaded_at ?? null,
+    pdf_download_count: row.pdf_download_count ?? 0,
+    last_pdf_downloaded_at: row.last_pdf_downloaded_at ?? null,
+    quote_event_notified_at: row.quote_event_notified_at ?? null,
+    lead_notification_sent_at: row.lead_notification_sent_at ?? null,
+    pdf_download_notification_sent_at: row.pdf_download_notification_sent_at ?? null,
+    marketing_tagged_at: row.marketing_tagged_at ?? null,
+    marketing_tagged_by: row.marketing_tagged_by ?? null,
   };
 }
 
@@ -2808,6 +2919,8 @@ function filterInstantQuoteRows(
     from?: string | null;
     to?: string | null;
     q?: string | null;
+    pdf?: "all" | "downloaded";
+    source_type?: "all" | "organic";
   },
 ) {
   return rows
@@ -2832,7 +2945,9 @@ function filterInstantQuoteRows(
         return row.has_contact_submission && !row.project_id;
       if (filters?.status === "linked_project") return !!row.project_id;
       return true;
-    });
+    })
+    .filter((row) => filters?.pdf === "downloaded" ? !!row.pdf_downloaded_at : true)
+    .filter((row) => filters?.source_type === "organic" ? row.source_type === "Organic Search" : true);
 }
 
 export async function listAdminInstantQuotes(filters?: {
@@ -2841,6 +2956,8 @@ export async function listAdminInstantQuotes(filters?: {
   from?: string | null;
   to?: string | null;
   q?: string | null;
+  pdf?: "all" | "downloaded";
+  source_type?: "all" | "organic";
   limit?: number;
 }) {
   const limit = filters?.limit ?? 300;
@@ -2853,8 +2970,12 @@ export async function listAdminInstantQuotes(filters?: {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
-    if (filters?.q)
-      instantQuery = instantQuery.ilike("address", `%${filters.q}%`);
+    if (filters?.q) {
+      const qLooksUuid = /^[0-9a-f-]{32,36}$/i.test(filters.q);
+      instantQuery = qLooksUuid
+        ? instantQuery.or(`id.eq.${filters.q},legacy_address_query_id.eq.${filters.q},address.ilike.%${filters.q}%`)
+        : instantQuery.ilike("address", `%${filters.q}%`);
+    }
     if (filters?.from)
       instantQuery = instantQuery.gte("created_at", filters.from);
     if (filters?.to) instantQuery = instantQuery.lte("created_at", filters.to);
@@ -2890,14 +3011,16 @@ export async function listAdminInstantQuotes(filters?: {
       let eventQuery = client
         .from("quote_events")
         .select(
-          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone",
+          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone, source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, pdf_available, pdf_generated_at, pdf_downloaded_at, pdf_download_count, last_pdf_downloaded_at, quote_event_notified_at, lead_notification_sent_at, pdf_download_notification_sent_at, marketing_tagged_at, marketing_tagged_by",
         )
         .order("created_at", { ascending: false })
         .limit(limit);
-      if (filters?.q)
+      if (filters?.q) {
+        const qLooksUuid = /^[0-9a-f-]{32,36}$/i.test(filters.q);
         eventQuery = eventQuery.or(
-          `address.ilike.%${filters.q}%,address_private.ilike.%${filters.q}%`,
+          `${qLooksUuid ? `id.eq.${filters.q},` : ""}address.ilike.%${filters.q}%,address_private.ilike.%${filters.q}%`,
         );
+      }
       if (filters?.from)
         eventQuery = eventQuery.gte("created_at", filters.from);
       if (filters?.to) eventQuery = eventQuery.lte("created_at", filters.to);
@@ -2954,7 +3077,10 @@ export async function setInstantQuoteMarketingTag(
       );
     const { data, error } = await client
       .from("instant_quotes")
-      .update({ is_marketing })
+      .update({
+        is_marketing,
+        marketing_tagged_at: is_marketing ? new Date().toISOString() : null,
+      })
       .eq("id", id)
       .select("*")
       .single();
@@ -2964,7 +3090,58 @@ export async function setInstantQuoteMarketingTag(
   const row = mockInstantQuotes.find((item) => item.id === id);
   if (!row) throw new Error("Instant quote not found");
   row.is_marketing = is_marketing;
+  row.marketing_tagged_at = is_marketing ? new Date().toISOString() : null;
   return row;
+}
+
+export async function updateInstantQuoteNotificationState(
+  legacyAddressQueryId: string,
+  patch: Partial<Pick<InstantQuoteRecord,
+    "quote_event_notified_at" | "lead_notification_sent_at" | "pdf_download_notification_sent_at" |
+    "pdf_available" | "pdf_generated_at" | "pdf_downloaded_at" | "last_pdf_downloaded_at" | "pdf_download_count"
+  >>,
+) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) return;
+    await client
+      .from("instant_quotes")
+      .update(patch)
+      .eq("legacy_address_query_id", legacyAddressQueryId);
+    await client
+      .from("quote_events")
+      .update(patch)
+      .eq("id", legacyAddressQueryId);
+    return;
+  }
+  const row = mockInstantQuotes.find((item) => item.legacy_address_query_id === legacyAddressQueryId);
+  if (row) Object.assign(row, patch);
+}
+
+export async function recordInstantQuotePdfDownload(legacyAddressQueryId: string) {
+  const timestamp = new Date().toISOString();
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient() ?? getAnonClient();
+    if (!client) return { timestamp, downloadCount: 1 };
+    const { data } = await client
+      .from("instant_quotes")
+      .select("pdf_download_count")
+      .eq("legacy_address_query_id", legacyAddressQueryId)
+      .maybeSingle();
+    const downloadCount = Number(data?.pdf_download_count ?? 0) + 1;
+    await updateInstantQuoteNotificationState(legacyAddressQueryId, {
+      pdf_available: true,
+      pdf_generated_at: timestamp,
+      pdf_downloaded_at: timestamp,
+      last_pdf_downloaded_at: timestamp,
+      pdf_download_count: downloadCount,
+    });
+    return { timestamp, downloadCount };
+  }
+  const row = mockInstantQuotes.find((item) => item.legacy_address_query_id === legacyAddressQueryId);
+  const downloadCount = Number(row?.pdf_download_count ?? 0) + 1;
+  if (row) Object.assign(row, { pdf_available: true, pdf_generated_at: timestamp, pdf_downloaded_at: timestamp, last_pdf_downloaded_at: timestamp, pdf_download_count: downloadCount });
+  return { timestamp, downloadCount };
 }
 
 export async function linkInstantQuotesToProject(
