@@ -5,8 +5,11 @@ import { listAdminInstantQuotes } from "@/lib/db";
 const SERVICE_TYPE_TO_SLUG: Record<string, string> = {
   "InstantQuote:Roof": "roofing",
   "InstantQuote:Eaves": "gutters",
+  "InstantQuote:Eavestrough": "gutters",
   "InstantQuote:Hardie": "hardie-siding",
+  "InstantQuote:SidingHardie": "hardie-siding",
   "InstantQuote:Vinyl": "vinyl-siding",
+  "InstantQuote:SidingVinyl": "vinyl-siding",
   "InstantQuote:Siding": "siding"
 };
 
@@ -15,22 +18,34 @@ function normalizeServiceSlug(value: string | null) {
   return value.trim().toLowerCase();
 }
 
-function mapServiceSlugToQuoteEventType(serviceSlug: string) {
+function getQuoteEventTypesForServiceSlug(serviceSlug: string) {
   switch (serviceSlug) {
     case "roofing":
+    case "roof-replacement":
     case "roof-repair":
-      return "InstantQuote:Roof";
+      return ["InstantQuote:Roof"];
     case "gutters":
-      return "InstantQuote:Eavestrough";
+    case "eavestrough":
+    case "eavestrough-soffit-fascia":
+      return ["InstantQuote:Eavestrough", "InstantQuote:Eaves"];
     case "hardie-siding":
-      return "InstantQuote:SidingHardie";
+    case "james-hardie-siding":
+      return ["InstantQuote:SidingHardie", "InstantQuote:Hardie", "InstantQuote:Siding"];
     case "vinyl-siding":
-      return "InstantQuote:SidingVinyl";
+      return ["InstantQuote:SidingVinyl", "InstantQuote:Vinyl", "InstantQuote:Siding"];
     case "siding":
-      return "InstantQuote:Siding";
+      return ["InstantQuote:Siding", "InstantQuote:SidingHardie", "InstantQuote:SidingVinyl", "InstantQuote:Hardie", "InstantQuote:Vinyl"];
     default:
-      return "";
+      return [];
   }
+}
+
+function serviceSlugMatchesQuote(serviceSlug: string, serviceType: string | null) {
+  if (!serviceSlug) return true;
+  const quoteTypes = getQuoteEventTypesForServiceSlug(serviceSlug);
+  if (serviceType && quoteTypes.includes(serviceType)) return true;
+  const mapped = normalizeServiceSlug(SERVICE_TYPE_TO_SLUG[serviceType ?? ""] ?? serviceType ?? null);
+  return mapped === serviceSlug;
 }
 
 export async function GET(request: Request) {
@@ -44,7 +59,7 @@ export async function GET(request: Request) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const quoteEventType = mapServiceSlugToQuoteEventType(serviceSlug);
+  const quoteEventTypes = getQuoteEventTypesForServiceSlug(serviceSlug);
 
   if (supabaseUrl && serviceRole && q) {
     const client = createClient(supabaseUrl, serviceRole);
@@ -56,8 +71,10 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .limit(200);
 
-    if (quoteEventType) {
-      quoteEventQuery = quoteEventQuery.eq("service_type", quoteEventType);
+    if (quoteEventTypes.length === 1) {
+      quoteEventQuery = quoteEventQuery.eq("service_type", quoteEventTypes[0]);
+    } else if (quoteEventTypes.length > 1) {
+      quoteEventQuery = quoteEventQuery.in("service_type", quoteEventTypes);
     }
 
     const { data: quoteEvents } = await quoteEventQuery;
@@ -100,11 +117,7 @@ export async function GET(request: Request) {
 
   const filtered = quotes
     .filter((quote) => !quote.project_id)
-    .filter((quote) => {
-      if (!serviceSlug) return true;
-      const mapped = normalizeServiceSlug(SERVICE_TYPE_TO_SLUG[quote.service_type ?? ""] ?? quote.service_type ?? null);
-      return mapped === serviceSlug;
-    })
+    .filter((quote) => serviceSlugMatchesQuote(serviceSlug, quote.service_type))
     .slice(0, limit)
     .map((quote) => ({
       id: quote.id,

@@ -1811,6 +1811,28 @@ export async function markGbpQueueStatus(
   item.attempts += 1;
 }
 
+
+function mapQuoteServiceSlugToInstantQuoteType(serviceSlug: string | null) {
+  switch ((serviceSlug ?? "").trim().toLowerCase()) {
+    case "gutters":
+    case "eavestrough":
+    case "eavestrough-soffit-fascia":
+      return "InstantQuote:Eavestrough";
+    case "hardie-siding":
+    case "james-hardie-siding":
+      return "InstantQuote:SidingHardie";
+    case "vinyl-siding":
+      return "InstantQuote:SidingVinyl";
+    case "siding":
+      return "InstantQuote:Siding";
+    case "roofing":
+    case "roof-replacement":
+    case "roof-repair":
+    default:
+      return "InstantQuote:Roof";
+  }
+}
+
 export async function createQuoteStep1(input: QuoteEventStep1) {
   const payload = {
     ...input,
@@ -1823,6 +1845,28 @@ export async function createQuoteStep1(input: QuoteEventStep1) {
     if (!client) throw new Error("Supabase client unavailable");
     const { error } = await client.from("quote_events").insert(payload);
     if (error) throw new Error(error.message);
+    await upsertInstantQuoteFromAddressQuery({
+      legacy_address_query_id: payload.id,
+      address: payload.address_private || "Unknown address",
+      service_type: mapQuoteServiceSlugToInstantQuoteType(payload.service_slug),
+      quote_low: typeof payload.estimate_low === "number" ? payload.estimate_low : null,
+      quote_high: typeof payload.estimate_high === "number" ? payload.estimate_high : null,
+      created_at: payload.created_at,
+      source_metadata: {
+        source_type: payload.source_type ?? "legacy_quote_step1",
+        landing_page: payload.landing_page ?? null,
+        referrer: payload.referrer ?? null,
+        utm_source: payload.utm_source ?? null,
+        utm_medium: payload.utm_medium ?? null,
+        utm_campaign: payload.utm_campaign ?? null,
+        utm_term: payload.utm_term ?? null,
+        utm_content: payload.utm_content ?? null,
+        first_page_path: payload.first_page_path ?? null,
+        current_page_path: payload.current_page_path ?? null,
+        device_category: payload.device_category ?? null,
+        user_agent_summary: payload.user_agent_summary ?? null,
+      },
+    });
     const record = await buildSolarSuitabilityRecord({
       sourceType: "quote",
       sourceId: payload.id,
@@ -1837,6 +1881,15 @@ export async function createQuoteStep1(input: QuoteEventStep1) {
   }
 
   mockQuoteEvents.push(payload);
+  await upsertInstantQuoteFromAddressQuery({
+    legacy_address_query_id: payload.id,
+    address: payload.address_private || "Unknown address",
+    service_type: mapQuoteServiceSlugToInstantQuoteType(payload.service_slug),
+    quote_low: typeof payload.estimate_low === "number" ? payload.estimate_low : null,
+    quote_high: typeof payload.estimate_high === "number" ? payload.estimate_high : null,
+    created_at: payload.created_at,
+    source_metadata: { source_type: payload.source_type ?? "legacy_quote_step1" },
+  });
   const record = await buildSolarSuitabilityRecord({
     sourceType: "quote",
     sourceId: payload.id,
@@ -3156,15 +3209,28 @@ export async function linkInstantQuotesToProject(
       throw new Error(
         "SUPABASE_SERVICE_ROLE_KEY is required for admin writes.",
       );
-    const { error } = await client
+    const { data: directMatches, error: directError } = await client
       .from("instant_quotes")
       .update({ project_id: projectId })
-      .in("id", quoteIds);
-    if (error) throw new Error(error.message);
+      .in("id", quoteIds)
+      .select("id");
+    if (directError) throw new Error(directError.message);
+
+    const linkedIds = new Set((directMatches ?? []).map((row) => row.id));
+    const remainingIds = quoteIds.filter((id) => !linkedIds.has(id));
+    if (remainingIds.length > 0) {
+      const { error: legacyError } = await client
+        .from("instant_quotes")
+        .update({ project_id: projectId })
+        .in("legacy_address_query_id", remainingIds);
+      if (legacyError) throw new Error(legacyError.message);
+    }
     return;
   }
   mockInstantQuotes.forEach((row) => {
-    if (quoteIds.includes(row.id)) row.project_id = projectId;
+    if (quoteIds.includes(row.id) || quoteIds.includes(row.legacy_address_query_id ?? "")) {
+      row.project_id = projectId;
+    }
   });
 }
 
