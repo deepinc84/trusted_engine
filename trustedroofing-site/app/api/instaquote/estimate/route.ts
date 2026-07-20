@@ -1115,6 +1115,10 @@ export async function POST(request: Request) {
       }
     } catch (error) {
       console.error("instaquote estimate query insert failed", error);
+      return NextResponse.json(
+        { error: "Unable to save instant quote. Please try again." },
+        { status: 500 }
+      );
     }
   }
 
