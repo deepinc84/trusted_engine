@@ -17,32 +17,7 @@ import {
 import { buildMetadata } from "@/lib/seo";
 import { normalizeNeighborhoodSlug } from "@/lib/serviceAreas";
 import { buildServiceAreaNarrative } from "@/lib/serviceAreaNarratives";
-
-
-function getHardieServiceAreaCard(areaSlug: string, areaName: string) {
-  const titleOptions = [
-    "James Hardie Siding",
-    "Fiber Cement Siding",
-    "Hardie Siding Installer",
-    "Exterior Siding Upgrade",
-  ];
-  const anchorOptions = [
-    `James Hardie siding in ${areaName}`,
-    `James Hardie installer in ${areaName}`,
-    `fiber cement siding installation in ${areaName}`,
-    `Hardie siding contractor serving ${areaName}`,
-    `James Hardie siding options for ${areaName} homes`,
-  ];
-  const variationIndex = Array.from(areaSlug).reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0,
-  );
-
-  return {
-    title: titleOptions[variationIndex % titleOptions.length],
-    anchor: anchorOptions[variationIndex % anchorOptions.length],
-  };
-}
+import { getServiceAreaInternalLinkCards } from "@/lib/serviceAreaInternalLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -120,7 +95,11 @@ export default async function ServiceAreaDetailPage({
     solarAnalyses: area.solarAnalyses,
     nearbyAreas: relatedLinks,
   });
-  const hardieCard = getHardieServiceAreaCard(area.slug, area.neighborhood);
+  const serviceCards = getServiceAreaInternalLinkCards(area);
+  const localizedServiceHeading =
+    area.city === "Calgary"
+      ? `Roofing and exterior services in ${area.neighborhood}`
+      : `Roofing and exterior services in ${area.neighborhood}, ${area.city}`;
 
   return (
     <>
@@ -200,18 +179,27 @@ export default async function ServiceAreaDetailPage({
             </article>
           </div>
 
-          <div style={{ marginTop: 20 }}>
-            <article className="ui-card">
-              <h2>{hardieCard.title}</h2>
+          <section style={{ marginTop: 24 }}>
+            <div className="ui-card" style={{ marginBottom: 16 }}>
+              <h2>{localizedServiceHeading}</h2>
               <p className="homev3-copy">
-                Compare James Hardie siding, fiber cement siding, trim planning,
-                and exterior upgrade scope for homes in {area.neighborhood}.
+                Trusted Roofing & Exteriors helps {area.neighborhood} homeowners
+                compare roofing, roof replacement, roof repair, roof inspections,
+                siding, James Hardie siding, eavestrough, soffit, fascia, and
+                instant estimate options without guessing at the right scope.
               </p>
-              <Link href="/services/james-hardie-siding" className="button button--ghost">
-                {hardieCard.anchor}
-              </Link>
-            </article>
-          </div>
+            </div>
+
+            <div className="ui-grid ui-grid--services">
+              {serviceCards.map((card) => (
+                <article className="ui-card" key={card.href}>
+                  <h3>{card.title}</h3>
+                  <p className="homev3-copy">{card.body}</p>
+                  <Link href={card.href}>{card.anchor}</Link>
+                </article>
+              ))}
+            </div>
+          </section>
 
           {area.cards.length ? (
             <div className="quote-card-grid" style={{ marginTop: 20 }}>

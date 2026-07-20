@@ -9,9 +9,9 @@ import {
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Service areas",
+  title: "Calgary Roofing Service Areas | Trusted",
   description:
-    "Roofing, siding, and exterior services across Calgary neighborhoods with local project insights, recent estimate activity, and instant quote tools.",
+    "Explore Calgary roofing service areas by neighbourhood, including roof replacement, roof repair, siding, James Hardie, eavestrough, and instant online estimates.",
   path: "/service-areas",
 });
 
@@ -26,9 +26,9 @@ export default async function ServiceAreasPage() {
   return (
     <>
       <PageHero
-        eyebrow="Coverage engine"
-        title="Calgary service areas"
-        description="Neighborhood pages update from quote, project, and solar suitability activity to keep local landing pages current."
+        eyebrow="Calgary roofing service areas"
+        title="Calgary Roofing and Exterior Service Areas"
+        description="Explore roofing, roof replacement, roof repair, siding, James Hardie, eavestrough, soffit, and fascia estimate activity across Calgary neighbourhoods, then start an instant online estimate for your own address."
       />
 
       <section className="ui-page-section">
@@ -72,8 +72,8 @@ export default async function ServiceAreasPage() {
               weather patterns. That is why we break service area planning
               across NW, NE, SW, and SE Calgary instead of using a generic
               city-wide assumption. The same practical approach applies to
-              siding and Calgary eavestrough work: details around water
-              movement, flashing, and ventilation matter more than marketing
+              siding and Calgary eavestrough work: details around drainage
+              routing, flashing, and ventilation matter more than marketing
               labels. The goal is straightforward—use local conditions and real
               quote activity to recommend a cleaner, longer-lasting scope.
             </p>
@@ -102,7 +102,7 @@ export default async function ServiceAreasPage() {
               with install-quality issues; others are older and need staged
               repairs before full replacement. Drainage design is a major factor
               in this quadrant—improperly pitched gutters or weak downspout
-              routing can keep water too close to wall transitions and lower
+              routing can keep runoff too close to wall transitions and lower
               roof edges. For roof replacement Calgary work in the NE, install
               quality and drainage corrections are often as important as shingle
               selection itself.
@@ -131,9 +131,9 @@ export default async function ServiceAreasPage() {
               tied to detail execution—edge metal integration, valley treatment,
               or accessory flashing around vents and stacks. Drainage patterns
               in newer developments also matter because grading and downspout
-              paths can move water aggressively during storms. For Calgary
-              eavestrough and roofing planning in the SE, reliable water
-              management is usually a core part of the scope, not an optional
+              paths can direct runoff aggressively during storms. For Calgary
+              eavestrough and roofing planning in the SE, reliable runoff
+              control is usually a core part of the scope, not an optional
               add-on.
             </p>
 
@@ -192,26 +192,41 @@ export default async function ServiceAreasPage() {
               what is happening on real homes across the city.
             </p>
 
-            <h2>Get an Instant Roofing Estimate in Calgary</h2>
-            <p className="homev3-copy">
-              If you want a fast baseline for Calgary roofing work, start with
-              the{" "}
-              <Link href="/online-estimate">instant roofing estimate tool</Link>
-              . If you are comparing systems, review{" "}
-              <Link href="/services/roofing">
-                roof replacement Calgary service details
-              </Link>
-              , then evaluate water management options in our{" "}
-              <Link href="/services/eavestrough">
-                Calgary eavestrough and gutter service page
-              </Link>
-              . For exterior envelope upgrades beyond the roof, see{" "}
-              <Link href="/services/james-hardie-siding">
-                James Hardie siding installation in Calgary
-              </Link>
-              . Using these together gives a clearer scope and a more accurate
-              budget range before you commit to scheduling.
-            </p>
+            <section className="ui-card" style={{ marginTop: 32 }}>
+              <h2>Calgary roofing and exterior services by area</h2>
+              <p className="homev3-copy">
+                Homeowners can compare Calgary roofing contractors, roof
+                replacement, roof repair, siding, James Hardie, eavestrough,
+                soffit, fascia, and instant online estimate options by area
+                before deciding what scope makes sense for their home.
+              </p>
+              <div className="quote-quick-nav__chips">
+                <Link href="/" className="quote-quick-nav__chip">
+                  Calgary roofing company
+                </Link>
+                <Link href="/online-estimate" className="quote-quick-nav__chip">
+                  instant roof quote Calgary
+                </Link>
+                <Link
+                  href="/services/roof-replacement"
+                  className="quote-quick-nav__chip"
+                >
+                  roof replacement Calgary
+                </Link>
+                <Link
+                  href="/services/james-hardie-siding"
+                  className="quote-quick-nav__chip"
+                >
+                  James Hardie siding Calgary
+                </Link>
+                <Link
+                  href="/services/eavestrough"
+                  className="quote-quick-nav__chip"
+                >
+                  eavestrough Calgary
+                </Link>
+              </div>
+            </section>
           </section>
         </PageContainer>
       </section>

@@ -6,7 +6,7 @@ import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import { getProjectBySlug } from "@/lib/db";
-import { getPlaceholderProjectImage } from "@/lib/images";
+import { getPlaceholderProjectImage, selectHeroProjectPhoto } from "@/lib/images";
 import { getNearestNeighborhoodLinksForProject } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
@@ -81,6 +81,7 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
     label: STAGE_LABELS[stage],
     photos: gallery.filter((photo) => resolvePhotoStage(photo) === stage)
   })).filter((entry) => entry.photos.length > 0);
+  const heroPhoto = selectHeroProjectPhoto(gallery);
   const relatedNeighborhoods = await getNearestNeighborhoodLinksForProject(project, 3);
 
   return (
@@ -95,6 +96,14 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
             <Link href={`/services/${project.service_slug}`} className="button">Back to service</Link>
             <Link href="/projects" className="button button--ghost">All projects</Link>
           </>
+        }
+        image={
+          heroPhoto
+            ? {
+                src: heroPhoto.public_url,
+                alt: heroPhoto.caption || `${project.title} completed project photo in ${locationLabel}`
+              }
+            : undefined
         }
       />
 
