@@ -3,6 +3,7 @@ import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
 import { buildMetadata } from "@/lib/seo";
 
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 export const metadata = buildMetadata({
   title: "Blog",
   description: "Calgary roofing and exterior guides with cost context, scope planning, and local project insights for homeowners.",
@@ -29,6 +30,12 @@ const posts = [
 export default function BlogIndexPage() {
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Blog", path: "/blog" }
+        ]}
+      />
       <PageHero
         eyebrow="Blog"
         title="Practical roofing guides for Calgary homeowners"

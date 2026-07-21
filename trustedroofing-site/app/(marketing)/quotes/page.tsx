@@ -8,6 +8,7 @@ import PageHero from "@/components/ui/PageHero";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 import { getAllQuoteNeighborhoods, getQuoteArchiveByMaterial } from "@/lib/seo-engine";
 
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 export const metadata = buildMetadata({
   title: "Calgary Roofing Quotes & Exterior Estimate Examples",
   description: "Browse recent Calgary roofing, siding, Hardie siding, and eavestrough estimate examples, then start your own instant quote.",
@@ -238,6 +239,12 @@ export default async function QuotesArchivePage() {
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Recent Quotes", path: "/quotes" }
+        ]}
+      />
       <QuoteArchiveHashHandler />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <PageHero

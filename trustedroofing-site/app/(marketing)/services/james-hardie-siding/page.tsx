@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import FaqAccordion from "@/components/FaqAccordion";
 import PageContainer from "@/components/ui/PageContainer";
@@ -72,14 +73,6 @@ function buildHardieSchema() {
         url: serviceUrl
       },
       {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: canonicalUrl("") },
-          { "@type": "ListItem", position: 2, name: "Services", item: canonicalUrl("/services") },
-          { "@type": "ListItem", position: 3, name: "James Hardie Siding", item: serviceUrl }
-        ]
-      },
-      {
         "@type": "FAQPage",
         mainEntity: hardieFaqItems.map((item) => ({
           "@type": "Question",
@@ -102,6 +95,13 @@ export default async function JamesHardieSidingPage() {
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Services", path: "/services" },
+          { name: "James Hardie Siding", path: "/services/james-hardie-siding" }
+        ]}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <PageHero

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import DynamicSchema from "@/components/DynamicSchema";
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
@@ -86,6 +87,13 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Projects", path: "/projects" },
+          { name: project.title, path: `/projects/${project.slug}` }
+        ]}
+      />
       <DynamicSchema projectData={project} relatedNeighborhoods={relatedNeighborhoods} />
       <PageHero
         eyebrow={project.service_slug}

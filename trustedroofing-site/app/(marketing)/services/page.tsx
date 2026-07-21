@@ -8,6 +8,7 @@ import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
 
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
   loading: () => <p className="homev3-copy">Loading FAQ…</p>
@@ -142,6 +143,12 @@ export default async function ServicesPage() {
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Services", path: "/services" }
+        ]}
+      />
       <PageHero
         eyebrow="Services"
         title="Calgary Roofing and Exterior Services"

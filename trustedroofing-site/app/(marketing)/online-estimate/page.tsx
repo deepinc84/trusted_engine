@@ -7,6 +7,7 @@ import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
 import Image from "next/image";
 
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
   loading: () => <p className="homev3-copy">Loading FAQ…</p>
@@ -54,6 +55,12 @@ const quoteFlowSteps = [
 export default function QuotePage() {
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Online Estimate", path: "/online-estimate" }
+        ]}
+      />
       <QuoteApplicationSchema />
       <section className="online-estimate-hero">
         <Image

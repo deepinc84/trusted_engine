@@ -2,6 +2,7 @@ import Link from "next/link";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 import styles from "./page.module.css";
 
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 export const metadata = buildMetadata({
   title: "Roof Replacement Cost Calgary 2026 | Trusted",
   description: "Learn what affects roof replacement costs in Calgary in 2026, including size, pitch, materials, and real local estimate ranges.",
@@ -42,6 +43,13 @@ export default function RoofCostBlogPost() {
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Blog", path: "/blog" },
+          { name: "How Much Does a Roof Replacement Cost in Calgary in 2026?", path: "/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026" }
+        ]}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <section className={styles.hero}>

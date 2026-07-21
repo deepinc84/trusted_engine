@@ -2,6 +2,7 @@ import Link from "next/link";
 import HeatMap from "@/components/HeatMap";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import {
   getQuoteQuadrantHeat,
   getTopNeighborhoodActivities,
@@ -25,6 +26,12 @@ export default async function ServiceAreasPage() {
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Service Areas", path: "/service-areas" }
+        ]}
+      />
       <PageHero
         eyebrow="Calgary roofing service areas"
         title="Calgary Roofing and Exterior Service Areas"

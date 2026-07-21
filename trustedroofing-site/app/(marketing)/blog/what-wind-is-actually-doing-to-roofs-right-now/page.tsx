@@ -2,6 +2,7 @@ import Link from "next/link";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 import styles from "../how-much-does-a-roof-replacement-cost-in-calgary-2026/page.module.css";
 
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 export const metadata = buildMetadata({
   title: "Calgary Wind Damage This Week",
   description:
@@ -56,6 +57,13 @@ export default function WindDamageBlogPost() {
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Blog", path: "/blog" },
+          { name: "What Wind Is Actually Doing to Roofs Right Now", path: "/blog/what-wind-is-actually-doing-to-roofs-right-now" }
+        ]}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <section className={styles.hero}>
