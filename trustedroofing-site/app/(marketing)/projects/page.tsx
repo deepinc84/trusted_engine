@@ -9,6 +9,7 @@ import ProjectCard from "@/components/ProjectCard";
 import ProjectsExplorer from "@/components/ProjectsExplorer";
 import NeighborhoodChips from "@/components/ui/NeighborhoodChips";
 
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
   loading: () => <p className="homev3-copy">Loading FAQ…</p>
@@ -92,6 +93,12 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: { 
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Projects", path: "/projects" }
+        ]}
+      />
       <PageHero
         eyebrow="Projects"
         title="Real Calgary Roofing and Exterior Projects"

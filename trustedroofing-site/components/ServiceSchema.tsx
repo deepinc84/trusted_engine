@@ -1,3 +1,4 @@
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import { canonicalUrl } from "@/lib/seo";
 
 type Item = { name: string; url: string };
@@ -56,9 +57,18 @@ export default function ServiceSchema({
   };
 
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
+    <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Services", path: "/services" },
+          { name: serviceName, path: `/services/${slug}` }
+        ]}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+    </>
   );
 }

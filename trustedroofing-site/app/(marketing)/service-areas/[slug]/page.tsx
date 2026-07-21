@@ -1,5 +1,6 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
+import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import DynamicSchema from "@/components/DynamicSchema";
 import ProjectCard from "@/components/ProjectCard";
 import QuoteCard from "@/components/QuoteCard";
@@ -103,6 +104,13 @@ export default async function ServiceAreaDetailPage({
 
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", path: "" },
+          { name: "Service Areas", path: "/service-areas" },
+          { name: `${area.neighborhood}, ${area.city}`, path: `/service-areas/${area.slug}` }
+        ]}
+      />
       <DynamicSchema quoteData={area} relatedNeighborhoods={relatedLinks} />
       <PageHero
         eyebrow={`${area.city} service area`}
