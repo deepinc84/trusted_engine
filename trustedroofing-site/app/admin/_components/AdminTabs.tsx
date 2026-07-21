@@ -9,6 +9,7 @@ const adminTabs: AdminTab[] = [
   { href: "/admin", label: "Projects" },
   { href: "/admin/projects/new", label: "Create project" },
   { href: "/admin/geo-posts", label: "Geo-post management" },
+  { href: "/admin/blog", label: "Blog management" },
   { href: "/admin/instant-quotes", label: "Instant quote dashboard" },
   { href: "/admin/actuals", label: "Actuals" },
   { href: "/admin/reports", label: "Reporting" }
