@@ -1,3 +1,5 @@
+import { blogArticles } from "@/lib/blogArticles";
+
 export type BlogPost = {
   slug: string;
   title: string;
@@ -20,7 +22,14 @@ export const blogPosts: BlogPost[] = [
     excerpt: "A field update on current Calgary wind damage patterns across shingles, siding, soffit, gutters, and flashing.",
     publishAt: "2026-08-04T09:00:00-06:00",
     image: "/calgary-wind-damage-roof.jpeg"
-  }
+  },
+  ...Object.values(blogArticles).map((article) => ({
+    slug: article.slug,
+    title: article.title,
+    excerpt: article.description,
+    publishAt: article.publishAt,
+    image: article.heroImage
+  }))
 ];
 
 export function getPublishedBlogPosts(now = new Date()) {
