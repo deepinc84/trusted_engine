@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 import styles from "./page.module.css";
 
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
+import { getBlogPost, isBlogPostPublished } from "@/lib/blog";
 export const metadata = buildMetadata({
   title: "Roof Replacement Cost Calgary 2026 | Trusted",
   description: "Learn what affects roof replacement costs in Calgary in 2026, including size, pitch, materials, and real local estimate ranges.",
@@ -17,8 +19,8 @@ function buildBlogSchema() {
     "@type": "BlogPosting",
     headline: "How Much Does a Roof Replacement Cost in Calgary in 2026?",
     description: "Real ranges from real Calgary projects, not numbers pulled from a generic online estimator.",
-    datePublished: "2026-03-25",
-    dateModified: "2026-03-25",
+    datePublished: getBlogPost("how-much-does-a-roof-replacement-cost-in-calgary-2026")?.publishAt ?? "2026-03-25T13:00:00-06:00",
+    dateModified: getBlogPost("how-much-does-a-roof-replacement-cost-in-calgary-2026")?.publishAt ?? "2026-03-25T13:00:00-06:00",
     author: {
       "@type": "Organization",
       name: "Trusted Roofing & Exteriors"
@@ -38,7 +40,11 @@ function buildBlogSchema() {
   };
 }
 
+export const dynamic = "force-dynamic";
+
 export default function RoofCostBlogPost() {
+  if (!isBlogPostPublished("how-much-does-a-roof-replacement-cost-in-calgary-2026")) notFound();
+
   const schema = buildBlogSchema();
 
   return (

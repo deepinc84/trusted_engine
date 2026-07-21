@@ -10,7 +10,7 @@ import { getAllQuoteCards } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Roof Replacement Calgary | Trusted",
+  title: "Roof Replacement Calgary | Residential Reroofing",
   description: "Roof replacement estimates for Calgary homes, including asphalt shingles, roof size, pitch, complexity, materials, and instant online pricing.",
   path: "/services/roof-replacement"
 });
@@ -43,7 +43,7 @@ export default async function RoofReplacementPage() {
       <ServiceSchema serviceName="Roof Replacement" serviceSlug="roof-replacement" serviceType="Roof replacement" />
       <PageHero
         eyebrow="Roof replacement Calgary"
-        title="Roof Replacement in Calgary"
+        title="Calgary Roof Replacement for Aging Shingles, Hail and Full Reroofing"
         description="Full roof replacement is for homes where the roof has reached the end of its service life, storm damage is widespread, or repair work would only delay a larger reroofing project. Start with instant pricing, then confirm materials and site details."
         actions={<Link href="/online-estimate" className="button">Get instant roof quote</Link>}
       />
