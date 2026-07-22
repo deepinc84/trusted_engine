@@ -14,7 +14,7 @@ export const metadata = buildMetadata({
 });
 
 export default async function EavestroughSoffitFasciaPage() {
-  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["gutters", "eavestrough", "soffit-fascia", "downspout", "drainage"] });
+  const geoPosts = await listGeoPosts(null, { serviceSlugs: ["gutters", "eavestrough", "soffit-fascia", "downspout", "drainage"] });
 
   return (
     <>
