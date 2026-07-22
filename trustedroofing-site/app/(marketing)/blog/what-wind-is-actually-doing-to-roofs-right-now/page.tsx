@@ -21,8 +21,8 @@ function buildBlogSchema() {
     headline: "Calgary Wind Damage This Week, What We're Seeing on Roofs, Siding, and Exteriors",
     description:
       "Strong Calgary winds are exposing roof, siding, soffit, fascia, and gutter damage. See what is failing and what homeowners should check after a wind event.",
-    datePublished: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-08-04T09:00:00-06:00",
-    dateModified: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-08-04T09:00:00-06:00",
+    datePublished: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-04-30T09:00:00-06:00",
+    dateModified: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-04-30T09:00:00-06:00",
     author: {
       "@type": "Organization",
       name: "Trusted Roofing & Exteriors"
