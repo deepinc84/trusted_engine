@@ -5,7 +5,7 @@ import PageContainer from "@/components/ui/PageContainer";
 import BrandText from "@/components/BrandText";
 import PageHero from "@/components/ui/PageHero";
 import ServiceCard from "@/components/ui/ServiceCard";
-import GeoPostCard from "@/components/GeoPostCard";
+import ServiceGeoPosts from "@/components/ServiceGeoPosts";
 import ServiceSchema from "@/components/ServiceSchema";
 import { getServiceBySlug, listGeoPosts, listProjects, listServices } from "@/lib/db";
 import { getPlaceholderProjectImage, selectHeroProjectImage } from "@/lib/images";
@@ -74,8 +74,6 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
     return keywords.some((keyword) => haystack.includes(keyword));
   });
 
-  const recentGeoPosts = geoPosts.slice(0, 5);
-  const olderGeoPosts = geoPosts.slice(5);
   const heroImage =
     selectHeroProjectImage(recentProjects) ??
     selectHeroProjectImage(familyProjects) ??
@@ -167,43 +165,7 @@ export default async function ServiceHubPage({ params }: { params: { slug: strin
         </PageContainer>
       </section>
 
-      {recentGeoPosts.length > 0 ? (
-        <section className="ui-page-section">
-          <PageContainer>
-            <h2 className="homev3-title" style={{ marginBottom: 16 }}>
-              Recent {service.title} Projects Near Calgary
-            </h2>
-            <div className="carousel" aria-label={`Recent ${service.title} project updates`}>
-              {recentGeoPosts.map((post, index) => (
-                <div key={post.id} id={`project-update-${post.id}`}>
-                  <GeoPostCard geoPost={post} eagerImage={index < 2} />
-                </div>
-              ))}
-            </div>
-          </PageContainer>
-        </section>
-      ) : null}
-
-      {olderGeoPosts.length > 0 ? (
-        <section className="ui-page-section ui-page-section--soft">
-          <PageContainer>
-            <article className="ui-card">
-              <h2>All Published {service.title} Project Updates</h2>
-              <p className="homev3-copy">Older published updates remain discoverable here for homeowners and search engines.</p>
-              <div className="ui-list-links">
-                {olderGeoPosts.map((post) => (
-                  <article key={post.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--ui-border)" }}>
-                    <h3 style={{ marginBottom: 4 }}>
-                      <Link href={`/services/${service.slug}#project-update-${post.id}`}>{post.title ?? "Project update"}</Link>
-                    </h3>
-                    <p style={{ margin: 0 }}>{post.summary ?? "Published location-backed project update."}</p>
-                  </article>
-                ))}
-              </div>
-            </article>
-          </PageContainer>
-        </section>
-      ) : null}
+      <ServiceGeoPosts geoPosts={geoPosts} heading={`Recent ${service.title} Projects Near Calgary`} />
 
       <CtaBand
         title="Ready to price your project?"

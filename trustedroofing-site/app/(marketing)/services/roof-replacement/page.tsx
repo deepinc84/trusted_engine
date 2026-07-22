@@ -33,7 +33,7 @@ function isRoofReplacementQuote(quote: Awaited<ReturnType<typeof getAllQuoteCard
 
 export default async function RoofReplacementPage() {
   const [geoPosts, quoteCards] = await Promise.all([
-    listGeoPosts(6, { serviceSlugs: ["roofing", "roof-replacement", "shingles"] }),
+    listGeoPosts(null, { serviceSlugs: ["roofing", "roof-replacement", "shingles"] }),
     getAllQuoteCards()
   ]);
   const roofQuotes = quoteCards.filter(isRoofReplacementQuote).slice(0, 3);
