@@ -9,6 +9,7 @@ import { getPlaceholderProjectImage } from "@/lib/images";
 
 const BATCH_SIZE = 10;
 const AUTO_SCROLL_INTERVAL_MS = 4500;
+const CARD_EXCERPT_LENGTH = 170;
 
 function projectLinkFromContent(content: string | null): { href: string; text: string } | null {
   if (!content) return null;
@@ -19,6 +20,12 @@ function projectLinkFromContent(content: string | null): { href: string; text: s
 
 function cleanContent(content: string | null): string {
   return (content ?? "").replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1").trim();
+}
+
+function excerptContent(content: string | null, summary: string | null): string {
+  const text = cleanContent(content) || summary || "Published project update.";
+  if (text.length <= CARD_EXCERPT_LENGTH) return text;
+  return `${text.slice(0, CARD_EXCERPT_LENGTH).trim()}…`;
 }
 
 export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: ResolvedGeoPost[]; heading?: string }) {
@@ -65,6 +72,15 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
     });
   };
 
+  const moveCarousel = (direction: "previous" | "next") => {
+    const nextIndex = direction === "next"
+      ? (activeIndex + 1) % geoPosts.length
+      : (activeIndex - 1 + geoPosts.length) % geoPosts.length;
+    setActiveIndex(nextIndex);
+    setVisibleBatchEnd((currentEnd) => Math.max(currentEnd, Math.min(nextIndex + 1, geoPosts.length)));
+    scrollToPost(nextIndex, { focus: true });
+  };
+
   useEffect(() => {
     if (geoPosts.length <= 1 || isAutoScrollPaused) return undefined;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
@@ -106,6 +122,15 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
             dangerouslySetInnerHTML={{ __html: JSON.stringify(geoJsonLd) }}
           />
 
+          <div className="service-geo-posts__controls" aria-label="Project carousel controls">
+            <button type="button" className="service-geo-posts__arrow" onClick={() => moveCarousel("previous")} aria-label="Scroll to previous project update">
+              ←
+            </button>
+            <button type="button" className="service-geo-posts__arrow" onClick={() => moveCarousel("next")} aria-label="Scroll to next project update">
+              →
+            </button>
+          </div>
+
           <div
             ref={trackRef}
             className="service-geo-posts__carousel"
@@ -140,9 +165,9 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                     <p className="service-geo-posts__location">
                       {post.neighborhood ?? post.city ?? "Calgary"}, {post.province ?? "AB"}
                     </p>
-                    <p>{cleanContent(post.content) || post.summary || "Published project update."}</p>
+                    <p className="service-geo-posts__excerpt">{excerptContent(post.content, post.summary)}</p>
                     <div className="service-geo-posts__links">
-                      <Link href={fullPostHref}>Open full project update</Link>
+                      <Link href={fullPostHref}>View details</Link>
                       <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "Related project"}</Link>
                     </div>
                   </div>
