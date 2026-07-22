@@ -8,7 +8,7 @@ import { listGeoPosts } from "@/lib/db";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Roof Repair Calgary | Leak & Storm Damage Repair",
+  title: "Roof Repair Calgary | Leak, Wind & Hail Repairs",
   description: "Calgary roof repair for leaks, missing shingles, storm damage, flashing issues, vents, and targeted roofing fixes with online estimate options.",
   path: "/services/roof-repair"
 });
@@ -30,7 +30,7 @@ export default async function RoofRepairPage() {
       <ServiceSchema serviceName="Roof Repair" serviceSlug="roof-repair" serviceType="Roof repair" />
       <PageHero
         eyebrow="Roof repair Calgary"
-        title="Roof Repair in Calgary"
+        title="Calgary Roof Repair for Leaks, Wind and Storm Damage"
         description="Roof repair is for leaks, storm damage, missing shingles, flashing problems, vent issues, and targeted fixes where the rest of the roof may still have life left. The goal is to find the failure point and explain whether repair is enough."
         actions={<Link href="/online-estimate" className="button">Get instant roof repair estimate</Link>}
       />
@@ -60,6 +60,21 @@ export default async function RoofRepairPage() {
             <article className="ui-card">
               <h2>When replacement should be considered</h2>
               <p>Replacement may be more responsible when repairs are stacking up, shingles are brittle or heavily granule-worn, storm damage is widespread, decking is compromised, or ventilation and flashing problems are part of a larger roof system failure.</p>
+            </article>
+          </div>
+        </PageContainer>
+      </section>
+
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="ui-detail-grid">
+            <article className="ui-card">
+              <h2>Common Calgary roof repair calls</h2>
+              <p>Repair requests often start with one visible symptom: a ceiling stain after a thaw, shingles on the lawn after a wind event, lifted tabs, exposed nails, loose flashing, cracked pipe boots, blocked exhaust vents, or hail bruising that needs documentation before it becomes a larger leak.</p>
+            </article>
+            <article className="ui-card">
+              <h2>Recent repair proof by neighbourhood</h2>
+              <p>Use local repair examples to compare the kind of work homeowners are requesting in <Link href="/service-areas/bowness">Bowness</Link>, <Link href="/service-areas/harvest-hills">Harvest Hills</Link>, <Link href="/service-areas/evanston">Evanston</Link>, and <Link href="/service-areas/oakridge">Oakridge</Link>, then move from the neighbourhood context to a specific repair estimate.</p>
             </article>
           </div>
         </PageContainer>

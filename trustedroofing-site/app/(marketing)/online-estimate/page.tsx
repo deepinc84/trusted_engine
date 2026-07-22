@@ -29,7 +29,7 @@ const quoteBenefits = [
 ] as const;
 
 export const metadata = buildMetadata({
-  title: "Instant quote",
+  title: "Instant Roof Quote Calgary | Roofing & Exterior Estimates",
   description: "Get an instant roofing, siding, or eavestrough estimate for Calgary homes using address-level property data and local project insights.",
   path: "/online-estimate",
   imagePath: "/Instant_estimate_hero.png"

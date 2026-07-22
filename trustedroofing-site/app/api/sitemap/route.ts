@@ -1,5 +1,6 @@
 import { listGeoPosts, listProjects, listServices } from "@/lib/db";
 import { getAllQuoteCards, getAllQuoteNeighborhoods } from "@/lib/seo-engine";
+import { getPublishedBlogPosts } from "@/lib/blog";
 import { canonicalUrl } from "@/lib/seo";
 import { neighborhoodSlug } from "@/lib/serviceAreas";
 
@@ -116,6 +117,7 @@ export async function GET() {
   const latestGeoPostLastmod = latestIso(...geoPosts.flatMap((post) => [post.published_at, post.created_at]));
   const latestQuoteLastmod = latestIso(...quoteCards.map((quote) => quote.queriedAt));
   const latestSiteActivityLastmod = latestIso(latestProjectLastmod, latestGeoPostLastmod, latestQuoteLastmod) ?? generatedAt;
+  const publishedBlogPosts = getPublishedBlogPosts();
 
   const latestGeoPostByServiceSlug = new Map<string, string>();
   const latestProjectByServiceSlug = new Map<string, string>();
@@ -168,7 +170,12 @@ export async function GET() {
     { loc: canonicalUrl("/services/eavestrough-soffit-fascia"), lastmod: servicePageLastmod("eavestrough-soffit-fascia"), changefreq: "weekly", priority: 0.8 },
     { loc: canonicalUrl("/services/eavestrough"), lastmod: servicePageLastmod("gutters"), changefreq: "weekly", priority: 0.8 },
     { loc: canonicalUrl("/blog"), lastmod: latestSiteActivityLastmod, changefreq: "weekly", priority: 0.7 },
-    { loc: canonicalUrl("/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026"), lastmod: latestSiteActivityLastmod, changefreq: "monthly", priority: 0.6 },
+    ...publishedBlogPosts.map((post) => ({
+      loc: canonicalUrl(`/blog/${post.slug}`),
+      lastmod: new Date(post.publishAt).toISOString(),
+      changefreq: "monthly" as const,
+      priority: 0.6
+    })),
     { loc: canonicalUrl("/projects"), lastmod: latestIso(latestProjectLastmod, latestGeoPostLastmod) ?? latestSiteActivityLastmod, changefreq: "hourly", priority: 0.95 },
     ...projects.map((project) => ({
       loc: canonicalUrl(`/projects/${project.slug}`),

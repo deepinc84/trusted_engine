@@ -17,7 +17,8 @@ const staticPaths = [
   "/projects",
   "/quotes",
   "/service-areas",
-  "/blog"
+  "/blog",
+  "/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026"
 ];
 
 const knownProjectSlugs = [

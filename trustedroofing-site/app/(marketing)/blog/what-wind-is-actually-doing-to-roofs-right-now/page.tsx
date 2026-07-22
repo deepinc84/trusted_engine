@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 import styles from "../how-much-does-a-roof-replacement-cost-in-calgary-2026/page.module.css";
 
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
+import { getBlogPost, isBlogPostPublished } from "@/lib/blog";
 export const metadata = buildMetadata({
   title: "Calgary Wind Damage This Week",
   description:
@@ -19,8 +21,8 @@ function buildBlogSchema() {
     headline: "Calgary Wind Damage This Week, What We're Seeing on Roofs, Siding, and Exteriors",
     description:
       "Strong Calgary winds are exposing roof, siding, soffit, fascia, and gutter damage. See what is failing and what homeowners should check after a wind event.",
-    datePublished: "2026-04-30",
-    dateModified: "2026-04-30",
+    datePublished: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-04-30T09:00:00-06:00",
+    dateModified: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-04-30T09:00:00-06:00",
     author: {
       "@type": "Organization",
       name: "Trusted Roofing & Exteriors"
@@ -52,7 +54,11 @@ const articleWrap: React.CSSProperties = {
 const sectionHead: React.CSSProperties = { fontSize: 34, marginBottom: 14 };
 
 
+export const dynamic = "force-dynamic";
+
 export default function WindDamageBlogPost() {
+  if (!isBlogPostPublished("what-wind-is-actually-doing-to-roofs-right-now")) notFound();
+
   const schema = buildBlogSchema();
 
   return (

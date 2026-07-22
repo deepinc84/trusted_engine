@@ -2,6 +2,7 @@ import "./globals.css";
 import SiteFooter from "@/components/site/SiteFooter";
 import SiteHeader from "@/components/site/SiteHeader";
 import ChunkLoadRecovery from "@/components/ChunkLoadRecovery";
+import OrganizationSchema from "@/components/OrganizationSchema";
 import Script from "next/script";
 
 export const metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
         </noscript>
       </head>
       <body>
+        <OrganizationSchema />
         <ChunkLoadRecovery />
         <div className="page">
           <SiteHeader />
