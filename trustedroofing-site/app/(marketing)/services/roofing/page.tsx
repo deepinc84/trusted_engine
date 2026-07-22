@@ -22,7 +22,7 @@ function isRoofingQuote(quote: Awaited<ReturnType<typeof getAllQuoteCards>>[numb
 
 export default async function RoofingPage() {
   const [geoPosts, quoteCards] = await Promise.all([
-    listGeoPosts(6, { serviceSlugs: ["roofing", "roof-repair", "roof-replacement", "shingles"] }),
+    listGeoPosts(null, { serviceSlugs: ["roofing", "roof-repair", "roof-replacement", "shingles"] }),
     getAllQuoteCards()
   ]);
   const roofingQuotes = quoteCards.filter(isRoofingQuote).slice(0, 3);
