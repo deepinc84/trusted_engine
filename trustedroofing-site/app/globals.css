@@ -257,6 +257,12 @@ main {
   gap: 16px;
 }
 
+@media (max-width: 960px) {
+  .service-geo-posts__carousel {
+    grid-auto-columns: calc((100% - 14px) / 2);
+  }
+}
+
 @media (max-width: 720px) {
   .site-header {
     align-items: flex-start;
@@ -3320,6 +3326,12 @@ main {
 .quote-explorer__status button { border: 0; background: transparent; color: #1e3a8a; font-weight: 700; cursor: pointer; text-decoration: underline; }
 .quote-results-title { margin-top: 32px; font-size: 2rem; }
 .quote-card--highlighted { border-color: #1e3a8a !important; background: #f4f8ff !important; box-shadow: 0 0 0 4px rgba(30,58,138,.12), 0 14px 32px rgba(30,58,138,.14); transition: border-color .25s ease, background .25s ease, box-shadow .25s ease; }
+@media (max-width: 960px) {
+  .service-geo-posts__carousel {
+    grid-auto-columns: calc((100% - 14px) / 2);
+  }
+}
+
 @media (max-width: 720px) { .quote-explorer__heading, .quote-explorer__status { flex-direction: column; } .quote-explorer__fields { grid-template-columns: 1fr; } .quote-explorer__cta { min-width: 0; width: 100%; } }
 
 .admin-blog-editor {
