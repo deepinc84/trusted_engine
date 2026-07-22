@@ -15,7 +15,7 @@ export const metadata = buildMetadata({
 });
 
 export default async function SolarPage() {
-  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["solar"] });
+  const geoPosts = await listGeoPosts(null, { serviceSlugs: ["solar"] });
 
 
   return (
