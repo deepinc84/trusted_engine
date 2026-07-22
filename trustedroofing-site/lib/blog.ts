@@ -20,7 +20,7 @@ export const blogPosts: BlogPost[] = [
     slug: "what-wind-is-actually-doing-to-roofs-right-now",
     title: "What Wind Is Actually Doing to Roofs Right Now",
     excerpt: "A field update on current Calgary wind damage patterns across shingles, siding, soffit, gutters, and flashing.",
-    publishAt: "2026-08-04T09:00:00-06:00",
+    publishAt: "2026-04-30T09:00:00-06:00",
     image: "/calgary-wind-damage-roof.jpeg"
   },
   ...Object.values(blogArticles).map((article) => ({
