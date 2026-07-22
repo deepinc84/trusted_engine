@@ -66,9 +66,16 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
 
   const scrollToPost = (index: number, { focus = false }: { focus?: boolean } = {}) => {
     window.requestAnimationFrame(() => {
-      const nextCard = trackRef.current?.querySelector<HTMLElement>(`[data-geo-post-index="${index}"]`);
-      nextCard?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-      if (focus) nextCard?.focus({ preventScroll: true });
+      const track = trackRef.current;
+      const nextCard = track?.querySelector<HTMLElement>(`[data-geo-post-index="${index}"]`);
+      if (!track || !nextCard) return;
+
+      track.scrollTo({
+        left: nextCard.offsetLeft - track.offsetLeft,
+        behavior: "smooth",
+      });
+
+      if (focus) nextCard.focus({ preventScroll: true });
     });
   };
 
