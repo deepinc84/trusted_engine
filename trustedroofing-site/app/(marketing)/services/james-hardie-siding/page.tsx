@@ -85,7 +85,7 @@ function buildHardieSchema() {
 }
 
 export default async function JamesHardieSidingPage() {
-  const geoPosts = await listGeoPosts(6, {
+  const geoPosts = await listGeoPosts(null, {
     serviceSlugs: ["siding", "james-hardie-siding", "hardie-board-siding"],
     includeKeywords: ["hardie", "fiber cement", "fibre cement"]
   });

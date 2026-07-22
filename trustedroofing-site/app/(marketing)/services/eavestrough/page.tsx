@@ -23,7 +23,7 @@ export const metadata = buildMetadata({
 });
 
 export default async function EavestroughPage() {
-  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["gutters", "eavestrough", "downspout", "drainage"] });
+  const geoPosts = await listGeoPosts(null, { serviceSlugs: ["gutters", "eavestrough", "downspout", "drainage"] });
 
 
   return (

@@ -23,7 +23,7 @@ const inspectionItems = [
 ];
 
 export default async function RoofInspectionMaintenancePage() {
-  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["roofing", "roof-repair", "roof-replacement", "shingles"] });
+  const geoPosts = await listGeoPosts(null, { serviceSlugs: ["roofing", "roof-repair", "roof-replacement", "shingles"] });
 
   return (
     <>
