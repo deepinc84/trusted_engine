@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateGeoPostAdmin } from "@/lib/db";
+import { buildGeoPostIndexNowUrls, notifyIndexNowUrls } from "@/lib/indexnow";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const form = await request.formData();
@@ -20,12 +21,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   try {
-    await updateGeoPostAdmin(params.id, {
+    const geoPost = await updateGeoPostAdmin(params.id, {
       status,
       content: finalContent || null,
       service_slug: serviceSlugRaw || null,
       primary_image_url: selectedImageRaw || null
     });
+    if (geoPost.status === "published" && geoPost.slug) {
+      await notifyIndexNowUrls(buildGeoPostIndexNowUrls(geoPost.slug));
+    }
     return NextResponse.redirect(new URL(`/admin/geo-posts/${params.id}`, request.url), { status: 303 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update geo-post" }, { status: 400 });
