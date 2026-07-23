@@ -19,7 +19,10 @@ import path from "path";
 import zlib from "zlib";
 
 type EstimatePayload = {
+  ok?: true;
+  addressQueryId?: string;
   address?: string;
+  placeId?: string | null;
   lat?: number | null;
   lng?: number | null;
   roofAreaSqft?: number;
@@ -738,7 +741,26 @@ function drawProjectCard(
   addLink(builder, page, x + 2, y + 2, w - 4, h - 4, input.href);
 }
 
+function pdfFriendlyImageUrl(url: string) {
+  if (!url) return "";
+  const absoluteUrl = url.startsWith("/") ? canonicalUrl(url) : url;
+  try {
+    const parsed = new URL(absoluteUrl);
+    if (parsed.pathname.includes("/storage/v1/object/public/")) {
+      parsed.pathname = parsed.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+      parsed.searchParams.set("width", "720");
+      parsed.searchParams.set("height", "480");
+      parsed.searchParams.set("resize", "cover");
+      parsed.searchParams.set("quality", "82");
+    }
+    return parsed.toString();
+  } catch {
+    return absoluteUrl;
+  }
+}
+
 async function fetchBuffer(url: string) {
+  if (!url) return null;
   try {
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) return null;
@@ -761,73 +783,70 @@ function buildStreetViewUrl(input: {
     size: input.size ?? "1280x720",
     location: input.location,
     fov: String(input.fov ?? 58),
-    heading: String(input.heading ?? 20),
-    pitch: String(input.pitch ?? -8),
+    pitch: String(input.pitch ?? -4),
+    source: "outdoor",
     key: input.key
   });
+  if (typeof input.heading === "number") params.set("heading", String(Math.round(input.heading)));
   return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`;
 }
 
-function buildSatelliteStaticMapUrl(input: {
-  key: string;
-  center: string;
-  zoom?: number;
-  size?: string;
-  scale?: number;
-}) {
-  const params = new URLSearchParams({
-    center: input.center,
-    zoom: String(input.zoom ?? 21),
-    size: input.size ?? "1280x720",
-    scale: String(input.scale ?? 2),
-    maptype: "satellite",
-    key: input.key
-  });
-  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
+function buildStreetViewMetadataUrl(input: { key: string; location: string }) {
+  const params = new URLSearchParams({ location: input.location, source: "outdoor", key: input.key });
+  return `https://maps.googleapis.com/maps/api/streetview/metadata?${params.toString()}`;
+}
+
+function bearingDegrees(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const toDeg = (value: number) => (value * 180) / Math.PI;
+  const lat1 = toRad(fromLat);
+  const lat2 = toRad(toLat);
+  const deltaLng = toRad(toLng - fromLng);
+  const y = Math.sin(deltaLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+async function resolveStreetViewHeading(input: { key: string; center: string; lat?: number | null; lng?: number | null }) {
+  if (typeof input.lat !== "number" || typeof input.lng !== "number") return undefined;
+  try {
+    const response = await fetch(buildStreetViewMetadataUrl({ key: input.key, location: input.center }), { cache: "no-store" });
+    if (!response.ok) return undefined;
+    const metadata = (await response.json()) as { status?: string; location?: { lat?: number; lng?: number } };
+    const panoLat = metadata.location?.lat;
+    const panoLng = metadata.location?.lng;
+    if (metadata.status !== "OK" || typeof panoLat !== "number" || typeof panoLng !== "number") return undefined;
+    return bearingDegrees(panoLat, panoLng, input.lat, input.lng);
+  } catch {
+    return undefined;
+  }
 }
 
 async function fetchPropertyImages(input: { lat?: number | null; lng?: number | null; address?: string }) {
   const key = process.env.GOOGLE_SECRET_KEY;
-  if (!key) return { aerial: null as Buffer | null, street: null as Buffer | null };
+  if (!key) return { street: null as Buffer | null };
 
   const target =
     typeof input.lat === "number" && typeof input.lng === "number"
       ? `${input.lat},${input.lng}`
       : (input.address ?? "").trim();
 
-  if (!target) return { aerial: null as Buffer | null, street: null as Buffer | null };
+  if (!target) return { street: null as Buffer | null };
 
   const center = typeof input.lat === "number" && typeof input.lng === "number"
     ? `${input.lat},${input.lng}`
     : target;
-  const heading = typeof input.lng === "number"
-    ? input.lng >= -114.18 && input.lng <= -113.95
-      ? 28
-      : 22
-    : 22;
-
-  const aerialUrl = buildSatelliteStaticMapUrl({
-    key,
-    center,
-    zoom: 21,
-    size: "640x420",
-    scale: 2
-  });
+  const heading = await resolveStreetViewHeading({ key, center, lat: input.lat, lng: input.lng });
   const streetUrl = buildStreetViewUrl({
     key,
     location: center,
     heading,
-    fov: 58,
-    pitch: -8,
+    fov: 52,
+    pitch: -4,
     size: "640x420"
   });
-  const streetFallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(center)}&zoom=19&size=640x420&scale=2&maptype=roadmap&markers=color:0x1d4ed8%7C${encodeURIComponent(center)}&key=${encodeURIComponent(key)}`;
-
-  const [aerialPrimary, streetPrimary] = await Promise.all([fetchBuffer(aerialUrl), fetchBuffer(streetUrl)]);
-  const streetFallback = streetPrimary ? null : await fetchBuffer(streetFallbackUrl);
-  const aerial = aerialPrimary;
-  const street = streetPrimary ?? streetFallback;
-  return { aerial, street };
+  const street = await fetchBuffer(streetUrl);
+  return { street };
 }
 
 function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
@@ -885,6 +904,28 @@ async function loadLogo() {
   }
 
   return null;
+}
+
+function compactResumeEstimate(estimate: EstimatePayload): Record<string, unknown> {
+  return {
+    ok: true,
+    addressQueryId: estimate.addressQueryId ?? "pdf-resume",
+    address: estimate.address ?? "",
+    placeId: estimate.placeId ?? null,
+    lat: estimate.lat ?? null,
+    lng: estimate.lng ?? null,
+    roofAreaSqft: estimate.roofAreaSqft ?? 0,
+    roofSquares: estimate.roofSquares ?? 0,
+    pitchDegrees: estimate.pitchDegrees ?? 0,
+    pitchRatio: estimate.pitchRatio ?? undefined,
+    dataSource: estimate.dataSource ?? "instant_model",
+    dataSourceLabel: estimate.dataSourceLabel ?? "Instant model",
+    areaSource: "resume",
+    complexityBand: estimate.complexityBand ?? "standard",
+    complexityScore: 0,
+    extras: estimate.extras ?? {},
+    ranges: estimate.ranges
+  };
 }
 
 function beginPage(): PdfPageDraft {
@@ -954,7 +995,7 @@ export async function POST(request: Request) {
     const quoteResumeToken = createQuoteResumeToken({
       requestedScope,
       sidingMaterial,
-      estimate: estimate as unknown as Record<string, unknown>
+      estimate: compactResumeEstimate(estimate)
     });
 
     const proposalUrl = canonicalUrl(`/online-estimate?resume=${encodeURIComponent(quoteResumeToken)}`);
@@ -1027,13 +1068,8 @@ export async function POST(request: Request) {
 
     const imageColX = MARGIN + quoteLeftW + GRID_GAP_X;
     const imageColW = CONTENT_WIDTH - quoteLeftW - GRID_GAP_X - CARD_PADDING_X;
-    const imageH = (quoteCardH - CARD_PADDING_Y * 2 - GRID_GAP_Y) / 2;
-    drawCard(page1, imageColX, quoteCardY + quoteCardH - CARD_PADDING_Y - imageH, imageColW, imageH, COLORS.cardSoft);
+    const imageH = quoteCardH - CARD_PADDING_Y * 2;
     drawCard(page1, imageColX, quoteCardY + CARD_PADDING_Y, imageColW, imageH, COLORS.cardSoft);
-    if (propertyImages.aerial) {
-      const aerial = addImageObject(builder, page1, "AerialImg", propertyImages.aerial);
-      if (aerial) drawImageCover(page1, aerial, imageColX + 4, quoteCardY + quoteCardH - CARD_PADDING_Y - imageH + 4, imageColW - 8, imageH - 8);
-    }
     if (propertyImages.street) {
       const street = addImageObject(builder, page1, "StreetImg", propertyImages.street);
       if (street) drawImageCover(page1, street, imageColX + 4, quoteCardY + CARD_PADDING_Y + 4, imageColW - 8, imageH - 8);
@@ -1197,7 +1233,7 @@ export async function POST(request: Request) {
         const project = projects[i];
         const x = MARGIN + i * (cardWidth + GRID_GAP_X);
         const y = optionsY - 218;
-        const imageBuffer = await fetchBuffer(project.imageUrl);
+        const imageBuffer = await fetchBuffer(pdfFriendlyImageUrl(project.imageUrl));
         const imageRef = imageBuffer ? addImageObject(builder, page3, `Proj${i + 1}`, imageBuffer) : null;
         drawProjectCard(
           page3,
