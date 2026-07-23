@@ -247,7 +247,7 @@ function clampTextLines(text: string, size: number, maxWidth: number, maxLines: 
 
   const clipped = wrapped.slice(0, maxLines);
   let finalLine = clipped[maxLines - 1] ?? "";
-  const ellipsis = "…";
+  const ellipsis = "...";
   while (finalLine.length > 0 && measureTextWidth(`${finalLine}${ellipsis}`, size) > maxWidth) {
     finalLine = finalLine.slice(0, -1);
   }
@@ -664,14 +664,16 @@ function drawHeader(
     const logoHeight = input.logo.height * scale;
     drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
   }
-  const headerTextX = MARGIN + 168;
-  drawText(page, "TRUSTED ESTIMATE SUMMARY", headerTextX, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
+
   const badgeW = 132;
   const badgeX = PAGE_WIDTH - MARGIN - badgeW;
-  const titleMaxWidth = badgeX - headerTextX - 12;
-  const safeTitleLines = clampTextLines(input.title, 18.5, Math.max(titleMaxWidth, 120), 1);
-  drawText(page, safeTitleLines[0] ?? input.title, headerTextX, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
-  drawText(page, input.subtitle, headerTextX, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
+  const headerTextX = MARGIN + 124;
+  const textMaxWidth = Math.max(badgeX - headerTextX - 20, 120);
+  const safeTitle = clampTextLines(input.title, 18, textMaxWidth, 1)[0] ?? input.title;
+  const safeSubtitle = clampTextLines(input.subtitle, 9.6, textMaxWidth, 1)[0] ?? input.subtitle;
+  drawText(page, "TRUSTED ESTIMATE SUMMARY", headerTextX, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
+  drawText(page, safeTitle, headerTextX, PAGE_HEIGHT - 46, 18, "1 1 1", "F2");
+  drawText(page, safeSubtitle, headerTextX, PAGE_HEIGHT - 62, 9.6, "0.82 0.88 0.98");
   drawRoundedBox(page, badgeX, PAGE_HEIGHT - 72, badgeW, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
   drawTextCentered(page, input.badge, badgeX + badgeW / 2, PAGE_HEIGHT - 57, 9, COLORS.white, "F2");
 }
@@ -905,10 +907,6 @@ function addPngImageObject(
   return { name: imageName, width: png.width, height: png.height };
 }
 
-function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
-  if (startsWithPng(buffer)) return addPngImageObject(builder, page, imageName, buffer, [17, 28, 64]);
-  return addImageObject(builder, page, imageName, buffer);
-}
 
 async function loadLogo() {
   const logoCandidates = [
@@ -917,13 +915,24 @@ async function loadLogo() {
     "full_white_transparent.png",
     "white-transparent-t.png"
   ];
+  const publicDirs = [
+    path.join(process.cwd(), "public"),
+    path.join(process.cwd(), "trustedroofing-site", "public")
+  ];
+
+  for (const dir of publicDirs) {
+    for (const filename of logoCandidates) {
+      try {
+        return await fs.readFile(path.join(dir, filename));
+      } catch {
+        // continue to next candidate
+      }
+    }
+  }
 
   for (const filename of logoCandidates) {
-    try {
-      return await fs.readFile(path.join(process.cwd(), "public", filename));
-    } catch {
-      // continue to next candidate
-    }
+    const remoteLogo = await fetchBuffer(canonicalUrl(`/${filename}`));
+    if (remoteLogo) return remoteLogo;
   }
 
   return null;
@@ -1369,27 +1378,14 @@ export async function POST(request: Request) {
       drawText(page4, "• A recent electricity bill is used to size the system correctly", MARGIN + 212, nextY + 20, 7.4, COLORS.textMid);
       drawText(page4, "This step simply confirms whether solar makes sense for this property before any decisions are made.", MARGIN + 12, nextY + 2, 7.2, COLORS.navy, "F2");
 
-      const solarCtaTop = Math.max(nextY - 14, SAFE_BOTTOM_Y + 138);
-      const solarCtaY = solarCtaTop - 118;
-      drawCard(page4, MARGIN, solarCtaY, CONTENT_WIDTH, 118, COLORS.navyDark);
-      drawText(page4, "What a solar review involves", MARGIN + 14, solarCtaY + 96, 10.6, COLORS.white, "F2");
-      const solarStepW = (CONTENT_WIDTH - 28 - 10 * 2) / 3;
-      const solarSteps = [
-        { n: "1", t: "No cost", d: "The initial review is free." },
-        { n: "2", t: "No commitment", d: "Confirms suitability before decisions are made." },
-        { n: "3", t: "Usage-based sizing", d: "A recent bill helps size expected annual output." }
-      ];
-      solarSteps.forEach((step, idx) => {
-        const x = MARGIN + 14 + idx * (solarStepW + 10);
-        drawRoundedBox(page4, x, solarCtaY + 70, 16, 16, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
-        drawTextCentered(page4, step.n, x + 8, solarCtaY + 75, 8, COLORS.white, "F2");
-        drawText(page4, step.t, x + 22, solarCtaY + 76, 8.5, COLORS.white, "F2");
-        const lines = clampTextLines(step.d, 7.1, solarStepW - 24, 2);
-        lines.forEach((line, i) => drawText(page4, line, x + 22, solarCtaY + 64 - i * 8.5, 7.1, "0.82 0.89 0.98"));
-      });
-      drawRoundedBox(page4, MARGIN + 14, solarCtaY + 16, CONTENT_WIDTH - 28, 26, COLORS.accentGold, COLORS.accentGold);
-      drawTextCentered(page4, "Request a Solar Review", PAGE_WIDTH / 2, solarCtaY + 25.4, 10, COLORS.textDark, "F2");
-      addLink(builder, page4, MARGIN + 14, solarCtaY + 16, CONTENT_WIDTH - 28, 26, solarSnapshot.ctaUrl);
+      const solarCtaH = 72;
+      const solarCtaY = SAFE_BOTTOM_Y + 2;
+      drawCard(page4, MARGIN, solarCtaY, CONTENT_WIDTH, solarCtaH, COLORS.navyDark);
+      drawText(page4, "What a solar review involves", MARGIN + 14, solarCtaY + 52, 10.2, COLORS.white, "F2");
+      drawText(page4, "Free review, no commitment, and usage-based sizing with a recent electricity bill.", MARGIN + 14, solarCtaY + 38, 7.8, "0.82 0.89 0.98");
+      drawRoundedBox(page4, MARGIN + 14, solarCtaY + 10, CONTENT_WIDTH - 28, 22, COLORS.accentGold, COLORS.accentGold);
+      drawTextCentered(page4, "Request a Solar Review", PAGE_WIDTH / 2, solarCtaY + 18, 9.5, COLORS.textDark, "F2");
+      addLink(builder, page4, MARGIN + 14, solarCtaY + 10, CONTENT_WIDTH - 28, 22, solarSnapshot.ctaUrl);
       drawFooter(page4);
     }
 
