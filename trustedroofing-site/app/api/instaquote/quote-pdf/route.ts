@@ -655,8 +655,8 @@ function drawHeader(
   drawRect(page, 0, headerTop + HEADER_H - 20, PAGE_WIDTH, 20, COLORS.navy);
   drawRect(page, 0, headerTop - 2, PAGE_WIDTH, 2, COLORS.accentGold);
   if (input.logo) {
-    const logoMaxWidth = 118;
-    const logoMaxHeight = 46;
+    const logoMaxWidth = 150;
+    const logoMaxHeight = 48;
     const widthRatio = logoMaxWidth / input.logo.width;
     const heightRatio = logoMaxHeight / input.logo.height;
     const scale = Math.min(widthRatio, heightRatio);
@@ -664,13 +664,14 @@ function drawHeader(
     const logoHeight = input.logo.height * scale;
     drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
   }
-  drawText(page, "TRUSTED ESTIMATE SUMMARY", MARGIN + 124, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
+  const headerTextX = MARGIN + 168;
+  drawText(page, "TRUSTED ESTIMATE SUMMARY", headerTextX, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
   const badgeW = 132;
   const badgeX = PAGE_WIDTH - MARGIN - badgeW;
-  const titleMaxWidth = badgeX - (MARGIN + 136) - 12;
+  const titleMaxWidth = badgeX - headerTextX - 12;
   const safeTitleLines = clampTextLines(input.title, 18.5, Math.max(titleMaxWidth, 120), 1);
-  drawText(page, safeTitleLines[0] ?? input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
-  drawText(page, input.subtitle, MARGIN + 124, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
+  drawText(page, safeTitleLines[0] ?? input.title, headerTextX, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
+  drawText(page, input.subtitle, headerTextX, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
   drawRoundedBox(page, badgeX, PAGE_HEIGHT - 72, badgeW, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
   drawTextCentered(page, input.badge, badgeX + badgeW / 2, PAGE_HEIGHT - 57, 9, COLORS.white, "F2");
 }
@@ -861,30 +862,52 @@ function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: stri
     return { name: imageName, width: dimensions.width, height: dimensions.height };
   }
 
-  if (startsWithPng(buffer)) {
-    const png = parsePng(buffer);
-    if (!png) return null;
-    const compressedRgb = zlib.deflateSync(png.rgb);
-    let smaskRef = "";
-
-    if (png.alpha) {
-      const compressedAlpha = zlib.deflateSync(png.alpha);
-      const alphaId = builder.addStream(
-        `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode`,
-        compressedAlpha
-      );
-      smaskRef = ` /SMask ${alphaId} 0 R`;
-    }
-
-    const imageId = builder.addStream(
-      `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode${smaskRef}`,
-      compressedRgb
-    );
-    page.xObjects[imageName] = imageId;
-    return { name: imageName, width: png.width, height: png.height };
-  }
+  if (startsWithPng(buffer)) return addPngImageObject(builder, page, imageName, buffer);
 
   return null;
+}
+
+function addPngImageObject(
+  builder: PdfBuilder,
+  page: PdfPageDraft,
+  imageName: string,
+  buffer: Buffer,
+  matteRgb?: [number, number, number]
+): PdfImageRef | null {
+  const png = parsePng(buffer);
+  if (!png) return null;
+
+  let rgb = png.rgb;
+  let smaskRef = "";
+
+  if (png.alpha && matteRgb) {
+    rgb = Buffer.alloc(png.rgb.length);
+    for (let i = 0, pixel = 0; i < png.rgb.length; i += 3, pixel += 1) {
+      const alpha = png.alpha[pixel] / 255;
+      rgb[i] = Math.round(png.rgb[i] * alpha + matteRgb[0] * (1 - alpha));
+      rgb[i + 1] = Math.round(png.rgb[i + 1] * alpha + matteRgb[1] * (1 - alpha));
+      rgb[i + 2] = Math.round(png.rgb[i + 2] * alpha + matteRgb[2] * (1 - alpha));
+    }
+  } else if (png.alpha) {
+    const compressedAlpha = zlib.deflateSync(png.alpha);
+    const alphaId = builder.addStream(
+      `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode`,
+      compressedAlpha
+    );
+    smaskRef = ` /SMask ${alphaId} 0 R`;
+  }
+
+  const imageId = builder.addStream(
+    `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode${smaskRef}`,
+    zlib.deflateSync(rgb)
+  );
+  page.xObjects[imageName] = imageId;
+  return { name: imageName, width: png.width, height: png.height };
+}
+
+function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
+  if (startsWithPng(buffer)) return addPngImageObject(builder, page, imageName, buffer, [17, 28, 64]);
+  return addImageObject(builder, page, imageName, buffer);
 }
 
 async function loadLogo() {
@@ -1037,7 +1060,7 @@ export async function POST(request: Request) {
     const page3 = beginPage();
     const page4 = beginPage();
 
-    const headerLogo = logoBuffer ? addImageObject(builder, page1, "Logo", logoBuffer) : null;
+    const headerLogo = logoBuffer ? addLogoImageObject(builder, page1, "Logo", logoBuffer) : null;
     drawHeader(page1, {
       title: "Instant Estimate Summary",
       subtitle: "Estimate only — request a full proposal to lock in scope",
@@ -1114,7 +1137,7 @@ export async function POST(request: Request) {
     });
     drawFooter(page1);
 
-    const headerLogo2 = logoBuffer ? addImageObject(builder, page2, "Logo2", logoBuffer) : null;
+    const headerLogo2 = logoBuffer ? addLogoImageObject(builder, page2, "Logo2", logoBuffer) : null;
     drawHeader(page2, {
       title: "Materials & Upgrade Options",
       subtitle: "Your quoted system first — upgrades shown as planning ranges",
@@ -1181,7 +1204,7 @@ export async function POST(request: Request) {
     );
     drawFooter(page2);
 
-    const headerLogo3 = logoBuffer ? addImageObject(builder, page3, "Logo3", logoBuffer) : null;
+    const headerLogo3 = logoBuffer ? addLogoImageObject(builder, page3, "Logo3", logoBuffer) : null;
     drawHeader(page3, {
       title: "Planning Support & Similar Scope Signals",
       subtitle: "Additional quoted items, local quote activity, and related projects",
@@ -1284,7 +1307,7 @@ export async function POST(request: Request) {
     drawFooter(page3);
 
     if (includeSolarPage) {
-      const headerLogo4 = logoBuffer ? addImageObject(builder, page4, "Logo4", logoBuffer) : null;
+      const headerLogo4 = logoBuffer ? addLogoImageObject(builder, page4, "Logo4", logoBuffer) : null;
       drawHeader(page4, {
         title: "Solar suitability snapshot",
         subtitle: "Modeled from rooftop and sun exposure data for this property",
