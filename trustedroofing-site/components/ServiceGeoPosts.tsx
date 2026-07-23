@@ -34,7 +34,6 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
   const [visibleBatchEnd, setVisibleBatchEnd] = useState(Math.min(BATCH_SIZE, geoPosts.length));
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAutoScrollPaused, setIsAutoScrollPaused] = useState(false);
-  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   if (geoPosts.length === 0) return null;
 
@@ -156,9 +155,6 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                 post.heroImage ??
                 getPlaceholderProjectImage({ seed: post.slug ?? post.id, neighborhood: post.neighborhood, city: post.city });
               const isBeyondCurrentBatch = index >= visibleBatchEnd;
-              const isExpanded = expandedCards[post.id] ?? false;
-              const detailsId = `${sectionId}-${post.id}-details`;
-              const fullContent = cleanContent(post.content) || post.summary || "Published project update.";
 
               return (
                 <article
@@ -168,7 +164,6 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                   data-geo-post-index={index}
                   data-upcoming={isBeyondCurrentBatch ? "true" : undefined}
                   aria-current={activeIndex === index ? "true" : undefined}
-                  data-expanded={isExpanded ? "true" : undefined}
                   tabIndex={-1}
                 >
                   <Image src={heroImage} alt={title} width={520} height={300} className="service-geo-posts__image" loading={index < 2 ? "eager" : "lazy"} />
@@ -178,20 +173,8 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                       {post.neighborhood ?? post.city ?? "Calgary"}, {post.province ?? "AB"}
                     </p>
                     <p className="service-geo-posts__excerpt">{excerptContent(post.content, post.summary)}</p>
-                    <div id={detailsId} className="service-geo-posts__details" aria-hidden={!isExpanded}>
-                      <p>{fullContent}</p>
-                    </div>
                     <div className="service-geo-posts__links">
-                      <button
-                        type="button"
-                        className="service-geo-posts__details-toggle"
-                        onClick={() => setExpandedCards((current) => ({ ...current, [post.id]: !isExpanded }))}
-                        aria-expanded={isExpanded}
-                        aria-controls={detailsId}
-                      >
-                        {isExpanded ? "Hide details" : "View details"}
-                      </button>
-                      <Link href={fullPostHref}>Open project page</Link>
+                      <Link href={fullPostHref}>View details</Link>
                       <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "Related project"}</Link>
                     </div>
                   </div>

@@ -655,8 +655,8 @@ function drawHeader(
   drawRect(page, 0, headerTop + HEADER_H - 20, PAGE_WIDTH, 20, COLORS.navy);
   drawRect(page, 0, headerTop - 2, PAGE_WIDTH, 2, COLORS.accentGold);
   if (input.logo) {
-    const logoMaxWidth = 118;
-    const logoMaxHeight = 46;
+    const logoMaxWidth = 150;
+    const logoMaxHeight = 48;
     const widthRatio = logoMaxWidth / input.logo.width;
     const heightRatio = logoMaxHeight / input.logo.height;
     const scale = Math.min(widthRatio, heightRatio);
@@ -1069,7 +1069,7 @@ export async function POST(request: Request) {
     const page3 = beginPage();
     const page4 = beginPage();
 
-    const headerLogo = logoBuffer ? addImageObject(builder, page1, "Logo", logoBuffer) : null;
+    const headerLogo = logoBuffer ? addLogoImageObject(builder, page1, "Logo", logoBuffer) : null;
     drawHeader(page1, {
       title: "Instant Estimate Summary",
       subtitle: "Estimate only — request a full proposal to lock in scope",
@@ -1146,7 +1146,7 @@ export async function POST(request: Request) {
     });
     drawFooter(page1);
 
-    const headerLogo2 = logoBuffer ? addImageObject(builder, page2, "Logo2", logoBuffer) : null;
+    const headerLogo2 = logoBuffer ? addLogoImageObject(builder, page2, "Logo2", logoBuffer) : null;
     drawHeader(page2, {
       title: "Materials & Upgrade Options",
       subtitle: "Your quoted system first — upgrades shown as planning ranges",
@@ -1213,7 +1213,7 @@ export async function POST(request: Request) {
     );
     drawFooter(page2);
 
-    const headerLogo3 = logoBuffer ? addImageObject(builder, page3, "Logo3", logoBuffer) : null;
+    const headerLogo3 = logoBuffer ? addLogoImageObject(builder, page3, "Logo3", logoBuffer) : null;
     drawHeader(page3, {
       title: "Planning Support & Similar Scope Signals",
       subtitle: "Additional quoted items, local quote activity, and related projects",
@@ -1316,7 +1316,7 @@ export async function POST(request: Request) {
     drawFooter(page3);
 
     if (includeSolarPage) {
-      const headerLogo4 = logoBuffer ? addImageObject(builder, page4, "Logo4", logoBuffer) : null;
+      const headerLogo4 = logoBuffer ? addLogoImageObject(builder, page4, "Logo4", logoBuffer) : null;
       drawHeader(page4, {
         title: "Solar suitability snapshot",
         subtitle: "Modeled from rooftop and sun exposure data for this property",

@@ -21,7 +21,8 @@ Copy `.env.example` to `.env.local` and set values:
 - `GOOGLE_SECRET_KEY` (server-only key for `/api/geocode` Google Geocoding calls)
 - `ADMIN_TOKEN` (middleware token gate for `/admin`)
 - `GBP_WORKER_TOKEN` (protects `/api/gbp/worker`)
-- `INDEXING_TOKEN` (protects internal indexing trigger endpoint `/api/index-project`)
+- `INDEXING_TOKEN` (protects manual indexing trigger endpoint `/api/index-project`)
+- `INDEXNOW_KEY` (optional; defaults to the hosted IndexNow key file in `public/`)
 - `GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON` (placeholder for future Google Indexing API wiring)
 - `RESEND_API_KEY` / `RESEND_FROM_EMAIL` for transactional email delivery
 - `QUOTE_EVENT_NOTIFICATION_TO` comma-separated internal recipients for instant quote, lead, and PDF download notifications
@@ -102,8 +103,8 @@ Open:
 7. **Primary image**: admin can choose a main image at upload time and re-assign later.
 8. **Alt-text intelligence**: upload route auto-generates geo-context captions when explicit caption is generic/filename-based.
 9. **GBP queue**: create/update enqueues payload in `gbp_post_queue` (queue-first behavior).
-10. **Index-on-commit trigger**: create/update and geo-post publish perform a best-effort ping to `/api/index-project` using `INDEXING_TOKEN`, and submit the detail URL plus related collection pages (`/` and `/projects`) as a bulk IndexNow update.
-11. **IndexNow live submission**: `/api/index-project` submits same-host URLs to IndexNow and hosts the verification key at `/a83cd4eb25104c578ab3ebff033216a6.txt`.
+10. **Index-on-update trigger**: project create/update plus geo-post update/publish submit the detail URL and related collection pages (`/` and `/projects`) to IndexNow as best-effort bulk updates.
+11. **IndexNow live submission**: `/api/index-project` submits same-host URLs to IndexNow for manual triggers and hosts the verification key at `/5b4c16dbae9f4eaf9bb9120b7a28e98f.txt`.
 12. **Schema graph linkage**: service hub exposes `#serviceHub` + `#service`; project pages link via `about` and `isPartOf`.
 
 ## GBP queue worker
