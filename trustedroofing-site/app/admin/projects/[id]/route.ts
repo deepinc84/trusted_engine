@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProjectById, linkInstantQuotesToProject, listProjectInstantQuotes, updateProject } from "@/lib/db";
+import { deleteProject, getProjectById, linkInstantQuotesToProject, listProjectInstantQuotes, updateProject } from "@/lib/db";
 import { buildProjectIndexNowUrls, getSiteUrl } from "@/lib/indexnow";
 
 async function triggerIndexing(urls: string[]) {
@@ -99,6 +99,21 @@ export async function PATCH(
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to update project." },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await deleteProject(params.id);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to delete project." },
       { status: 400 }
     );
   }

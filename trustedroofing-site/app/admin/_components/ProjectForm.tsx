@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Project, ProjectPhoto, Service } from "@/lib/db";
@@ -178,6 +179,7 @@ function currentCalgaryDate() {
 export default function ProjectForm({ services, mode, project }: Props) {
   const [title, setTitle] = useState(project?.title ?? "");
   const [slug, setSlug] = useState(project?.slug ?? "");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [serviceSlug, setServiceSlug] = useState(project?.service_slug ?? services[0]?.slug ?? "roofing");
   const [addressPrivate, setAddressPrivate] = useState(project?.address_private ?? "");
   const [neighborhood, setNeighborhood] = useState(project?.neighborhood ?? "");
@@ -226,12 +228,19 @@ export default function ProjectForm({ services, mode, project }: Props) {
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [loadingAddressSuggestions, setLoadingAddressSuggestions] = useState(false);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const router = useRouter();
 
   const generatedSlug = useMemo(() => {
     if (!title) return "";
     const datePart = completedAt || currentCalgaryDate();
     return slugify(`${title}-${neighborhood}-${datePart}`);
   }, [title, neighborhood, completedAt]);
+
+  useEffect(() => {
+    if (slugManuallyEdited) return;
+    if (mode === "edit" && title === (project?.title ?? "")) return;
+    setSlug(generatedSlug);
+  }, [generatedSlug, mode, project?.title, slugManuallyEdited, title]);
 
   const selectedFiles = useMemo(() => Array.from(files ?? []), [files]);
   const hasExistingPrimaryPhoto = useMemo(
@@ -455,6 +464,37 @@ export default function ProjectForm({ services, mode, project }: Props) {
     setAddressSuggestions([]);
     setShowAddressSuggestions(false);
     await geocodeAddress(selectedAddress);
+  };
+
+
+  const deleteProject = async () => {
+    if (mode !== "edit" || !project?.id) return;
+
+    const confirmed = window.confirm(`Delete project "${title || project.title}"? This also removes related geo-posts and project photos.`);
+    if (!confirmed) return;
+
+    setStatus(null);
+    setIsSaving(true);
+    setFeedback("Deleting project...");
+
+    try {
+      const res = await adminFetch(`/admin/projects/${project.id}`, { method: "DELETE" });
+      const text = await res.text();
+      const data = text ? parseJsonSafe<{ error?: string }>(text) : {};
+
+      if (!res.ok) {
+        setFeedback(data.error ?? `Unable to delete project (HTTP ${res.status}).`, "error");
+        setIsSaving(false);
+        return;
+      }
+
+      setFeedback("Project deleted.", "success");
+      router.push("/admin");
+      router.refresh();
+    } catch {
+      setFeedback("Unable to delete project right now. Please refresh and try again.", "error");
+      setIsSaving(false);
+    }
   };
 
   const submit = async () => {
@@ -809,9 +849,16 @@ export default function ProjectForm({ services, mode, project }: Props) {
     <div className="card" style={{ display: "grid", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0, fontSize: 28 }}>{mode === "create" ? "Create Project" : "Edit Project"}</h2>
-        <Link href="/admin" className="button" style={{ textDecoration: "none" }}>
-          ← Back to projects
-        </Link>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {mode === "edit" ? (
+            <button className="button button--ghost" type="button" onClick={() => void deleteProject()} disabled={isSaving}>
+              Delete project
+            </button>
+          ) : null}
+          <Link href="/admin" className="button" style={{ textDecoration: "none" }}>
+            ← Back to projects
+          </Link>
+        </div>
       </div>
       <p style={{ margin: 0, color: "var(--color-muted)" }}>
         Create the project first, then upload photos, choose a primary image, and publish the linked geo-post when ready.
@@ -834,7 +881,15 @@ export default function ProjectForm({ services, mode, project }: Props) {
       </label>
       <label>
         Slug
-        <input className="input" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder={generatedSlug} />
+        <input
+          className="input"
+          value={slug}
+          onChange={(event) => {
+            setSlug(event.target.value);
+            setSlugManuallyEdited(true);
+          }}
+          placeholder={generatedSlug}
+        />
       </label>
       <label>
         Service
