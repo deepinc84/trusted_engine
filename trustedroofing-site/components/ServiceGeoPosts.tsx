@@ -21,6 +21,12 @@ function cleanContent(content: string | null): string {
   return (content ?? "").replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1").trim();
 }
 
+function excerptContent(content: string | null, summary: string | null): string {
+  const text = cleanContent(content) || summary || "Published project update.";
+  if (text.length <= CARD_EXCERPT_LENGTH) return text;
+  return `${text.slice(0, CARD_EXCERPT_LENGTH).trim()}…`;
+}
+
 export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: ResolvedGeoPost[]; heading?: string }) {
   const sectionId = useId();
   const trackRef = useRef<HTMLDivElement>(null);
