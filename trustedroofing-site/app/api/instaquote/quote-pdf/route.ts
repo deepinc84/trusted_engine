@@ -907,6 +907,10 @@ function addPngImageObject(
   return { name: imageName, width: png.width, height: png.height };
 }
 
+function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
+  return addImageObject(builder, page, imageName, buffer);
+}
+
 
 async function loadLogo() {
   const logoCandidates = [
