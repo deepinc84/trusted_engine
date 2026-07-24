@@ -19,7 +19,10 @@ import path from "path";
 import zlib from "zlib";
 
 type EstimatePayload = {
+  ok?: true;
+  addressQueryId?: string;
   address?: string;
+  placeId?: string | null;
   lat?: number | null;
   lng?: number | null;
   roofAreaSqft?: number;
@@ -244,7 +247,7 @@ function clampTextLines(text: string, size: number, maxWidth: number, maxLines: 
 
   const clipped = wrapped.slice(0, maxLines);
   let finalLine = clipped[maxLines - 1] ?? "";
-  const ellipsis = "…";
+  const ellipsis = "...";
   while (finalLine.length > 0 && measureTextWidth(`${finalLine}${ellipsis}`, size) > maxWidth) {
     finalLine = finalLine.slice(0, -1);
   }
@@ -661,13 +664,16 @@ function drawHeader(
     const logoHeight = input.logo.height * scale;
     drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
   }
-  drawText(page, "TRUSTED ESTIMATE SUMMARY", MARGIN + 124, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
+
   const badgeW = 132;
   const badgeX = PAGE_WIDTH - MARGIN - badgeW;
-  const titleMaxWidth = badgeX - (MARGIN + 136) - 12;
-  const safeTitleLines = clampTextLines(input.title, 18.5, Math.max(titleMaxWidth, 120), 1);
-  drawText(page, safeTitleLines[0] ?? input.title, MARGIN + 124, PAGE_HEIGHT - 46, 18.5, "1 1 1", "F2");
-  drawText(page, input.subtitle, MARGIN + 124, PAGE_HEIGHT - 62, 10, "0.82 0.88 0.98");
+  const headerTextX = MARGIN + 124;
+  const textMaxWidth = Math.max(badgeX - headerTextX - 20, 120);
+  const safeTitle = clampTextLines(input.title, 18, textMaxWidth, 1)[0] ?? input.title;
+  const safeSubtitle = clampTextLines(input.subtitle, 9.6, textMaxWidth, 1)[0] ?? input.subtitle;
+  drawText(page, "TRUSTED ESTIMATE SUMMARY", headerTextX, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
+  drawText(page, safeTitle, headerTextX, PAGE_HEIGHT - 46, 18, "1 1 1", "F2");
+  drawText(page, safeSubtitle, headerTextX, PAGE_HEIGHT - 62, 9.6, "0.82 0.88 0.98");
   drawRoundedBox(page, badgeX, PAGE_HEIGHT - 72, badgeW, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
   drawTextCentered(page, input.badge, badgeX + badgeW / 2, PAGE_HEIGHT - 57, 9, COLORS.white, "F2");
 }
@@ -738,7 +744,26 @@ function drawProjectCard(
   addLink(builder, page, x + 2, y + 2, w - 4, h - 4, input.href);
 }
 
+function pdfFriendlyImageUrl(url: string) {
+  if (!url) return "";
+  const absoluteUrl = url.startsWith("/") ? canonicalUrl(url) : url;
+  try {
+    const parsed = new URL(absoluteUrl);
+    if (parsed.pathname.includes("/storage/v1/object/public/")) {
+      parsed.pathname = parsed.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+      parsed.searchParams.set("width", "720");
+      parsed.searchParams.set("height", "480");
+      parsed.searchParams.set("resize", "cover");
+      parsed.searchParams.set("quality", "82");
+    }
+    return parsed.toString();
+  } catch {
+    return absoluteUrl;
+  }
+}
+
 async function fetchBuffer(url: string) {
+  if (!url) return null;
   try {
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) return null;
@@ -761,73 +786,70 @@ function buildStreetViewUrl(input: {
     size: input.size ?? "1280x720",
     location: input.location,
     fov: String(input.fov ?? 58),
-    heading: String(input.heading ?? 20),
-    pitch: String(input.pitch ?? -8),
+    pitch: String(input.pitch ?? -4),
+    source: "outdoor",
     key: input.key
   });
+  if (typeof input.heading === "number") params.set("heading", String(Math.round(input.heading)));
   return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`;
 }
 
-function buildSatelliteStaticMapUrl(input: {
-  key: string;
-  center: string;
-  zoom?: number;
-  size?: string;
-  scale?: number;
-}) {
-  const params = new URLSearchParams({
-    center: input.center,
-    zoom: String(input.zoom ?? 21),
-    size: input.size ?? "1280x720",
-    scale: String(input.scale ?? 2),
-    maptype: "satellite",
-    key: input.key
-  });
-  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
+function buildStreetViewMetadataUrl(input: { key: string; location: string }) {
+  const params = new URLSearchParams({ location: input.location, source: "outdoor", key: input.key });
+  return `https://maps.googleapis.com/maps/api/streetview/metadata?${params.toString()}`;
+}
+
+function bearingDegrees(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const toDeg = (value: number) => (value * 180) / Math.PI;
+  const lat1 = toRad(fromLat);
+  const lat2 = toRad(toLat);
+  const deltaLng = toRad(toLng - fromLng);
+  const y = Math.sin(deltaLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+async function resolveStreetViewHeading(input: { key: string; center: string; lat?: number | null; lng?: number | null }) {
+  if (typeof input.lat !== "number" || typeof input.lng !== "number") return undefined;
+  try {
+    const response = await fetch(buildStreetViewMetadataUrl({ key: input.key, location: input.center }), { cache: "no-store" });
+    if (!response.ok) return undefined;
+    const metadata = (await response.json()) as { status?: string; location?: { lat?: number; lng?: number } };
+    const panoLat = metadata.location?.lat;
+    const panoLng = metadata.location?.lng;
+    if (metadata.status !== "OK" || typeof panoLat !== "number" || typeof panoLng !== "number") return undefined;
+    return bearingDegrees(panoLat, panoLng, input.lat, input.lng);
+  } catch {
+    return undefined;
+  }
 }
 
 async function fetchPropertyImages(input: { lat?: number | null; lng?: number | null; address?: string }) {
   const key = process.env.GOOGLE_SECRET_KEY;
-  if (!key) return { aerial: null as Buffer | null, street: null as Buffer | null };
+  if (!key) return { street: null as Buffer | null };
 
   const target =
     typeof input.lat === "number" && typeof input.lng === "number"
       ? `${input.lat},${input.lng}`
       : (input.address ?? "").trim();
 
-  if (!target) return { aerial: null as Buffer | null, street: null as Buffer | null };
+  if (!target) return { street: null as Buffer | null };
 
   const center = typeof input.lat === "number" && typeof input.lng === "number"
     ? `${input.lat},${input.lng}`
     : target;
-  const heading = typeof input.lng === "number"
-    ? input.lng >= -114.18 && input.lng <= -113.95
-      ? 28
-      : 22
-    : 22;
-
-  const aerialUrl = buildSatelliteStaticMapUrl({
-    key,
-    center,
-    zoom: 21,
-    size: "640x420",
-    scale: 2
-  });
+  const heading = await resolveStreetViewHeading({ key, center, lat: input.lat, lng: input.lng });
   const streetUrl = buildStreetViewUrl({
     key,
     location: center,
     heading,
-    fov: 58,
-    pitch: -8,
+    fov: 52,
+    pitch: -4,
     size: "640x420"
   });
-  const streetFallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(center)}&zoom=19&size=640x420&scale=2&maptype=roadmap&markers=color:0x1d4ed8%7C${encodeURIComponent(center)}&key=${encodeURIComponent(key)}`;
-
-  const [aerialPrimary, streetPrimary] = await Promise.all([fetchBuffer(aerialUrl), fetchBuffer(streetUrl)]);
-  const streetFallback = streetPrimary ? null : await fetchBuffer(streetFallbackUrl);
-  const aerial = aerialPrimary;
-  const street = streetPrimary ?? streetFallback;
-  return { aerial, street };
+  const street = await fetchBuffer(streetUrl);
+  return { street };
 }
 
 function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
@@ -842,30 +864,51 @@ function addImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: stri
     return { name: imageName, width: dimensions.width, height: dimensions.height };
   }
 
-  if (startsWithPng(buffer)) {
-    const png = parsePng(buffer);
-    if (!png) return null;
-    const compressedRgb = zlib.deflateSync(png.rgb);
-    let smaskRef = "";
-
-    if (png.alpha) {
-      const compressedAlpha = zlib.deflateSync(png.alpha);
-      const alphaId = builder.addStream(
-        `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode`,
-        compressedAlpha
-      );
-      smaskRef = ` /SMask ${alphaId} 0 R`;
-    }
-
-    const imageId = builder.addStream(
-      `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode${smaskRef}`,
-      compressedRgb
-    );
-    page.xObjects[imageName] = imageId;
-    return { name: imageName, width: png.width, height: png.height };
-  }
+  if (startsWithPng(buffer)) return addPngImageObject(builder, page, imageName, buffer);
 
   return null;
+}
+
+function addPngImageObject(
+  builder: PdfBuilder,
+  page: PdfPageDraft,
+  imageName: string,
+  buffer: Buffer,
+  matteRgb?: [number, number, number]
+): PdfImageRef | null {
+  const png = parsePng(buffer);
+  if (!png) return null;
+
+  let rgb = png.rgb;
+  let smaskRef = "";
+
+  if (png.alpha && matteRgb) {
+    rgb = Buffer.alloc(png.rgb.length);
+    for (let i = 0, pixel = 0; i < png.rgb.length; i += 3, pixel += 1) {
+      const alpha = png.alpha[pixel] / 255;
+      rgb[i] = Math.round(png.rgb[i] * alpha + matteRgb[0] * (1 - alpha));
+      rgb[i + 1] = Math.round(png.rgb[i + 1] * alpha + matteRgb[1] * (1 - alpha));
+      rgb[i + 2] = Math.round(png.rgb[i + 2] * alpha + matteRgb[2] * (1 - alpha));
+    }
+  } else if (png.alpha) {
+    const compressedAlpha = zlib.deflateSync(png.alpha);
+    const alphaId = builder.addStream(
+      `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode`,
+      compressedAlpha
+    );
+    smaskRef = ` /SMask ${alphaId} 0 R`;
+  }
+
+  const imageId = builder.addStream(
+    `/Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode${smaskRef}`,
+    zlib.deflateSync(rgb)
+  );
+  page.xObjects[imageName] = imageId;
+  return { name: imageName, width: png.width, height: png.height };
+}
+
+function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
+  return addImageObject(builder, page, imageName, buffer);
 }
 
 async function loadLogo() {
@@ -875,16 +918,49 @@ async function loadLogo() {
     "full_white_transparent.png",
     "white-transparent-t.png"
   ];
+  const publicDirs = [
+    path.join(process.cwd(), "public"),
+    path.join(process.cwd(), "trustedroofing-site", "public")
+  ];
 
-  for (const filename of logoCandidates) {
-    try {
-      return await fs.readFile(path.join(process.cwd(), "public", filename));
-    } catch {
-      // continue to next candidate
+  for (const dir of publicDirs) {
+    for (const filename of logoCandidates) {
+      try {
+        return await fs.readFile(path.join(dir, filename));
+      } catch {
+        // continue to next candidate
+      }
     }
   }
 
+  for (const filename of logoCandidates) {
+    const remoteLogo = await fetchBuffer(canonicalUrl(`/${filename}`));
+    if (remoteLogo) return remoteLogo;
+  }
+
   return null;
+}
+
+function compactResumeEstimate(estimate: EstimatePayload): Record<string, unknown> {
+  return {
+    ok: true,
+    addressQueryId: estimate.addressQueryId ?? "pdf-resume",
+    address: estimate.address ?? "",
+    placeId: estimate.placeId ?? null,
+    lat: estimate.lat ?? null,
+    lng: estimate.lng ?? null,
+    roofAreaSqft: estimate.roofAreaSqft ?? 0,
+    roofSquares: estimate.roofSquares ?? 0,
+    pitchDegrees: estimate.pitchDegrees ?? 0,
+    pitchRatio: estimate.pitchRatio ?? undefined,
+    dataSource: estimate.dataSource ?? "instant_model",
+    dataSourceLabel: estimate.dataSourceLabel ?? "Instant model",
+    areaSource: "resume",
+    complexityBand: estimate.complexityBand ?? "standard",
+    complexityScore: 0,
+    extras: estimate.extras ?? {},
+    ranges: estimate.ranges
+  };
 }
 
 function beginPage(): PdfPageDraft {
@@ -954,7 +1030,7 @@ export async function POST(request: Request) {
     const quoteResumeToken = createQuoteResumeToken({
       requestedScope,
       sidingMaterial,
-      estimate: estimate as unknown as Record<string, unknown>
+      estimate: compactResumeEstimate(estimate)
     });
 
     const proposalUrl = canonicalUrl(`/online-estimate?resume=${encodeURIComponent(quoteResumeToken)}`);
@@ -996,7 +1072,7 @@ export async function POST(request: Request) {
     const page3 = beginPage();
     const page4 = beginPage();
 
-    const headerLogo = logoBuffer ? addImageObject(builder, page1, "Logo", logoBuffer) : null;
+    const headerLogo = logoBuffer ? addLogoImageObject(builder, page1, "Logo", logoBuffer) : null;
     drawHeader(page1, {
       title: "Instant Estimate Summary",
       subtitle: "Estimate only — request a full proposal to lock in scope",
@@ -1027,13 +1103,8 @@ export async function POST(request: Request) {
 
     const imageColX = MARGIN + quoteLeftW + GRID_GAP_X;
     const imageColW = CONTENT_WIDTH - quoteLeftW - GRID_GAP_X - CARD_PADDING_X;
-    const imageH = (quoteCardH - CARD_PADDING_Y * 2 - GRID_GAP_Y) / 2;
-    drawCard(page1, imageColX, quoteCardY + quoteCardH - CARD_PADDING_Y - imageH, imageColW, imageH, COLORS.cardSoft);
+    const imageH = quoteCardH - CARD_PADDING_Y * 2;
     drawCard(page1, imageColX, quoteCardY + CARD_PADDING_Y, imageColW, imageH, COLORS.cardSoft);
-    if (propertyImages.aerial) {
-      const aerial = addImageObject(builder, page1, "AerialImg", propertyImages.aerial);
-      if (aerial) drawImageCover(page1, aerial, imageColX + 4, quoteCardY + quoteCardH - CARD_PADDING_Y - imageH + 4, imageColW - 8, imageH - 8);
-    }
     if (propertyImages.street) {
       const street = addImageObject(builder, page1, "StreetImg", propertyImages.street);
       if (street) drawImageCover(page1, street, imageColX + 4, quoteCardY + CARD_PADDING_Y + 4, imageColW - 8, imageH - 8);
@@ -1078,7 +1149,7 @@ export async function POST(request: Request) {
     });
     drawFooter(page1);
 
-    const headerLogo2 = logoBuffer ? addImageObject(builder, page2, "Logo2", logoBuffer) : null;
+    const headerLogo2 = logoBuffer ? addLogoImageObject(builder, page2, "Logo2", logoBuffer) : null;
     drawHeader(page2, {
       title: "Materials & Upgrade Options",
       subtitle: "Your quoted system first — upgrades shown as planning ranges",
@@ -1145,7 +1216,7 @@ export async function POST(request: Request) {
     );
     drawFooter(page2);
 
-    const headerLogo3 = logoBuffer ? addImageObject(builder, page3, "Logo3", logoBuffer) : null;
+    const headerLogo3 = logoBuffer ? addLogoImageObject(builder, page3, "Logo3", logoBuffer) : null;
     drawHeader(page3, {
       title: "Planning Support & Similar Scope Signals",
       subtitle: "Additional quoted items, local quote activity, and related projects",
@@ -1197,7 +1268,7 @@ export async function POST(request: Request) {
         const project = projects[i];
         const x = MARGIN + i * (cardWidth + GRID_GAP_X);
         const y = optionsY - 218;
-        const imageBuffer = await fetchBuffer(project.imageUrl);
+        const imageBuffer = await fetchBuffer(pdfFriendlyImageUrl(project.imageUrl));
         const imageRef = imageBuffer ? addImageObject(builder, page3, `Proj${i + 1}`, imageBuffer) : null;
         drawProjectCard(
           page3,
@@ -1248,7 +1319,7 @@ export async function POST(request: Request) {
     drawFooter(page3);
 
     if (includeSolarPage) {
-      const headerLogo4 = logoBuffer ? addImageObject(builder, page4, "Logo4", logoBuffer) : null;
+      const headerLogo4 = logoBuffer ? addLogoImageObject(builder, page4, "Logo4", logoBuffer) : null;
       drawHeader(page4, {
         title: "Solar suitability snapshot",
         subtitle: "Modeled from rooftop and sun exposure data for this property",
@@ -1310,27 +1381,14 @@ export async function POST(request: Request) {
       drawText(page4, "• A recent electricity bill is used to size the system correctly", MARGIN + 212, nextY + 20, 7.4, COLORS.textMid);
       drawText(page4, "This step simply confirms whether solar makes sense for this property before any decisions are made.", MARGIN + 12, nextY + 2, 7.2, COLORS.navy, "F2");
 
-      const solarCtaTop = Math.max(nextY - 14, SAFE_BOTTOM_Y + 138);
-      const solarCtaY = solarCtaTop - 118;
-      drawCard(page4, MARGIN, solarCtaY, CONTENT_WIDTH, 118, COLORS.navyDark);
-      drawText(page4, "What a solar review involves", MARGIN + 14, solarCtaY + 96, 10.6, COLORS.white, "F2");
-      const solarStepW = (CONTENT_WIDTH - 28 - 10 * 2) / 3;
-      const solarSteps = [
-        { n: "1", t: "No cost", d: "The initial review is free." },
-        { n: "2", t: "No commitment", d: "Confirms suitability before decisions are made." },
-        { n: "3", t: "Usage-based sizing", d: "A recent bill helps size expected annual output." }
-      ];
-      solarSteps.forEach((step, idx) => {
-        const x = MARGIN + 14 + idx * (solarStepW + 10);
-        drawRoundedBox(page4, x, solarCtaY + 70, 16, 16, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
-        drawTextCentered(page4, step.n, x + 8, solarCtaY + 75, 8, COLORS.white, "F2");
-        drawText(page4, step.t, x + 22, solarCtaY + 76, 8.5, COLORS.white, "F2");
-        const lines = clampTextLines(step.d, 7.1, solarStepW - 24, 2);
-        lines.forEach((line, i) => drawText(page4, line, x + 22, solarCtaY + 64 - i * 8.5, 7.1, "0.82 0.89 0.98"));
-      });
-      drawRoundedBox(page4, MARGIN + 14, solarCtaY + 16, CONTENT_WIDTH - 28, 26, COLORS.accentGold, COLORS.accentGold);
-      drawTextCentered(page4, "Request a Solar Review", PAGE_WIDTH / 2, solarCtaY + 25.4, 10, COLORS.textDark, "F2");
-      addLink(builder, page4, MARGIN + 14, solarCtaY + 16, CONTENT_WIDTH - 28, 26, solarSnapshot.ctaUrl);
+      const solarCtaH = 72;
+      const solarCtaY = SAFE_BOTTOM_Y + 2;
+      drawCard(page4, MARGIN, solarCtaY, CONTENT_WIDTH, solarCtaH, COLORS.navyDark);
+      drawText(page4, "What a solar review involves", MARGIN + 14, solarCtaY + 52, 10.2, COLORS.white, "F2");
+      drawText(page4, "Free review, no commitment, and usage-based sizing with a recent electricity bill.", MARGIN + 14, solarCtaY + 38, 7.8, "0.82 0.89 0.98");
+      drawRoundedBox(page4, MARGIN + 14, solarCtaY + 10, CONTENT_WIDTH - 28, 22, COLORS.accentGold, COLORS.accentGold);
+      drawTextCentered(page4, "Request a Solar Review", PAGE_WIDTH / 2, solarCtaY + 18, 9.5, COLORS.textDark, "F2");
+      addLink(builder, page4, MARGIN + 14, solarCtaY + 10, CONTENT_WIDTH - 28, 22, solarSnapshot.ctaUrl);
       drawFooter(page4);
     }
 
