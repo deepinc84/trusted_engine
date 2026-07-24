@@ -655,8 +655,8 @@ function drawHeader(
   drawRect(page, 0, headerTop + HEADER_H - 20, PAGE_WIDTH, 20, COLORS.navy);
   drawRect(page, 0, headerTop - 2, PAGE_WIDTH, 2, COLORS.accentGold);
   if (input.logo) {
-    const logoMaxWidth = 118;
-    const logoMaxHeight = 46;
+    const logoMaxWidth = 150;
+    const logoMaxHeight = 48;
     const widthRatio = logoMaxWidth / input.logo.width;
     const heightRatio = logoMaxHeight / input.logo.height;
     const scale = Math.min(widthRatio, heightRatio);
@@ -910,6 +910,7 @@ function addPngImageObject(
 function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
   return addImageObject(builder, page, imageName, buffer);
 }
+
 
 async function loadLogo() {
   const logoCandidates = [
