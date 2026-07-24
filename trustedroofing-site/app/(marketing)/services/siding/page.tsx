@@ -14,7 +14,7 @@ export const metadata = buildMetadata({
 });
 
 export default async function SidingServicesPage() {
-  const geoPosts = await listGeoPosts(6, { serviceSlugs: ["siding", "vinyl-siding", "james-hardie-siding", "hardie-board-siding"] });
+  const geoPosts = await listGeoPosts(null, { serviceSlugs: ["siding", "vinyl-siding", "james-hardie-siding", "hardie-board-siding"] });
 
   return (
     <>
