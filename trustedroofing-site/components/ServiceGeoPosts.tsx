@@ -9,7 +9,6 @@ import { getPlaceholderProjectImage } from "@/lib/images";
 
 const BATCH_SIZE = 10;
 const AUTO_SCROLL_INTERVAL_MS = 4500;
-const CARD_EXCERPT_LENGTH = 170;
 
 function projectLinkFromContent(content: string | null): { href: string; text: string } | null {
   if (!content) return null;
@@ -34,6 +33,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
   const [visibleBatchEnd, setVisibleBatchEnd] = useState(Math.min(BATCH_SIZE, geoPosts.length));
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAutoScrollPaused, setIsAutoScrollPaused] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   if (geoPosts.length === 0) return null;
 
@@ -155,6 +155,9 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                 post.heroImage ??
                 getPlaceholderProjectImage({ seed: post.slug ?? post.id, neighborhood: post.neighborhood, city: post.city });
               const isBeyondCurrentBatch = index >= visibleBatchEnd;
+              const isExpanded = expandedCards[post.id] ?? false;
+              const detailsId = `${sectionId}-${post.id}-details`;
+              const postText = cleanContent(post.content) || post.summary || "Published project update.";
 
               return (
                 <article
@@ -172,9 +175,20 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                     <p className="service-geo-posts__location">
                       {post.neighborhood ?? post.city ?? "Calgary"}, {post.province ?? "AB"}
                     </p>
-                    <p className="service-geo-posts__excerpt">{excerptContent(post.content, post.summary)}</p>
+                    <div className="service-geo-posts__summary-wrap" data-expanded={isExpanded}>
+                      <p id={detailsId} className="service-geo-posts__summary">{postText}</p>
+                    </div>
                     <div className="service-geo-posts__links">
-                      <Link href={fullPostHref}>View details</Link>
+                      <button
+                        type="button"
+                        className="service-geo-posts__expand"
+                        onClick={() => setExpandedCards((previous) => ({ ...previous, [post.id]: !isExpanded }))}
+                        aria-expanded={isExpanded}
+                        aria-controls={detailsId}
+                      >
+                        {isExpanded ? "Collapse details" : "View details"}
+                      </button>
+                      <Link href={fullPostHref}>Open project page</Link>
                       <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "Related project"}</Link>
                     </div>
                   </div>
