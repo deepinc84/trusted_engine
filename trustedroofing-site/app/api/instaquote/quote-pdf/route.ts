@@ -59,7 +59,7 @@ type PdfPageDraft = {
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
 const PAGE_MARGIN_X = 32;
-const HEADER_H = 96;
+const HEADER_H = 104;
 const FOOTER_H = 44;
 const PAGE_TOP_START = PAGE_HEIGHT - HEADER_H - 18;
 const CARD_RADIUS = 12;
@@ -253,6 +253,17 @@ function clampTextLines(text: string, size: number, maxWidth: number, maxLines: 
   }
   clipped[maxLines - 1] = `${finalLine}${ellipsis}`;
   return clipped;
+}
+
+function fitSingleLine(text: string, preferredSize: number, minimumSize: number, maxWidth: number) {
+  const measuredWidth = measureTextWidth(text, preferredSize);
+  const size = measuredWidth > maxWidth
+    ? Math.max(minimumSize, preferredSize * (maxWidth / measuredWidth))
+    : preferredSize;
+  return {
+    size,
+    text: clampTextLines(text, size, maxWidth, 1)[0] ?? text
+  };
 }
 
 class PdfBuilder {
@@ -652,30 +663,37 @@ function drawHeader(
 ) {
   const headerTop = PAGE_HEIGHT - HEADER_H;
   drawRect(page, 0, headerTop, PAGE_WIDTH, HEADER_H, COLORS.navyDark);
-  drawRect(page, 0, headerTop + HEADER_H - 20, PAGE_WIDTH, 20, COLORS.navy);
+  drawRect(page, 0, headerTop + HEADER_H - 18, PAGE_WIDTH, 18, COLORS.navy);
   drawRect(page, 0, headerTop - 2, PAGE_WIDTH, 2, COLORS.accentGold);
+
+  const logoX = MARGIN + 12;
+  const logoAreaWidth = 112;
   if (input.logo) {
-    const logoMaxWidth = 150;
-    const logoMaxHeight = 48;
+    const logoMaxWidth = 108;
+    const logoMaxHeight = 42;
     const widthRatio = logoMaxWidth / input.logo.width;
     const heightRatio = logoMaxHeight / input.logo.height;
     const scale = Math.min(widthRatio, heightRatio);
     const logoWidth = input.logo.width * scale;
     const logoHeight = input.logo.height * scale;
-    drawImage(page, input.logo, MARGIN, PAGE_HEIGHT - 67, logoWidth, logoHeight);
+    drawImage(page, input.logo, logoX, headerTop + 25, logoWidth, logoHeight);
   }
 
-  const badgeW = 132;
+  const badgeW = 124;
   const badgeX = PAGE_WIDTH - MARGIN - badgeW;
-  const headerTextX = MARGIN + 124;
-  const textMaxWidth = Math.max(badgeX - headerTextX - 20, 120);
-  const safeTitle = clampTextLines(input.title, 18, textMaxWidth, 1)[0] ?? input.title;
-  const safeSubtitle = clampTextLines(input.subtitle, 9.6, textMaxWidth, 1)[0] ?? input.subtitle;
-  drawText(page, "TRUSTED ESTIMATE SUMMARY", headerTextX, PAGE_HEIGHT - 30, 7.8, "0.83 0.89 0.98", "F1");
-  drawText(page, safeTitle, headerTextX, PAGE_HEIGHT - 46, 18, "1 1 1", "F2");
-  drawText(page, safeSubtitle, headerTextX, PAGE_HEIGHT - 62, 9.6, "0.82 0.88 0.98");
-  drawRoundedBox(page, badgeX, PAGE_HEIGHT - 72, badgeW, 24, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
-  drawTextCentered(page, input.badge, badgeX + badgeW / 2, PAGE_HEIGHT - 57, 9, COLORS.white, "F2");
+  const headerTextX = logoX + logoAreaWidth + 16;
+  const textMaxWidth = Math.max(badgeX - headerTextX - 18, 120);
+  const title = fitSingleLine(input.title, 17, 14.5, textMaxWidth);
+  const subtitle = fitSingleLine(input.subtitle, 9.2, 8.2, textMaxWidth);
+
+  drawText(page, "TRUSTED ESTIMATE SUMMARY", headerTextX, headerTop + 68, 7.4, "0.76 0.84 0.96", "F1");
+  drawText(page, title.text, headerTextX, headerTop + 48, title.size, COLORS.white, "F2");
+  drawText(page, subtitle.text, headerTextX, headerTop + 30, subtitle.size, "0.82 0.88 0.98");
+
+  const badgeH = 26;
+  const badgeY = headerTop + 36;
+  drawRoundedBox(page, badgeX, badgeY, badgeW, badgeH, COLORS.customerBadgeBg, COLORS.customerBadgeBg);
+  drawTextCentered(page, input.badge, badgeX + badgeW / 2, badgeY + 8.5, 8.7, COLORS.white, "F2");
 }
 
 function drawFooter(page: PdfPageDraft) {
@@ -905,6 +923,10 @@ function addPngImageObject(
   );
   page.xObjects[imageName] = imageId;
   return { name: imageName, width: png.width, height: png.height };
+}
+
+function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
+  return addImageObject(builder, page, imageName, buffer);
 }
 
 function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
