@@ -1,24 +1,7 @@
 import { NextResponse } from "next/server";
-import { getProjectById, linkInstantQuotesToProject, listProjectInstantQuotes, updateProject } from "@/lib/db";
-import { buildProjectIndexNowUrls, getSiteUrl } from "@/lib/indexnow";
+import { deleteProject, getProjectById, linkInstantQuotesToProject, listProjectInstantQuotes, updateProject } from "@/lib/db";
+import { buildProjectIndexNowUrls, notifyIndexNowUrls } from "@/lib/indexnow";
 
-async function triggerIndexing(urls: string[]) {
-  if (!process.env.INDEXING_TOKEN) return;
-
-  try {
-    await fetch(new URL("/api/index-project", getSiteUrl()), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-indexing-token": process.env.INDEXING_TOKEN
-      },
-      body: JSON.stringify({ urlList: urls, type: "URL_UPDATED" }),
-      cache: "no-store"
-    });
-  } catch {
-    // best effort only; publishing should not fail if indexing ping fails
-  }
-}
 
 export async function GET(
   _request: Request,
@@ -92,13 +75,28 @@ export async function PATCH(
     const hydrated = await getProjectById(project.id);
 
     if (project.is_published) {
-      await triggerIndexing(buildProjectIndexNowUrls(project.slug));
+      await notifyIndexNowUrls(buildProjectIndexNowUrls(project.slug));
     }
 
     return NextResponse.json({ project: hydrated ?? project });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to update project." },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await deleteProject(params.id);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to delete project." },
       { status: 400 }
     );
   }

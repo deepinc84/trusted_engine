@@ -929,6 +929,11 @@ function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: 
   return addImageObject(builder, page, imageName, buffer);
 }
 
+function addLogoImageObject(builder: PdfBuilder, page: PdfPageDraft, imageName: string, buffer: Buffer): PdfImageRef | null {
+  return addImageObject(builder, page, imageName, buffer);
+}
+
+
 async function loadLogo() {
   const logoCandidates = [
     "full_white_new2.png",

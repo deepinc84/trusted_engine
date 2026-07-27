@@ -9,7 +9,6 @@ import { getPlaceholderProjectImage } from "@/lib/images";
 
 const BATCH_SIZE = 10;
 const AUTO_SCROLL_INTERVAL_MS = 4500;
-const CARD_EXCERPT_LENGTH = 170;
 
 function projectLinkFromContent(content: string | null): { href: string; text: string } | null {
   if (!content) return null;
@@ -158,7 +157,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
               const isBeyondCurrentBatch = index >= visibleBatchEnd;
               const isExpanded = expandedCards[post.id] ?? false;
               const detailsId = `${sectionId}-${post.id}-details`;
-              const fullContent = cleanContent(post.content) || post.summary || "Published project update.";
+              const postText = cleanContent(post.content) || post.summary || "Published project update.";
 
               return (
                 <article
@@ -168,7 +167,6 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                   data-geo-post-index={index}
                   data-upcoming={isBeyondCurrentBatch ? "true" : undefined}
                   aria-current={activeIndex === index ? "true" : undefined}
-                  data-expanded={isExpanded ? "true" : undefined}
                   tabIndex={-1}
                 >
                   <Image src={heroImage} alt={title} width={520} height={300} className="service-geo-posts__image" loading={index < 2 ? "eager" : "lazy"} />
@@ -177,19 +175,18 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                     <p className="service-geo-posts__location">
                       {post.neighborhood ?? post.city ?? "Calgary"}, {post.province ?? "AB"}
                     </p>
-                    <p className="service-geo-posts__excerpt">{excerptContent(post.content, post.summary)}</p>
-                    <div id={detailsId} className="service-geo-posts__details" aria-hidden={!isExpanded}>
-                      <p>{fullContent}</p>
+                    <div className="service-geo-posts__summary-wrap" data-expanded={isExpanded}>
+                      <p id={detailsId} className="service-geo-posts__summary">{postText}</p>
                     </div>
                     <div className="service-geo-posts__links">
                       <button
                         type="button"
-                        className="service-geo-posts__details-toggle"
-                        onClick={() => setExpandedCards((current) => ({ ...current, [post.id]: !isExpanded }))}
+                        className="service-geo-posts__expand"
+                        onClick={() => setExpandedCards((previous) => ({ ...previous, [post.id]: !isExpanded }))}
                         aria-expanded={isExpanded}
                         aria-controls={detailsId}
                       >
-                        {isExpanded ? "Hide details" : "View details"}
+                        {isExpanded ? "Collapse details" : "View details"}
                       </button>
                       <Link href={fullPostHref}>Open project page</Link>
                       <Link href={projectLink?.href ?? "/projects"}>{projectLink?.text ?? "Related project"}</Link>
