@@ -1,7 +1,7 @@
 const DEFAULT_SITE_URL = "https://trustedroofingcalgary.com";
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/IndexNow";
 
-export const INDEXNOW_KEY = "a83cd4eb25104c578ab3ebff033216a6";
+export const INDEXNOW_KEY = process.env.INDEXNOW_KEY ?? "5b4c16dbae9f4eaf9bb9120b7a28e98f";
 export const INDEXNOW_KEY_PATH = `/${INDEXNOW_KEY}.txt`;
 
 function normalizeSiteUrl(value: string | undefined) {
@@ -84,7 +84,8 @@ export async function submitIndexNowUrls(urls: string[]) {
       keyLocation: getIndexNowKeyLocation(),
       urlList: normalizedUrls
     }),
-    cache: "no-store"
+    cache: "no-store",
+    signal: AbortSignal.timeout(5000)
   });
 
   const bodyText = await response.text();
@@ -99,4 +100,18 @@ export async function submitIndexNowUrls(urls: string[]) {
     urls: normalizedUrls,
     body: bodyText || null
   };
+}
+
+export async function notifyIndexNowUrls(urls: string[]) {
+  try {
+    return await submitIndexNowUrls(urls);
+  } catch (error) {
+    return {
+      ok: false,
+      submitted: false,
+      skipped: false,
+      endpoint: INDEXNOW_ENDPOINT,
+      error: error instanceof Error ? error.message : "IndexNow submission failed"
+    };
+  }
 }

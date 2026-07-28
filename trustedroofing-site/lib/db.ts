@@ -1266,6 +1266,40 @@ export async function createProject(data: ProjectInput) {
   return project;
 }
 
+export async function deleteProject(id: string) {
+  if (getDataMode() === "supabase") {
+    const client = getServiceClient();
+    if (!client)
+      throw new Error(
+        "SUPABASE_SERVICE_ROLE_KEY is required for admin writes.",
+      );
+    const { error } = await client.from("projects").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  const index = mockProjects.findIndex((project) => project.id === id);
+  if (index >= 0) {
+    mockProjects.splice(index, 1);
+  }
+  for (let index = mockProjectPhotos.length - 1; index >= 0; index -= 1) {
+    if (mockProjectPhotos[index].project_id === id) {
+      mockProjectPhotos.splice(index, 1);
+    }
+  }
+  for (let index = mockGeoPosts.length - 1; index >= 0; index -= 1) {
+    if (mockGeoPosts[index].project_id === id) {
+      mockGeoPosts.splice(index, 1);
+    }
+  }
+  mockInstantQuotes.forEach((quote) => {
+    if (quote.project_id === id) {
+      quote.project_id = null;
+    }
+  });
+  return true;
+}
+
 export async function updateProject(id: string, data: Partial<ProjectInput>) {
   const existingProject = await getProjectById(id);
   if (!existingProject) throw new Error("Project not found");
