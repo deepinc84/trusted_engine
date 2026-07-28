@@ -929,6 +929,7 @@ function addPdfHeaderLogo(builder: PdfBuilder, page: PdfPageDraft, imageName: st
   return addImageObject(builder, page, imageName, buffer);
 }
 
+
 async function loadLogo() {
   const logoCandidates = [
     "full_white_new2.png",

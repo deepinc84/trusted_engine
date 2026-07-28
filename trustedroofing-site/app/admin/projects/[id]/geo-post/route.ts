@@ -1,24 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProjectById, syncGeoPostForProject, updateGeoPostAdmin } from "@/lib/db";
-import { buildGeoPostIndexNowUrls, getSiteUrl } from "@/lib/indexnow";
+import { buildGeoPostIndexNowUrls, notifyIndexNowUrls } from "@/lib/indexnow";
 
-async function triggerIndexing(urls: string[]) {
-  if (!process.env.INDEXING_TOKEN) return;
-
-  try {
-    await fetch(new URL("/api/index-project", getSiteUrl()), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-indexing-token": process.env.INDEXING_TOKEN
-      },
-      body: JSON.stringify({ urlList: urls, type: "URL_UPDATED" }),
-      cache: "no-store"
-    });
-  } catch {
-    // best effort only; geo-post publishing should not fail if indexing ping fails
-  }
-}
 
 function expectsHtmlNavigation(request: Request) {
   const accept = request.headers.get("accept") ?? "";
@@ -62,7 +45,7 @@ export async function POST(
       });
     }
     if (geoPost.slug) {
-      await triggerIndexing(buildGeoPostIndexNowUrls(geoPost.slug));
+      await notifyIndexNowUrls(buildGeoPostIndexNowUrls(geoPost.slug));
     }
 
     if (wantsHtml) {
