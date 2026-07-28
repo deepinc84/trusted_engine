@@ -22,9 +22,12 @@ function cleanContent(content: string | null): string {
 }
 
 function excerptContent(content: string | null, summary: string | null): string {
+  // Keep the limit with the formatter so partial cherry-picks cannot leave this
+  // helper referencing a module constant that was not included in the commit.
+  const maxLength = 170;
   const text = cleanContent(content) || summary || "Published project update.";
-  if (text.length <= CARD_EXCERPT_LENGTH) return text;
-  return `${text.slice(0, CARD_EXCERPT_LENGTH).trim()}…`;
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}…`;
 }
 
 export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: ResolvedGeoPost[]; heading?: string }) {
