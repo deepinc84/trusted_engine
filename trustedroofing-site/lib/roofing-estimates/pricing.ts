@@ -10,7 +10,7 @@ export type RoofingMeasurements = {
   deckingAllowance: number; accessDifficulty: "standard" | "restricted" | "difficult"; internalNotes: string;
 };
 
-export type SystemComponent = { label: string; unit: string; quantity: number; rate: number; coverage: number; catalogueItemId?: string; coverageUnit?: string|null; supplier?:string|null;currency?:string;quoteRequired?:boolean;sourceReference?:string|null;catalogVersionId?:string;catalogVersionName?:string };
+export type SystemComponent = { label: string; unit: string; quantity: number; rate: number; coverage: number; wasteFactor?:number; catalogueItemId?: string; coverageUnit?: string|null; supplier?:string|null;currency?:string;quoteRequired?:boolean;sourceReference?:string|null;catalogVersionId?:string;catalogVersionName?:string };
 export type RoofingSystem = {
   tier: Tier; tierLabel: string; productName: string; components: Record<ComponentKey, SystemComponent>;
   wasteFactor: number; labourRatePerSquare: number; pitchAdjustment: number; heightAdjustment: number;
@@ -58,7 +58,7 @@ export function calculateSystem(measurements: RoofingMeasurements, snapshot: Roo
   const squares = measurements.squares || measurements.roofAreaSqft / 100;
   for (const key of Object.keys(systemSnapshot.components) as ComponentKey[]) {
     const item = systemSnapshot.components[key];
-    if(item.catalogueItemId){const required=key==="fieldShingles"?squares:defaults[key],waste=["fieldShingles","starterShingles","ridgeCaps"].includes(key)?systemSnapshot.wasteFactor:0,after=required*(1+waste),bundle=/bundles?\s*(per|\/)\s*square/i.test(item.coverageUnit??"");const raw=item.coverage>0?(bundle?required*item.coverage*(1+waste):after/item.coverage):null;const units=raw===null?null:Math.max(required>0?1:0,Math.ceil(raw));item.quantity=units??0;if(systemSnapshot.materialTraces?.[key])systemSnapshot.materialTraces[key]={...systemSnapshot.materialTraces[key],requiredQuantity:required,requiredAfterWaste:after,rawCalculatedUnits:raw,orderQuantity:units,extension:units===null?null:units*item.rate} as any;if(units!==null)material+=units*item.rate;continue}
+    if(item.catalogueItemId){const required=key==="fieldShingles"?squares:defaults[key],waste=item.wasteFactor??(["fieldShingles","starterShingles","ridgeCaps"].includes(key)?systemSnapshot.wasteFactor:0),after=required*(1+waste),bundle=/bundles?\s*(per|\/)\s*square/i.test(item.coverageUnit??"");const raw=item.coverage>0?(bundle?required*item.coverage*(1+waste):after/item.coverage):null;const units=raw===null?null:Math.max(required>0?1:0,Math.ceil(raw));item.quantity=units??0;if(systemSnapshot.materialTraces?.[key])systemSnapshot.materialTraces[key]={...systemSnapshot.materialTraces[key],requiredQuantity:required,requiredAfterWaste:after,rawCalculatedUnits:raw,orderQuantity:units,extension:units===null?null:units*item.rate} as any;if(units!==null)material+=units*item.rate;continue}
     if (item.quantity <= 0) item.quantity = defaults[key];
     material += Math.ceil(item.quantity / Math.max(item.coverage, 0.0001)) * item.rate;
   }
