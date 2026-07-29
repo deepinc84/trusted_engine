@@ -10,12 +10,14 @@ export type RoofingMeasurements = {
   deckingAllowance: number; accessDifficulty: "standard" | "restricted" | "difficult"; internalNotes: string;
 };
 
-export type SystemComponent = { label: string; unit: string; quantity: number; rate: number; coverage: number };
+export type SystemComponent = { label: string; unit: string; quantity: number; rate: number; coverage: number; wasteFactor?:number; catalogueItemId?: string; coverageUnit?: string|null; supplier?:string|null;currency?:string;quoteRequired?:boolean;sourceReference?:string|null;catalogVersionId?:string;catalogVersionName?:string };
 export type RoofingSystem = {
   tier: Tier; tierLabel: string; productName: string; components: Record<ComponentKey, SystemComponent>;
   wasteFactor: number; labourRatePerSquare: number; pitchAdjustment: number; heightAdjustment: number;
   complexityAdjustment: number; disposal: number; delivery: number; markupPercent: number;
-  warrantyWording: string; customerSummary: string; requiresWorkbookMapping: true;
+  warrantyWording: string; customerSummary: string; requiresWorkbookMapping: boolean;
+  materialTraces?: Record<string,{extension:number|null;productionReady:boolean}>; rateTraces?: Array<{rateItemId:string;trade:string;rateType:string;name:string;rate:number;unit:string;sourceReference:string|null;appliedQuantity:number;extension:number}>; pricingWarnings?: string[]; productionReady?: boolean;
+  pricingStrategy?: {type:"fixed_profit"|"cost_plus_percentage"|"target_margin"|"strategic_price";value:number};
 };
 export type PriceBreakdown = { material: number; labour: number; disposal: number; delivery: number; adjustments: number; subtotal: number; markup: number; beforeTax: number; gst: number; total: number };
 export type CalculatedOption = { system: RoofingSystem; breakdown: PriceBreakdown; calculatedPrice: number; finalPrice: number; override: null | { originalValue: number; newValue: number; reason: string; user: string; timestamp: string } };
@@ -53,17 +55,19 @@ export function calculateSystem(measurements: RoofingMeasurements, snapshot: Roo
   const systemSnapshot = structuredClone(snapshot);
   const defaults = quantitiesFor(measurements, systemSnapshot.wasteFactor);
   let material = 0;
+  const squares = measurements.squares || measurements.roofAreaSqft / 100;
   for (const key of Object.keys(systemSnapshot.components) as ComponentKey[]) {
     const item = systemSnapshot.components[key];
+    if(item.catalogueItemId){const required=key==="fieldShingles"?squares:defaults[key],waste=item.wasteFactor??(["fieldShingles","starterShingles","ridgeCaps"].includes(key)?systemSnapshot.wasteFactor:0),after=required*(1+waste),bundle=/bundles?\s*(per|\/)\s*square/i.test(item.coverageUnit??"");const raw=item.coverage>0?(bundle?required*item.coverage*(1+waste):after/item.coverage):null;const units=raw===null?null:Math.max(required>0?1:0,Math.ceil(raw));item.quantity=units??0;if(systemSnapshot.materialTraces?.[key])systemSnapshot.materialTraces[key]={...systemSnapshot.materialTraces[key],requiredQuantity:required,requiredAfterWaste:after,rawCalculatedUnits:raw,orderQuantity:units,extension:units===null?null:units*item.rate} as any;if(units!==null)material+=units*item.rate;continue}
     if (item.quantity <= 0) item.quantity = defaults[key];
-    material += (item.quantity / Math.max(item.coverage, 0.0001)) * item.rate;
+    material += Math.ceil(item.quantity / Math.max(item.coverage, 0.0001)) * item.rate;
   }
-  const squares = measurements.squares || measurements.roofAreaSqft / 100;
-  const labour = squares * systemSnapshot.labourRatePerSquare;
+  const rateTraces=systemSnapshot.rateTraces?.map((item:any)=>{const unit=String(item.unit??"").toLowerCase();const quantity=unit.includes("square foot")?measurements.roofAreaSqft:unit.includes("linear")?measurements.eaves+measurements.rakes+measurements.valleys+measurements.hips+measurements.ridges:unit.includes("square")?squares:item.appliedQuantity||1;return{...item,appliedQuantity:quantity,extension:item.rate*quantity}});if(rateTraces)systemSnapshot.rateTraces=rateTraces;const labour = rateTraces?.reduce((sum,item)=>sum+item.extension,0)??squares * systemSnapshot.labourRatePerSquare;
   const adjustments = systemSnapshot.pitchAdjustment + systemSnapshot.heightAdjustment + systemSnapshot.complexityAdjustment;
   const subtotal = material + labour + systemSnapshot.disposal + systemSnapshot.delivery + adjustments;
-  const markup = subtotal * systemSnapshot.markupPercent / 100;
-  const beforeTax = subtotal + markup;
+  const strategy=systemSnapshot.pricingStrategy??{type:"fixed_profit" as const,value:100};
+  let beforeTax=subtotal+100;if(strategy.type==="cost_plus_percentage")beforeTax=subtotal*(1+strategy.value/100);else if(strategy.type==="target_margin")beforeTax=strategy.value>=100?subtotal:subtotal/(1-strategy.value/100);else if(strategy.type==="strategic_price")beforeTax=strategy.value;else beforeTax=subtotal+strategy.value;
+  const markup = beforeTax-subtotal;
   const gst = beforeTax * GST_RATE;
   const total = beforeTax + gst;
   return { system: systemSnapshot, breakdown: { material, labour, disposal: systemSnapshot.disposal, delivery: systemSnapshot.delivery, adjustments, subtotal, markup, beforeTax, gst, total }, calculatedPrice: total, finalPrice: total, override: null };

@@ -13,6 +13,8 @@ const adminTabs: AdminTab[] = [
   { href: "/admin/instant-quotes", label: "Instant quote dashboard" },
   { href: "/admin/estimates", label: "Roofing estimates" },
   { href: "/admin/proposals", label: "Proposals" },
+  { href: "/admin/pricing-catalog", label: "Pricing catalogue" },
+  { href: "/admin/roofing-systems", label: "Roofing systems" },
   { href: "/admin/actuals", label: "Actuals" },
   { href: "/admin/reports", label: "Reporting" }
 ];

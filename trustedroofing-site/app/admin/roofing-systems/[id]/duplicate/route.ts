@@ -1,0 +1,1 @@
+import{NextRequest,NextResponse}from"next/server";import{duplicateRoofingSystem}from"@/lib/roofing-systems/repository";export async function POST(r:NextRequest,{params}:{params:{id:string}}){const id=await duplicateRoofingSystem(params.id,r.headers.get("x-admin-user")||"admin-token-user");return NextResponse.redirect(new URL(`/admin/roofing-systems/${id}`,r.url),303)}
