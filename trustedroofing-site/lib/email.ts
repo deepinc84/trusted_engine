@@ -8,9 +8,11 @@ type SendResult = {
 
 export async function sendEmail(input: {
   to: string;
+  cc?: string[];
   subject: string;
   text: string;
   html: string;
+  attachments?: Array<{ filename: string; content: string }>;
 }): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.QUOTE_EVENT_NOTIFICATION_FROM ?? process.env.RESEND_FROM_EMAIL ?? "Trusted Roofing <noreply@trustedexteriors.ca>";
@@ -28,9 +30,11 @@ export async function sendEmail(input: {
       body: JSON.stringify({
         from,
         to: [input.to],
+        cc: input.cc,
         subject: input.subject,
         text: input.text,
-        html: input.html
+        html: input.html,
+        attachments: input.attachments
       })
     });
 
