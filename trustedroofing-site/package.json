@@ -7,6 +7,8 @@
     "build": "npm run guard:conflicts && next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test -r ts-node/register tests/*.test.ts",
     "sitemap": "ts-node --esm scripts/generate-sitemap.ts",
     "guard:conflicts": "node scripts/check-merge-conflicts.js"
   },

@@ -1,0 +1,2 @@
+import{NextRequest,NextResponse}from"next/server";import{createProposal}from"@/lib/proposals/repository";
+export async function POST(r:NextRequest){const form=await r.formData();const id=String(form.get("estimateId")??"");const actor=r.headers.get("x-admin-user")||"admin-token-user";try{const p=await createProposal(id,actor);return NextResponse.redirect(new URL(`/admin/proposals/${p.id}`,r.url),303)}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to create proposal"},{status:400})}}
