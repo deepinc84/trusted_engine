@@ -1,0 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getProposal } from "@/lib/proposals/repository";
+import { generateAndStoreProposalDocument } from "@/lib/proposals/documents";
+export async function POST(r:NextRequest,{params}:{params:{id:string}}){try{const proposal=await getProposal(params.id);if(!proposal)return NextResponse.json({error:"Proposal not found"},{status:404});const result=await generateAndStoreProposalDocument(proposal,"draft",r.headers.get("x-admin-user")||"admin-token-user");return new NextResponse(result.buffer,{headers:{"content-type":"application/pdf","content-disposition":`attachment; filename="${proposal.proposalNumber}.pdf"`,"x-proposal-page-count":String(result.pageCount)}})}catch{return NextResponse.json({error:"Proposal PDF generation failed. Please retry or contact an administrator."},{status:500})}}
