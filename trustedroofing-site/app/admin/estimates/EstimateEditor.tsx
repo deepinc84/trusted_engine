@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { calculateSystem, type RoofingSystem } from "@/lib/roofing-estimates/pricing";
 import type { CustomerChoice, EstimateDraft } from "@/lib/roofing-estimates/repository";
+import SoftMetalsEditor from "./SoftMetalsEditor";
 
 const numericFields = [{k:"roofAreaSqft",l:"Roof area (sq ft)"},{k:"squares",l:"Squares"},{k:"existingLayers",l:"Existing layers"},{k:"eaves",l:"Eaves (lf)"},{k:"rakes",l:"Rakes (lf)"},{k:"valleys",l:"Valleys (lf)"},{k:"hips",l:"Hips (lf)"},{k:"ridges",l:"Ridges (lf)"},{k:"wallTransitions",l:"Wall transitions (lf)"},{k:"plumbingVents",l:"Plumbing vents"},{k:"goosenecks",l:"Goosenecks"},{k:"staticVents",l:"Static vents"},{k:"stories",l:"Stories"},{k:"deckingAllowance",l:"Decking allowance ($)"}] as const;
 const money = (n:number) => new Intl.NumberFormat("en-CA",{style:"currency",currency:"CAD"}).format(n);
@@ -19,6 +20,8 @@ export default function EstimateEditor({ initial, customerChoices = [] }: { init
       {[['firstName','First name'],['lastName','Last name'],['email','Email'],['phone','Phone']].map(([k,l])=><label key={k}>{l}<input className="input" value={(draft.customer as any)[k]} onChange={e=>setCustomer(k,e.target.value)}/></label>)}
       {[['addressLine1','Property address'],['addressLine2','Unit / suite'],['city','City'],['province','Province'],['postalCode','Postal code']].map(([k,l])=><label key={k}>{l}<input className="input" value={(draft.property as any)[k]} onChange={e=>setProperty(k,e.target.value)}/></label>)}
     </div><p className="admin-muted">Existing customer/property records are retained when reopening a draft; this phase creates new records from this screen.</p></section>
+    <SoftMetalsEditor scopeMode={draft.scopeMode??"roofing"} scopes={draft.softMetalScopes??[]} onMode={scopeMode=>setDraft(d=>({...d,scopeMode}))} onChange={softMetalScopes=>setDraft(d=>({...d,softMetalScopes}))}/>
+    {draft.scopeMode!=="soft_metals"&&<>
     <section className="estimate-panel"><h2>2. Roofing measurements</h2><div className="estimate-form-grid">
       {numericFields.map(f=><label key={f.k}>{f.l}<input className="input" type="number" min="0" step="0.1" value={draft.measurements[f.k]} onChange={e=>setMeasurement(f.k,Number(e.target.value))}/></label>)}
       <label>Pitch<input className="input" value={draft.measurements.pitch} onChange={e=>setMeasurement('pitch',e.target.value)}/></label>
@@ -27,7 +30,7 @@ export default function EstimateEditor({ initial, customerChoices = [] }: { init
       <label className="estimate-span">Internal notes<textarea className="input" rows={3} value={draft.measurements.internalNotes} onChange={e=>setMeasurement('internalNotes',e.target.value)}/></label>
     </div></section>
     {draft.systems.some(s=>s.productionReady===false)&&<div className="proposal-warning"><b>Pricing review required.</b><ul>{[...new Set(draft.systems.flatMap(s=>s.pricingWarnings??[]))].map(w=><li key={w}>{w}</li>)}</ul></div>}<section className="estimate-panel"><div className="estimate-heading"><div><h2>3. Trusted roofing systems</h2><p>All options use the shared measurements. Rates are $0 until approved workbook mapping.</p></div></div><div className="estimate-option-grid">{calculated.map((option,i)=><article className={`estimate-option estimate-option--${option.system.tier}`} key={option.system.tier}><span className="admin-kicker">{option.system.tierLabel}</span><h3>{option.system.productName}</h3><p>{option.system.customerSummary}</p><strong>{money(draft.options?.[i]?.override?.newValue ?? option.finalPrice)}</strong><small>Includes {money(option.breakdown.gst)} GST</small><button type="button" className="button button--ghost" onClick={()=>setOpen(open===option.system.tier?null:option.system.tier)}>Customize system</button>
-      {open===option.system.tier&&<SystemEditor system={draft.systems[i]} option={option} onChange={s=>setSystem(i,s)} onOverride={(value,reason)=>setDraft(d=>({...d,options:calculated.map((o,x)=>x===i?{...o,override:{originalValue:o.calculatedPrice,newValue:value,reason,user:'admin-token-user',timestamp:new Date().toISOString()}}:o)}))}/>}</article>)}</div></section>
+      {open===option.system.tier&&<SystemEditor system={draft.systems[i]} option={option} onChange={s=>setSystem(i,s)} onOverride={(value,reason)=>setDraft(d=>({...d,options:calculated.map((o,x)=>x===i?{...o,override:{originalValue:o.calculatedPrice,newValue:value,reason,user:'admin-token-user',timestamp:new Date().toISOString()}}:o)}))}/>}</article>)}</div></section></>}
     <div className="estimate-savebar"><span>{message}</span><button className="button" type="button" onClick={save}>Save draft</button></div>
   </div>;
 }

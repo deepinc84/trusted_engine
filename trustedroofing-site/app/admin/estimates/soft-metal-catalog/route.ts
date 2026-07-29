@@ -1,0 +1,1 @@
+import{NextResponse}from"next/server";import{loadSoftMetalCatalog}from"@/lib/soft-metals/repository";export async function GET(){try{return NextResponse.json(await loadSoftMetalCatalog())}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Catalogue unavailable"},{status:503})}}
