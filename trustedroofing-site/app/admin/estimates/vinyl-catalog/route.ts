@@ -1,0 +1,1 @@
+import{NextResponse}from"next/server";import{loadVinylCatalog}from"@/lib/vinyl-siding/repository";export async function GET(){try{return NextResponse.json(await loadVinylCatalog())}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Vinyl catalogue unavailable."},{status:500})}}
