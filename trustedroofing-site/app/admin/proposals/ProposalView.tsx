@@ -1,0 +1,8 @@
+import type { ProposalDraft } from "@/lib/proposals/domain";
+import { buildProposalDocument } from "@/lib/proposals/document";
+const money=(n:number)=>new Intl.NumberFormat("en-CA",{style:"currency",currency:"CAD"}).format(n);
+
+export default function ProposalView({proposal}:{proposal:ProposalDraft}){
+  const document=buildProposalDocument(proposal);
+  return <div className="proposal-pages">{document.sections.map((section,index)=><section className={`proposal-page proposal-page--${section.type}`} key={section.id}>{section.type==="cover"?<><div className="proposal-cover-brand">TRUSTED <span>Roofing &amp; Exteriors</span></div><div className="proposal-cover-image" style={{backgroundImage:proposal.coverImage.signedUrl||proposal.coverImage.streetViewUrl?`url(${proposal.coverImage.signedUrl||proposal.coverImage.streetViewUrl})`:undefined,backgroundPosition:`${document.cover.crop.x}% ${document.cover.crop.y}%`,backgroundSize:`${document.cover.zoom*100}%`}}>{proposal.coverImage.source==="none"&&<span>Front-of-house image unavailable</span>}</div><small>{document.cover.attribution}</small>{section.blocks.flatMap(block=>[block.title,...block.lines]).filter(Boolean).map((line,i)=>i===0?<h1 key={i}>{line}</h1>:<p key={i}>{line}</p>)}</>:<><header>Trusted Roofing &amp; Exteriors · {document.proposalNumber}</header><h2>{section.title}</h2>{section.blocks.map(block=><article className={`proposal-document-block proposal-document-block--${block.kind}`} key={block.id}>{block.title&&<h3>{block.title}</h3>}{block.badge&&<b>{block.badge}</b>}{block.lines.map((line,i)=><p key={i}>{line}</p>)}{block.price!==undefined&&<strong>{money(block.price)}</strong>}</article>)}<footer>trustedroofingcalgary.com · Preview page {index+1}</footer></>}</section>)}</div>;
+}
