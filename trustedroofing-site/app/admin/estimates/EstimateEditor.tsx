@@ -7,6 +7,7 @@ import SoftMetalsEditor from "./SoftMetalsEditor";
 import VinylSidingEditor from "./VinylSidingEditor";
 import{blankVinylScope}from"@/lib/vinyl-siding/domain";
 import HardieSidingEditor from"./HardieSidingEditor";import{blankHardieScope}from"@/lib/hardie-siding/domain";
+import SpecificationEditor from"./SpecificationEditor";import{blankSpecificationEstimate}from"@/lib/specifications/domain";
 
 const numericFields = [{k:"roofAreaSqft",l:"Roof area (sq ft)"},{k:"squares",l:"Squares"},{k:"existingLayers",l:"Existing layers"},{k:"eaves",l:"Eaves (lf)"},{k:"rakes",l:"Rakes (lf)"},{k:"valleys",l:"Valleys (lf)"},{k:"hips",l:"Hips (lf)"},{k:"ridges",l:"Ridges (lf)"},{k:"wallTransitions",l:"Wall transitions (lf)"},{k:"plumbingVents",l:"Plumbing vents"},{k:"goosenecks",l:"Goosenecks"},{k:"staticVents",l:"Static vents"},{k:"stories",l:"Stories"},{k:"deckingAllowance",l:"Decking allowance ($)"}] as const;
 const money = (n:number) => new Intl.NumberFormat("en-CA",{style:"currency",currency:"CAD"}).format(n);
@@ -24,6 +25,8 @@ export default function EstimateEditor({ initial, customerChoices = [] }: { init
       {[['firstName','First name'],['lastName','Last name'],['email','Email'],['phone','Phone']].map(([k,l])=><label key={k}>{l}<input className="input" value={(draft.customer as any)[k]} onChange={e=>setCustomer(k,e.target.value)}/></label>)}
       {[['addressLine1','Property address'],['addressLine2','Unit / suite'],['city','City'],['province','Province'],['postalCode','Postal code']].map(([k,l])=><label key={k}>{l}<input className="input" value={(draft.property as any)[k]} onChange={e=>setProperty(k,e.target.value)}/></label>)}
     </div><p className="admin-muted">Existing customer/property records are retained when reopening a draft; this phase creates new records from this screen.</p></section>
+    <section className="estimate-panel"><h2>Estimate mode</h2><label>Mode<select className="input" value={draft.estimateMode??"standard"} onChange={e=>setDraft(d=>({...d,estimateMode:e.target.value as "standard"|"specification"}))}><option value="standard">Standard estimate</option><option value="specification">Specification / tender estimate</option></select></label></section>
+    {draft.estimateMode==="specification"&&<SpecificationEditor estimateId={draft.id} spec={draft.specification??blankSpecificationEstimate()} onChange={specification=>setDraft(d=>({...d,specification}))}/>}
     <section className="estimate-panel"><h2>Estimate scopes</h2><div className="estimate-form-grid">{(["roofing","soft_metals","vinyl_siding","hardie_siding"] as const).map(scope=><label key={scope}><input type="checkbox" checked={scopes.includes(scope)} onChange={e=>toggleScope(scope,e.target.checked)}/> {scope.replaceAll("_"," ")}</label>)}</div></section>
     {scopes.includes("soft_metals")&&<SoftMetalsEditor scopeMode="soft_metals" scopes={draft.softMetalScopes??[]} onMode={()=>{}} onChange={softMetalScopes=>setDraft(d=>({...d,softMetalScopes}))}/>}
     {scopes.includes("vinyl_siding")&&<VinylSidingEditor scope={{...(draft.vinylScope??blankVinylScope()),enabled:true}} onChange={vinylScope=>setDraft(d=>({...d,vinylScope}))}/>}
