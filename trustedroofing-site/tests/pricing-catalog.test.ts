@@ -1,0 +1,17 @@
+import test from"node:test";import{ROOFING_FIELD_SHINGLE_NAMES}from"../lib/pricing-catalog/types";import{chooseCatalogVersion}from"../lib/pricing-catalog/selection";import assert from"node:assert/strict";import{applyPricingStrategy,calculateMaterial,orderIndivisibleUnits,orderShingleBundles}from"../lib/pricing-catalog/calculation";import type{PricingCatalogItem,PricingCatalogVersion}from"../lib/pricing-catalog/types";
+const version:PricingCatalogVersion={id:"v1",name:"Mega workbook extraction 2026-06-25",source_file:null,effective_date:"2026-06-25",status:"approved",created_at:"2026-06-25"};
+const item=(overrides:Partial<PricingCatalogItem>={}):PricingCatalogItem=>({id:"i1",catalog_version_id:"v1",category:"roofing",subcategory:"underlayment",name:"Test roll",supplier:"Supplier",price:50,currency:"CAD",unit:"roll",coverage:100,coverage_unit:"square feet per roll",quote_required:false,source_reference:"Sheet A1",notes:null,active:true,created_at:"2026-06-25",...overrides});
+for(const[required,expected]of[[1,1],[100,1],[100.01,2],[120,2],[199.99,2],[200.01,3],[0,0]]as const)test(`ceiling units ${required} / 100 = ${expected}`,()=>assert.equal(orderIndivisibleUnits(required,100),expected));
+test("ten-foot metal orders three complete pieces",()=>assert.equal(orderIndivisibleUnits(21,10),3));
+test("waste is applied before ceiling rounding",()=>{const trace=calculateMaterial(item(),version,95,.1);assert.ok(Math.abs(trace.requiredAfterWaste-104.5)<1e-9);assert.equal(trace.orderQuantity,2)});
+test("fractional roof squares produce 66 shingle bundles",()=>assert.equal(orderShingleBundles(20.2,3,.08),66));
+test("missing coverage never returns zero and blocks readiness",()=>{const trace=calculateMaterial(item({coverage:null}),version,120);assert.equal(trace.orderQuantity,null);assert.equal(trace.productionReady,false);assert.match(trace.warnings[0].message,/coverage/i)});
+test("quote-required material requires manual pricing",()=>{const trace=calculateMaterial(item({quote_required:true}),version,120);assert.equal(trace.productionReady,false);assert.equal(trace.warnings[0].field,"quote_required")});
+test("manual strategic price and loss warning are supported",()=>{const result=applyPricingStrategy(1000,{type:"strategic_price",value:900});assert.equal(result.sellingPrice,900);assert.equal(result.loss,true)});
+test("fixed profit does not require workbook markup",()=>assert.equal(applyPricingStrategy(1000,{type:"fixed_profit",value:100}).sellingPrice,1100));
+test("material snapshots are independent of later catalogue changes",()=>{const source=item(),trace=calculateMaterial(source,version,120);source.price=999;assert.equal(trace.unitPrice,50);assert.equal(trace.extension,100)});
+
+test("approved catalogue is selected without draft fallback",()=>{const draft={...version,id:"draft",status:"draft" as const},approved={...version,id:"approved"};assert.equal(chooseCatalogVersion([draft,approved]).id,"approved");assert.throws(()=>chooseCatalogVersion([draft]))});
+test("draft catalogue requires explicit admin test selection",()=>{const draft={...version,id:"draft",status:"draft" as const};assert.throws(()=>chooseCatalogVersion([draft],{versionId:"draft"}));assert.equal(chooseCatalogVersion([draft],{versionId:"draft",allowDraft:true}).id,"draft")});
+
+test("Good Better Best use exact catalogue product lookups",()=>assert.deepEqual(ROOFING_FIELD_SHINGLE_NAMES,{good:"GAF Timberline HDZ",better:"Malarkey Vista",best:"Malarkey Legacy"}));
