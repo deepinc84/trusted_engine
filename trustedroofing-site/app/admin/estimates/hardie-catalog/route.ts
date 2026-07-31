@@ -1,0 +1,1 @@
+import{NextResponse}from"next/server";import{loadHardieCatalog}from"@/lib/hardie-siding/repository";export async function GET(){try{return NextResponse.json(await loadHardieCatalog())}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Hardie catalogue unavailable."},{status:503})}}

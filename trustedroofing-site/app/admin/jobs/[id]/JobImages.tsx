@@ -1,0 +1,1 @@
+"use client";import ProjectImagesEditor from"@/app/admin/proposals/ProjectImagesEditor";import type{ProposalImageInstance}from"@/lib/project-images/domain";export default function JobImages({proposalId,images}:{proposalId:string;images:ProposalImageInstance[]}){return <ProjectImagesEditor proposalId={proposalId} initial={images} onChange={()=>{}}/>}

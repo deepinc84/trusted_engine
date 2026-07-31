@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "npm run guard:conflicts && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "ESLINT_USE_FLAT_CONFIG=true eslint scripts/check-merge-conflicts.js next.config.js && tsc --noEmit",
+    "type-check": "tsc --noEmit",
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test -r ts-node/register tests/*.test.ts",
     "sitemap": "ts-node --esm scripts/generate-sitemap.ts",
-    "guard:conflicts": "node scripts/check-merge-conflicts.js"
+    "guard:conflicts": "node scripts/check-merge-conflicts.js",
+    "verify:production-readiness": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' ts-node scripts/verify-production-readiness.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.1",
@@ -21,6 +24,8 @@
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "ts-node": "10.9.2",
-    "typescript": "5.5.4"
+    "typescript": "5.5.4",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5"
   }
 }
