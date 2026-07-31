@@ -10,8 +10,8 @@ import { getAllQuoteCards } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Roofing Services Calgary | Replacement, Repair & Inspections",
-  description: "Calgary roofing services for roof replacement, roof repair, inspections, maintenance, storm damage, and instant online roof estimates.",
+  title: "Roofing Services Calgary | Replacement, Repair & Rejuvenation",
+  description: "Calgary roofing services for roof replacement, repair, rejuvenation, inspections, maintenance and instant online roof estimates.",
   path: "/services/roofing"
 });
 
@@ -33,7 +33,7 @@ export default async function RoofingPage() {
       <PageHero
         eyebrow="Roofing services Calgary"
         title="Roofing Services in Calgary"
-        description="Calgary roofs deal with hail, wind, sun, freeze-thaw cycles, and ventilation pressure. Start here to choose between roof replacement, roof repair, or roof inspection and maintenance before moving into an instant roof estimate."
+        description="Calgary roofs deal with hail, wind, sun, freeze-thaw cycles, and ventilation pressure. Start here to choose between roof replacement, roof repair, roof rejuvenation, or roof inspection and maintenance before moving into an instant roof estimate."
         actions={<Link href="/online-estimate" className="button">Get instant roof quote</Link>}
       />
 
@@ -49,6 +49,11 @@ export default async function RoofingPage() {
               <h2>Roof Repair</h2>
               <p>For leaks, missing shingles, storm damage, flashing problems, vents, and localized issues that can be corrected without replacing the full roof.</p>
               <Link href="/services/roof-repair" className="button button--ghost">Explore roof repair</Link>
+            </article>
+            <article className="ui-card">
+              <h2>Roof Rejuvenation</h2>
+              <p>For aging asphalt shingles that remain serviceable and may qualify for preservation before replacement is necessary.</p>
+              <Link href="/services/roof-rejuvenation" className="button button--ghost">Explore roof rejuvenation</Link>
             </article>
             <article className="ui-card">
               <h2>Roof Inspection & Maintenance</h2>

@@ -163,6 +163,7 @@ export async function GET() {
     { loc: canonicalUrl("/"), lastmod: latestSiteActivityLastmod, changefreq: "daily", priority: 1.0 },
     { loc: canonicalUrl("/services"), lastmod: latestIso(latestGeoPostLastmod, latestProjectLastmod) ?? latestSiteActivityLastmod, changefreq: "weekly", priority: 0.9 },
     ...services.map((service) => ({ loc: canonicalUrl(serviceSlugToPublicPath(service.slug)), lastmod: servicePageLastmod(service.slug, service.created_at), changefreq: "weekly" as const, priority: 0.8 })),
+    { loc: canonicalUrl("/services/roof-rejuvenation"), lastmod: servicePageLastmod("roofing"), changefreq: "weekly", priority: 0.8 },
     { loc: canonicalUrl("/services/roof-replacement"), lastmod: servicePageLastmod("roofing"), changefreq: "weekly", priority: 0.8 },
     { loc: canonicalUrl("/services/roof-inspection-maintenance"), lastmod: servicePageLastmod("roofing"), changefreq: "weekly", priority: 0.8 },
     { loc: canonicalUrl("/services/vinyl-siding"), lastmod: servicePageLastmod("vinyl-siding"), changefreq: "weekly", priority: 0.8 },
