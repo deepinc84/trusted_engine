@@ -7,7 +7,7 @@ import{blankHardieScope,type HardieScope}from"@/lib/hardie-siding/domain";import
 import{blankSpecificationEstimate,evaluateSpecificationReadiness,type EstimateMode,type SpecificationEstimate}from"@/lib/specifications/domain";import{loadSpecificationEstimate,saveSpecificationEstimate}from"@/lib/specifications/repository";
 
 export type EstimateScope="roofing"|"soft_metals"|"vinyl_siding"|"hardie_siding"|"custom";
-export type EstimateDraft = { id?: string; estimateMode?:EstimateMode; specification?:SpecificationEstimate; scopeMode?:"roofing"|"soft_metals"|"combined"|"multi_trade"; selectedScopes?:EstimateScope[]; softMetalScopes?:SoftMetalScope[]; vinylScope?:VinylScope; hardieScope?:HardieScope; customer: { id?: string; firstName: string; lastName: string; email: string; phone: string }; property: { id?: string; addressLine1: string; addressLine2: string; city: string; province: string; postalCode: string }; measurements: RoofingMeasurements; systems: RoofingSystem[]; options?: CalculatedOption[]; updatedAt?: string };
+export type EstimateDraft = { id?: string; setupOnly?:boolean; estimateMode?:EstimateMode; specification?:SpecificationEstimate; scopeMode?:"roofing"|"soft_metals"|"combined"|"multi_trade"; selectedScopes?:EstimateScope[]; softMetalScopes?:SoftMetalScope[]; vinylScope?:VinylScope; hardieScope?:HardieScope; customer: { id?: string; firstName: string; lastName: string; email: string; phone: string }; property: { id?: string; addressLine1: string; addressLine2: string; city: string; province: string; postalCode: string }; measurements: RoofingMeasurements; systems: RoofingSystem[]; options?: CalculatedOption[]; updatedAt?: string };
 const mocks = new Map<string, EstimateDraft>();
 export type CustomerChoice = { customer: EstimateDraft["customer"]; properties: EstimateDraft["property"][] };
 export const blankMeasurements: RoofingMeasurements = { roofAreaSqft: 0, squares: 0, pitch: "4/12", complexity: "moderate", existingLayers: 1, eaves: 0, rakes: 0, valleys: 0, hips: 0, ridges: 0, wallTransitions: 0, plumbingVents: 0, goosenecks: 0, staticVents: 0, stories: 1, deckingAllowance: 0, accessDifficulty: "standard", internalNotes: "" };
@@ -25,7 +25,7 @@ function validate(draft: EstimateDraft) {
   if (!draft.customer.firstName.trim() || !draft.customer.lastName.trim()) throw new Error("Customer first and last name are required.");
   if (!draft.property.addressLine1.trim()) throw new Error("Property address is required.");
   if (!scopes.length) throw new Error("Enable at least one estimate scope.");
-  if (scopes.includes("roofing") && draft.measurements.roofAreaSqft <= 0 && draft.measurements.squares <= 0) throw new Error("Roof area or squares is required.");
+  if (!draft.setupOnly && scopes.includes("roofing") && draft.measurements.roofAreaSqft <= 0 && draft.measurements.squares <= 0) throw new Error("Roof area or squares is required.");
   if (scopes.includes("roofing") && draft.systems.length !== 3) throw new Error("Good, Better and Best system snapshots are required.");
   if(scopes.includes("soft_metals")&&!draft.softMetalScopes?.some(s=>s.enabled))throw new Error("Enable at least one soft-metal scope.");
   if(scopes.includes("vinyl_siding")&&!draft.vinylScope?.enabled)throw new Error("Enable the vinyl siding scope.");
