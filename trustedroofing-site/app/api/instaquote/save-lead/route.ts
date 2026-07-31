@@ -46,7 +46,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const serviceType = typeof body.serviceScope === "string" ? body.serviceScope : null;
+    const serviceType = body.serviceInterest === "roof_rejuvenation"
+      ? "Roof Rejuvenation"
+      : typeof body.serviceScope === "string" ? body.serviceScope : null;
     const sourceMetadata = sourceMetadataFromSubmission(body);
     let legacyLeadError: string | null = null;
     try {

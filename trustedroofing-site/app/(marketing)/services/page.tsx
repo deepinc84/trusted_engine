@@ -73,7 +73,7 @@ export default async function ServicesPage() {
   const serviceHierarchy = [
     {
       heading: "Roofing Services",
-      intro: "Start here for full roof systems, targeted repairs, and roof condition planning on Calgary homes.",
+      intro: "Compare repair, rejuvenation, replacement and inspection based on the condition of your Calgary roof.",
       services: [
         {
           slug: "roofing",
@@ -89,6 +89,11 @@ export default async function ServicesPage() {
           slug: "roof-repair",
           title: "Roof Repair",
           description: "Fix leaks, missing shingles, storm damage, and localized roof failures when the whole roof may not need replacing."
+        },
+        {
+          slug: "roof-rejuvenation",
+          title: "Roof Rejuvenation",
+          description: "Get a fixed treatment price for aging asphalt shingles that may remain serviceable after a condition review."
         },
         {
           slug: "roof-inspection-maintenance",
