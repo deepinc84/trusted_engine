@@ -48,6 +48,7 @@ export default async function SiteHeader() {
             height={52}
             className="brand-logo"
             priority
+            unoptimized
           />
         </Link>
 
