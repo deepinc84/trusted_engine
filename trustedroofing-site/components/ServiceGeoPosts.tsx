@@ -172,7 +172,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                   aria-current={activeIndex === index ? "true" : undefined}
                   tabIndex={-1}
                 >
-                  <Image src={heroImage} alt={title} width={520} height={300} className="service-geo-posts__image" loading={index < 2 ? "eager" : "lazy"} />
+                  <Image src={heroImage} alt={title} width={520} height={300} className="service-geo-posts__image" loading={index < 2 ? "eager" : "lazy"} sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 520px" quality={75} unoptimized={heroImage.endsWith(".svg")} />
                   <div className="service-geo-posts__body">
                     <h3>{title}</h3>
                     <p className="service-geo-posts__location">
