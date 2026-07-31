@@ -40,6 +40,7 @@ function gtagSendEvent(url?: string) {
 }
 
 type BudgetResponse = "yes" | "financing" | "too_expensive";
+type ServiceInterest = "roof_replacement" | "roof_rejuvenation";
 type SidingMaterial = "vinyl" | "hardie";
 type SourceMetadata = Record<string, string | null>;
 
@@ -128,6 +129,17 @@ type EstimateResult = {
     eaves: { low: number; high: number };
     siding: { low: number; high: number };
   };
+  rejuvenation: {
+    roofAreaSqft: number;
+    pitchRise: number;
+    pitchRatio: string;
+    ratePerSqft: number;
+    minimumCharge: 1595;
+    rawPrice: number;
+    price: number;
+    minimumApplied: boolean;
+    qualificationPending: true;
+  };
   testDiagnostics?: {
     rawExperimentalSidingSqft: number;
     finalExperimentalSidingSqft: number;
@@ -200,6 +212,7 @@ export default function QuoteFlow({
   const quoteStartRef = useRef<HTMLDivElement>(null);
   const resultSectionRef = useRef<HTMLElement | null>(null);
   const hasAutoScrolledRef = useRef(false);
+  const rejuvenationViewTrackedRef = useRef(false);
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [status, setStatus] = useState<string | null>(null);
@@ -226,6 +239,11 @@ export default function QuoteFlow({
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [sourceMetadata, setSourceMetadata] = useState<SourceMetadata>({});
   const [isResumedEstimate, setIsResumedEstimate] = useState(false);
+  const rejuvenationIntent = searchParams.get("intent") === "roof-rejuvenation";
+  const [serviceInterest, setServiceInterest] = useState<ServiceInterest>(rejuvenationIntent ? "roof_rejuvenation" : "roof_replacement");
+  const [roofAge, setRoofAge] = useState("");
+  const [activeLeakage, setActiveLeakage] = useState("");
+  const [visibleDeterioration, setVisibleDeterioration] = useState("");
 
   const selectedLabel = useMemo(
     () => quoteScopes.find((scope) => scope.value === selectedScope)?.label,
@@ -238,6 +256,12 @@ export default function QuoteFlow({
     if (selectedScope === "hardie_siding") setSidingMaterial("hardie");
     else if (selectedScope === "vinyl_siding") setSidingMaterial("vinyl");
   }, [selectedScope]);
+
+  useEffect(() => {
+    if (!estimate || selectedScope !== "roofing" || rejuvenationViewTrackedRef.current) return;
+    rejuvenationViewTrackedRef.current = true;
+    window.gtag?.("event", "roof_rejuvenation_quote_viewed", { value: estimate.rejuvenation.price, currency: "CAD" });
+  }, [estimate, selectedScope]);
 
   useEffect(() => {
     if (testMode) return;
@@ -522,6 +546,14 @@ export default function QuoteFlow({
           serviceAreaServed: estimate.serviceAreaServed,
           serviceAreaNotice: estimate.serviceAreaNotice,
           serviceScope: selectedScope,
+          serviceInterest,
+          rejuvenationPrice: estimate.rejuvenation.price,
+          rejuvenationRate: estimate.rejuvenation.ratePerSqft,
+          rejuvenationPitchRise: estimate.rejuvenation.pitchRise,
+          rejuvenationMinimumApplied: estimate.rejuvenation.minimumApplied,
+          roofAge,
+          activeLeakage,
+          visibleDeterioration,
           quoteLeadSource: isResumedEstimate ? "resumed_step_2" : "initial_step_2",
           isResumedLead: isResumedEstimate,
           pdfDownloaded,
@@ -540,6 +572,9 @@ export default function QuoteFlow({
       }
 
       gtagSendEvent();
+      if (serviceInterest === "roof_rejuvenation") {
+        window.gtag?.("event", "roof_rejuvenation_lead_submitted", { value: estimate.rejuvenation.price, currency: "CAD" });
+      }
       setStep(3);
       setStatus("Thanks — your request is in.");
     } catch {
@@ -657,8 +692,8 @@ export default function QuoteFlow({
     <div ref={quoteStartRef} className="instant-quote form-grid">
       {mode !== "result" ? (
         <>
-      <h2>Instant {quoteHeadlineByScope[selectedScope]} Quote</h2>
-      <p className="instant-quote__subhead">Address first, instant estimate second, follow-up third.</p>
+      <h2>{rejuvenationIntent ? "Get a Fixed Roof Rejuvenation Quote" : `Instant ${quoteHeadlineByScope[selectedScope]} Quote`}</h2>
+      <p className="instant-quote__subhead">{rejuvenationIntent ? "Enter your address to compare fixed rejuvenation pricing with the current replacement estimate." : "Address first, instant estimate second, follow-up third."}</p>
       <div className="instant-quote__proposal-callout" role="note" aria-live="polite">
         <strong>Free estimate proposal PDF — no contact details required.</strong>
         <span>Generate your range, download the proposal, and decide later. Submit your info only if you want a full itemized follow-up quote.</span>
@@ -734,6 +769,7 @@ export default function QuoteFlow({
               {submitting ? "Calculating..." : "Get My Instant Estimate"}
             </button>
           </div>
+
           <p className="instant-quote__meta">Selected scope: {selectedLabel}</p>
           {testMode ? (
             <div style={{ display: "grid", gap: 8 }}>
@@ -837,6 +873,29 @@ export default function QuoteFlow({
             ) : null}
           </div>
 
+          {selectedScope === "roofing" ? (
+            <section className={`roof-rejuvenation-quote ${serviceInterest === "roof_rejuvenation" ? "is-selected" : ""}`}>
+              <p className="homev3-eyebrow">Lower-cost roof preservation option</p>
+              <h2>Your Fixed Roof Rejuvenation Quote</h2>
+              <p className="roof-rejuvenation-quote__price">${estimate.rejuvenation.price.toLocaleString()} <small>plus GST</small></p>
+              <ul>
+                <li>{estimate.rejuvenation.roofAreaSqft.toLocaleString()} sq. ft. measured roof area</li>
+                <li>{estimate.rejuvenation.pitchRatio} roof pitch</li>
+                <li>${estimate.rejuvenation.ratePerSqft.toFixed(2)} per sq. ft.</li>
+                {estimate.rejuvenation.minimumApplied ? <li>Minimum charge applied</li> : null}
+              </ul>
+              <div className="roof-rejuvenation-quote__comparison">
+                <p><strong>Current roof replacement estimate:</strong><br />${estimate.ranges.good.low.toLocaleString()} to ${estimate.ranges.good.high.toLocaleString()}</p>
+                <p><strong>Potential price difference:</strong><br />${Math.max(0, estimate.ranges.good.low - estimate.rejuvenation.price).toLocaleString()} to ${Math.max(0, estimate.ranges.good.high - estimate.rejuvenation.price).toLocaleString()}</p>
+              </div>
+              <p>This fixed treatment quote is based on the measured roof area and pitch. The roof must still pass a condition review. The review can approve or disqualify the roof, but it does not change the treatment price. Repairs, required cleaning and additional structures are separate.</p>
+              <div className="instant-quote__step-actions">
+                <button className="button" type="button" onClick={() => { setServiceInterest("roof_rejuvenation"); window.gtag?.("event", "roof_rejuvenation_selected", { value: estimate.rejuvenation.price, currency: "CAD" }); }}>Choose Roof Rejuvenation</button>
+                <button className="button button--ghost" type="button" onClick={() => setServiceInterest("roof_replacement")}>Continue With Roof Replacement</button>
+              </div>
+            </section>
+          ) : null}
+
           <div className="instant-quote__step-actions">
             <button className="button" type="button" onClick={restartFromStep2}>Estimate another address</button>
             <button className="button" type="button" onClick={() => void downloadEstimatePdf()}>Download free estimate proposal (PDF)</button>
@@ -851,11 +910,18 @@ export default function QuoteFlow({
             }}
           >
             <div style={{ display: "grid", gap: 6 }}>
-              <h3 style={{ margin: 0 }}>Want a full, itemized proposal?</h3>
+              <h3 style={{ margin: 0 }}>{serviceInterest === "roof_rejuvenation" ? "Check My Roof for Rejuvenation" : "Want a full, itemized proposal?"}</h3>
               <p style={{ margin: 0, color: "var(--color-muted)" }}>
                 We&apos;ll review measurements, confirm scope options, and send a detailed proposal within 2 business days.
               </p>
             </div>
+            {serviceInterest === "roof_rejuvenation" ? (
+              <div className="form-grid roof-rejuvenation-fields">
+                <label>Approximate roof age<input className="input" value={roofAge} onChange={(event) => setRoofAge(event.target.value)} placeholder="For example, 15 years" /></label>
+                <label>Active leakage<select className="input" value={activeLeakage} onChange={(event) => setActiveLeakage(event.target.value)} required><option value="">Choose one</option><option value="yes">Yes</option><option value="no">No</option><option value="not_sure">Not sure</option></select></label>
+                <label>Widespread curling, cracking or missing shingles<select className="input" value={visibleDeterioration} onChange={(event) => setVisibleDeterioration(event.target.value)} required><option value="">Choose one</option><option value="yes">Yes</option><option value="no">No</option><option value="not_sure">Not sure</option></select></label>
+              </div>
+            ) : null}
             <label>
               Your name
               <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" required />
