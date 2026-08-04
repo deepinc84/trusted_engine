@@ -4,11 +4,13 @@ import SiteHeader from "@/components/site/SiteHeader";
 import ChunkLoadRecovery from "@/components/ChunkLoadRecovery";
 import OrganizationSchema from "@/components/OrganizationSchema";
 import Script from "next/script";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Trusted Roofing & Exteriors",
-  description: "Modern roofing and exterior services in Calgary, AB."
-};
+export const metadata = buildMetadata({
+  title: "Trusted Roofing & Exteriors | Calgary Roofing Company",
+  description: "Trusted Calgary roofing and exterior contractors for roof replacement, repairs, siding, eavestroughs and fast online estimates.",
+  path: "/"
+});
 
 export default function RootLayout({
   children
@@ -28,11 +30,12 @@ export default function RootLayout({
         </noscript>
       </head>
       <body>
+        <a className="skip-link" href="#main-content">Skip to main content</a>
         <OrganizationSchema />
         <ChunkLoadRecovery />
         <div className="page">
           <SiteHeader />
-          <main>{children}</main>
+          <main id="main-content">{children}</main>
           <SiteFooter />
         </div>
 
