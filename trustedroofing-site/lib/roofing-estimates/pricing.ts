@@ -5,7 +5,7 @@ export type ComponentKey = "fieldShingles" | "starterShingles" | "ridgeCaps" | "
 export type StructureInclusionStatus = "included" | "optional" | "alternative" | "excluded" | "by_others" | "internal_only";
 export type AreaEntryType = "actual_roof_area" | "horizontal_plan_area";
 export type QuantitySource = "roof_squares" | "pitch_area_squares" | "roof_area_sqft" | "eaves_lf" | "rakes_lf" | "valleys_lf" | "hips_lf" | "ridges_lf" | "hips_and_ridges_lf" | "wall_transitions_lf" | "plumbing_vent_count" | "gooseneck_count" | "static_vent_count" | "additional_layers" | "additional_stories" | "explicit_lump_sum";
-export type RateClassification = "base_installation_labour" | "pitch_labour" | "pitch_surcharge" | "tear_off_labour" | "additional_layer_labour" | "eaves_labour" | "rake_labour" | "ridge_labour" | "hip_labour" | "valley_labour" | "wall_flashing_labour" | "plumbing_boot_labour" | "gooseneck_labour" | "delivery" | "disposal" | "equipment" | "mobilization" | "site_control" | "project_management" | "travel" | "hotel" | "custom";
+export type RateClassification = "base_installation_labour" | "pitch_labour" | "pitch_surcharge" | "tear_off_labour" | "additional_layer_labour" | "eaves_labour" | "rake_labour" | "ridge_labour" | "hip_labour" | "valley_labour" | "wall_flashing_labour" | "plumbing_boot_labour" | "gooseneck_labour" | "delivery" | "disposal" | "equipment" | "mobilization" | "site_control" | "project_management" | "travel" | "hotel" | "product_install_rider" | "custom";
 export type PitchInput = { rise: number; run: number; ratio: string; degrees: number; multiplier: number };
 export type PitchAreaRow = { id: string; pitch: PitchInput; squareFootage: number; areaEntryType: AreaEntryType; wasteOverride?: number | null; note?: string; includeStatus: "included" | "excluded"; displayOrder: number };
 export type RoofStructure = {
@@ -115,6 +115,21 @@ function ventQuantityForStructures(structures: RoofStructure[], totals: Structur
 }
 function defaultPitchLabourRate(rise: number) { if (rise <= 1) return 390; if (rise <= 6) return 130; if (rise === 7) return 140; if (rise === 8) return 150; if (rise === 9) return 160; if (rise === 10) return 170; if (rise === 11) return 180; if (rise === 12) return 190; if (rise <= 14) return 210; return 230; }
 function automaticPitchLabour(structures: RoofStructure[]) { return round(structures.reduce((sum, s) => sum + s.pitchAreas.reduce((rowSum, row) => row.includeStatus === "excluded" ? rowSum : rowSum + round(actualArea(row) / 100) * defaultPitchLabourRate(Math.round(row.pitch.rise)), 0), 0)); }
+function productInstallRiderPerSquare(systemSnapshot: RoofingSystem, structure: RoofStructure) {
+  const searchable = [systemSnapshot.productName, ...Object.values(systemSnapshot.components).map(c => c.label)].join(" ").toLowerCase();
+  if (!/euroshield/.test(searchable)) return 0;
+  if (structure.measurements.complexity === "complex") return 100;
+  if (structure.measurements.complexity === "moderate") return 75;
+  return 50;
+}
+function productInstallRiderRows(systemSnapshot: RoofingSystem, structures: RoofStructure[], totals: StructureTotals[]) {
+  return structures.flatMap(s => {
+    const rate = productInstallRiderPerSquare(systemSnapshot, s);
+    const structureTotals = totals.find(t => t.structureId === s.id);
+    const appliedQuantity = structureTotals?.totalSquares ?? 0;
+    return rate > 0 && appliedQuantity > 0 ? [{ rateItemId: `${systemSnapshot.tier}-${s.id}-product-install-rider`, trade: "roofing", rateType: "labour", name: `${systemSnapshot.productName} material install rider`, rate, unit: "square", sourceReference: null, appliedQuantity, extension: round(appliedQuantity * rate), classification: "product_install_rider" as RateClassification, quantitySource: "roof_squares" as QuantitySource, applicabilityReason: `${systemSnapshot.productName} product-specific installation rider (${s.measurements.complexity})` }] : [];
+  });
+}
 function quantityFromSource(source: QuantitySource, s: RoofStructure, totals: StructureTotals, row?: PitchAreaRow, explicit?: number | null): number {
   if (source === "pitch_area_squares") return row ? round(actualArea(row) / 100) : 0;
   if (source === "roof_squares") return totals.totalSquares;
@@ -204,8 +219,10 @@ export function calculateSystem(measurements: RoofingMeasurements, snapshot: Roo
     if (extension !== null) material += extension;
   }
   const rateResult = rateRows(systemSnapshot, baseStructures, structureTotals);
-  if (systemSnapshot.rateTraces) systemSnapshot.rateTraces = rateResult.rows;
-  const labour = rateResult.rows.length ? rateResult.rows.reduce((sum,item)=>sum+item.extension,0) : automaticPitchLabour(baseStructures);
+  const riderRows = productInstallRiderRows(systemSnapshot, baseStructures, structureTotals);
+  if (systemSnapshot.rateTraces || riderRows.length) systemSnapshot.rateTraces = [...rateResult.rows, ...riderRows];
+  const baseLabour = rateResult.rows.length ? rateResult.rows.reduce((sum,item)=>sum+item.extension,0) : automaticPitchLabour(baseStructures);
+  const labour = baseLabour + riderRows.reduce((sum,item)=>sum+item.extension,0);
   const disposal = round(squares * 25);
   const delivery = round(500 + systemSnapshot.components.fieldShingles.quantity * 2.25);
   const adjustments = systemSnapshot.pitchAdjustment + systemSnapshot.heightAdjustment + systemSnapshot.complexityAdjustment;
@@ -216,7 +233,7 @@ export function calculateSystem(measurements: RoofingMeasurements, snapshot: Roo
   const gst = beforeTax * GST_RATE;
   const total = beforeTax + gst;
   const breakdown = { material: round(material), labour: round(labour), disposal, delivery, adjustments, subtotal: round(subtotal), markup: round(markup), beforeTax: round(beforeTax), gst: round(gst), total: round(total) };
-  return { system: systemSnapshot, breakdown, calculatedPrice: breakdown.total, finalPrice: breakdown.total, override: null, structureTotals, pricingAudit: { materialRows, rateRows: rateResult.rows, structureTotals, warnings: [...structureTotals.flatMap(t=>t.warnings), ...materialRows.filter(r=>r.warning).map(r=>`${r.component}: ${r.warning}`)], preventedRates: rateResult.preventedRates } };
+  return { system: systemSnapshot, breakdown, calculatedPrice: breakdown.total, finalPrice: breakdown.total, override: null, structureTotals, pricingAudit: { materialRows, rateRows: [...rateResult.rows, ...riderRows], structureTotals, warnings: [...structureTotals.flatMap(t=>t.warnings), ...materialRows.filter(r=>r.warning).map(r=>`${r.component}: ${r.warning}`)], preventedRates: rateResult.preventedRates } };
 }
 
 export function applyManualOverride(option: CalculatedOption, newValue: number, reason: string, user: string, timestamp = new Date().toISOString()): CalculatedOption {
