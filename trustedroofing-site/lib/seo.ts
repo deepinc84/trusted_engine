@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 export const SITE_URL = "https://www.trustedroofingcalgary.com";
+export const DEFAULT_SOCIAL_IMAGE = "/opengraph-image";
 
 export function canonicalUrl(path = "") {
   return `${SITE_URL}${path}`;
@@ -20,7 +21,7 @@ export function buildMetadata({
   imagePath?: string;
 }): Metadata {
   const fullTitle = title;
-  const imageUrl = imagePath ? canonicalUrl(imagePath) : undefined;
+  const imageUrl = canonicalUrl(imagePath ?? DEFAULT_SOCIAL_IMAGE);
 
   return {
     title: fullTitle,
@@ -33,13 +34,13 @@ export function buildMetadata({
       description,
       url: canonicalUrl(path),
       siteName: "Trusted Roofing & Exteriors",
-      images: imageUrl ? [{ url: imageUrl }] : undefined
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: "Trusted Roofing & Exteriors in Calgary" }]
     },
     twitter: {
-      card: imageUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title: fullTitle,
       description,
-      images: imageUrl ? [imageUrl] : undefined
+      images: [imageUrl]
     }
   };
 }

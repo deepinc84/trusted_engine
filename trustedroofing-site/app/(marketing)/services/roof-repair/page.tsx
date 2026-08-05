@@ -80,6 +80,10 @@ export default async function RoofRepairPage() {
         </PageContainer>
       </section>
 
+      <section className="ui-page-section ui-page-section--soft">
+        <PageContainer><article className="ui-card"><h2>Roof Rejuvenation After Necessary Repairs</h2><p>Some roofs require isolated repairs but may not need immediate replacement. Once missing shingles, flashing issues, exposed fasteners or localized defects are corrected, the remaining asphalt roof may qualify for <Link href="/services/roof-rejuvenation">roof rejuvenation in Calgary</Link>.</p><Link className="button" href="/online-estimate?intent=roof-rejuvenation">Compare Repair, Rejuvenation and Replacement</Link></article></PageContainer>
+      </section>
+
       <section className="ui-page-section">
         <PageContainer>
           <article className="ui-card">

@@ -86,7 +86,7 @@ export default async function AdminDashboardPage() {
           return (
             <article key={project.id} className="admin-project-card">
               <div className="admin-card-media">
-                <Image src={image} alt="" width={640} height={420} />
+                <Image src={image} alt="" width={640} height={420} sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw" quality={75} unoptimized={image.endsWith(".svg")} />
                 <span className={`admin-status-pill ${statusClass}`}>{status === "published" ? "Geo-post live" : status === "missing" ? "No geo-post" : `Geo-post ${status}`}</span>
               </div>
               <div className="admin-project-card__body">
