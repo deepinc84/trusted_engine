@@ -10,6 +10,7 @@ import {
 import { sendQuoteEventCreatedEmail } from "@/lib/email";
 import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
+import { calculateRoofRejuvenationQuote } from "@/lib/roof-rejuvenation";
 
 type EstimateBody = {
   address?: string;
@@ -1036,6 +1037,10 @@ export async function POST(request: Request) {
 
   const usingExperimental = Boolean(testMode && experimentalModel?.isUsable && experimentalModel.value);
   const finalModel = usingExperimental ? experimentalModel!.value! : legacyModel;
+  const rejuvenation = calculateRoofRejuvenationQuote({
+    roofAreaSqft: finalModel.ranges.roofAreaSqft,
+    pitchDegrees: finalModel.ranges.pitchDegrees
+  });
 
   const selectedQuotedRange = serviceScope === "vinyl_siding"
     ? finalModel.extras.sidingVinyl
@@ -1091,7 +1096,8 @@ export async function POST(request: Request) {
           serviceScope,
           requestedScopes,
           selectedQuotedRange,
-          roofRange: finalModel.ranges.good
+          roofRange: finalModel.ranges.good,
+          rejuvenation
         },
         requestedScopes,
         serviceType
@@ -1154,6 +1160,7 @@ export async function POST(request: Request) {
     roofSquares: finalModel.ranges.roofSquares,
     pitchDegrees: finalModel.ranges.pitchDegrees,
     pitchRatio: degreesToPitchRatio(finalModel.ranges.pitchDegrees),
+    rejuvenation,
     dataSource: estimateResult.dataSource,
     dataSourceLabel: dataSourceLabel(estimateResult.dataSource),
     areaSource: estimateResult.areaSource,

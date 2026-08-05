@@ -36,6 +36,8 @@ export default function WhyTrusted() {
               src="https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=1000&q=80&auto=format&fit=crop"
               alt="Calgary exterior project"
               fill
+              sizes="(max-width: 900px) 100vw, 50vw"
+              quality={75}
             />
           </div>
         </div>

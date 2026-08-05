@@ -31,7 +31,15 @@ const nextConfig = {
   // Lint runs as an explicit required deployment check before the build.
   eslint: { ignoreDuringBuilds: true },
   images: {
-    remotePatterns
+    remotePatterns,
+    // Keep optimized derivatives reusable for at least 31 days on Vercel.
+    minimumCacheTTL: 31 * 24 * 60 * 60,
+    // AVIF creates a second derivative family for every width/quality pair. WebP
+    // provides the intended bandwidth reduction without doubling cache writes.
+    formats: ["image/webp"],
+    // Match the site's actual breakpoints rather than Next's broader defaults.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1600, 1920],
+    imageSizes: [32, 48, 64, 96, 128, 256, 384]
   },
   async redirects() {
     return [

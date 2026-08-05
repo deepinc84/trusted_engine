@@ -145,6 +145,8 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
                             width={960}
                             height={720}
                             style={{ width: "100%", height: "auto", borderRadius: 12 }}
+                            sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
+                            quality={75}
                           />
                           <p style={{ margin: "10px 0 6px", fontWeight: 600, fontSize: 12, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--color-primary)" }}>
                             {group.label}
@@ -171,6 +173,8 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
                 width={960}
                 height={720}
                 style={{ width: "100%", height: "auto", borderRadius: 12 }}
+                sizes="(max-width: 1000px) 100vw, 960px"
+                unoptimized
               />
             </article>
           )}

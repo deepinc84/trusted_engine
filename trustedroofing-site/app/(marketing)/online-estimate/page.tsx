@@ -70,6 +70,7 @@ export default function QuotePage() {
           fill
           sizes="100vw"
           priority
+          quality={75}
         />
         <div className="online-estimate-hero__overlay" />
         <PageContainer>
