@@ -79,14 +79,14 @@ export default function BlogArticleTemplate({ article }: { article: BlogArticleD
       <section className={styles.section}>
         <div className={styles.shell}>
           <div className={styles.heroImageWrap}>
-            <Image className={styles.heroImage} src={article.heroImage} alt={article.heroAlt} width={1240} height={620} priority />
+            <Image className={styles.heroImage} src={article.heroImage} alt={article.heroAlt} width={1240} height={620} priority sizes="(max-width: 1280px) 100vw, 1240px" quality={75} />
           </div>
           <article style={{ maxWidth: 860, margin: "0 auto", fontSize: 17, lineHeight: 1.75 }}>
             {article.sections.map((section) => (
               <section key={section.heading} style={{ marginBottom: 42 }}>
                 {section.image ? (
                   <figure style={{ margin: "0 0 22px" }}>
-                    <Image className={styles.inlineImage} src={section.image.src} alt={section.image.alt} width={860} height={420} />
+                    <Image className={styles.inlineImage} src={section.image.src} alt={section.image.alt} width={860} height={420} sizes="(max-width: 900px) 100vw, 860px" quality={75} />
                     {section.image.caption ? <figcaption className={styles.imgCap}>{section.image.caption}</figcaption> : null}
                   </figure>
                 ) : null}

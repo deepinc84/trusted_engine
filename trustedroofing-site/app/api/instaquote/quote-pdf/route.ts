@@ -42,6 +42,12 @@ type EstimatePayload = {
     good?: { low?: number; high?: number };
     eaves?: { low?: number; high?: number };
   };
+  rejuvenation?: {
+    roofAreaSqft: number;
+    pitchRatio: string;
+    ratePerSqft: number;
+    price: number;
+  };
   solarSnapshot?: {
     buildingInsights?: Record<string, unknown> | null;
     dataLayers?: Record<string, unknown> | null;
@@ -194,6 +200,13 @@ function materialConfig(scope: string, sidingMaterial: "vinyl" | "hardie") {
 
 function otherOptions(scope: string, estimate: EstimatePayload) {
   const ranges = [
+    ...(scope === "roofing" && estimate.rejuvenation ? [
+      { key: "rejuvenation-price", title: "Fixed roof rejuvenation price", value: `${fmtCurrency(estimate.rejuvenation.price)} plus GST` },
+      { key: "rejuvenation-measurement", title: "Measured area, pitch and treatment rate", value: `${Math.round(estimate.rejuvenation.roofAreaSqft).toLocaleString()} sq. ft. | ${estimate.rejuvenation.pitchRatio} | $${estimate.rejuvenation.ratePerSqft.toFixed(2)}/sq. ft.` },
+      { key: "rejuvenation-difference", title: "Potential price difference", value: `${fmtCurrency((estimate.ranges?.good?.low ?? 0) - estimate.rejuvenation.price)} - ${fmtCurrency((estimate.ranges?.good?.high ?? 0) - estimate.rejuvenation.price)}` },
+      { key: "rejuvenation-review", title: "Condition review required", value: "Approval or disqualification only. Repairs and cleaning separate." },
+      { key: "rejuvenation-link", title: "Learn about roof rejuvenation", value: "trustedroofingcalgary.com/services/roof-rejuvenation" }
+    ] : []),
     {
       key: "roofing",
       title: "Roofing planning range",

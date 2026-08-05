@@ -33,6 +33,9 @@ export default function GeoPostCard({ geoPost, eagerImage = false }: { geoPost: 
         height={400}
         className="ui-card--project__image"
         loading={eagerImage ? "eager" : "lazy"}
+        sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
+        quality={75}
+        unoptimized={heroImage.endsWith(".svg")}
       />
       <div className="seo-card__content">
         <span className="ui-pill">{geoPost.service_slug ?? "project"}</span>

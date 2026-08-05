@@ -66,6 +66,10 @@ export default async function ServiceAreasPage() {
               <HeatMap counts={heat} />
             </article>
           </div>
+          <article className="ui-card" style={{ marginTop: "1.5rem" }}>
+            <h2>Roof preservation across Calgary</h2>
+            <p>Aging asphalt shingles in any of our service areas may be suitable for a condition review. Learn about <Link href="/services/roof-rejuvenation">roof rejuvenation in Calgary</Link> without creating separate neighbourhood treatment pages.</p>
+          </article>
 
           <section className="mt-10 space-y-6">
             <h2>Calgary Service Areas for Roofing, Siding, and Eavestrough</h2>
