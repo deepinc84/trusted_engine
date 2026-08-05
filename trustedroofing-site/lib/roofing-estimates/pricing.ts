@@ -53,7 +53,7 @@ function system(tier: Tier, tierLabel: string, productName: string, summary: str
     vents: component("Static vents", "each", "static_vent_count"), goosenecks: component("Goosenecks", "each", "gooseneck_count"), plumbingBoots: component("Plumbing boots", "each", "plumbing_vent_count")
   }, wasteFactor: 0.1, labourRatePerSquare: 0, pitchAdjustment: 0, heightAdjustment: 0, complexityAdjustment: 0,
   disposal: 0, delivery: 0, markupPercent: 0, warrantyWording: "Warranty wording requires estimator review.",
-  customerSummary: summary, requiresWorkbookMapping: true };
+  customerSummary: summary, requiresWorkbookMapping: true, ventType: "pro50" };
 }
 
 /** Zero-valued intentionally: map the approved Mega workbook before production pricing. */
@@ -113,6 +113,8 @@ function ventQuantityForStructures(structures: RoofStructure[], totals: Structur
   const area = structures.reduce((sum, s) => sum + (totals.find(t => t.structureId === s.id)?.totalActualRoofArea ?? 0), 0);
   return area > 0 ? Math.ceil(area / coverage) : 0;
 }
+function defaultPitchLabourRate(rise: number) { if (rise <= 1) return 390; if (rise <= 6) return 130; if (rise === 7) return 140; if (rise === 8) return 150; if (rise === 9) return 160; if (rise === 10) return 170; if (rise === 11) return 180; if (rise === 12) return 190; if (rise <= 14) return 210; return 230; }
+function automaticPitchLabour(structures: RoofStructure[]) { return round(structures.reduce((sum, s) => sum + s.pitchAreas.reduce((rowSum, row) => row.includeStatus === "excluded" ? rowSum : rowSum + round(actualArea(row) / 100) * defaultPitchLabourRate(Math.round(row.pitch.rise)), 0), 0)); }
 function quantityFromSource(source: QuantitySource, s: RoofStructure, totals: StructureTotals, row?: PitchAreaRow, explicit?: number | null): number {
   if (source === "pitch_area_squares") return row ? round(actualArea(row) / 100) : 0;
   if (source === "roof_squares") return totals.totalSquares;
@@ -194,8 +196,8 @@ export function calculateSystem(measurements: RoofingMeasurements, snapshot: Roo
   const materialRows: any[] = [];
   for (const key of Object.keys(systemSnapshot.components) as ComponentKey[]) {
     const item = systemSnapshot.components[key];
-    if(item.catalogueItemId){const required=key==="fieldShingles"?squares:key==="vents"&&systemSnapshot.ventType?ventQuantityForStructures(baseStructures,structureTotals,systemSnapshot.ventType):defaults[key],waste=item.wasteFactor??(["fieldShingles","starterShingles","ridgeCaps"].includes(key)?systemSnapshot.wasteFactor:0),after=required*(1+waste),bundle=/bundles?\s*(per|\/)\s*square/i.test(item.coverageUnit??"");const raw=item.coverage>0?(bundle?required*item.coverage*(1+waste):after/item.coverage):null;const units=raw===null?null:Math.max(required>0?1:0,Math.ceil(raw));item.quantity=units??0;const extension=units===null?null:units*item.rate;materialRows.push({component:key,catalogueItemId:item.catalogueItemId,product:item.label,priceUnit:item.unit,coverage:item.coverage,coverageUnit:item.coverageUnit,quantitySource:key==="vents"&&systemSnapshot.ventType?`vent_type_${systemSnapshot.ventType}`:item.quantitySource??"component_rule",measuredRequirement:required,waste,adjustedRequirement:after,rawUnits:raw,roundedUnits:units,unitPrice:item.rate,extension,warning:item.coverage<=0?"Missing or invalid coverage.":undefined});if(systemSnapshot.materialTraces?.[key])systemSnapshot.materialTraces[key]={...systemSnapshot.materialTraces[key],requiredQuantity:required,requiredAfterWaste:after,rawCalculatedUnits:raw,orderQuantity:units,extension} as any;if(units!==null)material+=units*item.rate;continue}
-    if (item.quantity <= 0) item.quantity = key==="vents"&&systemSnapshot.ventType?ventQuantityForStructures(baseStructures,structureTotals,systemSnapshot.ventType):defaults[key];
+    if(item.catalogueItemId){const required=key==="fieldShingles"?squares:key==="vents"?ventQuantityForStructures(baseStructures,structureTotals,systemSnapshot.ventType):defaults[key],waste=item.wasteFactor??(["fieldShingles","starterShingles","ridgeCaps"].includes(key)?systemSnapshot.wasteFactor:0),after=required*(1+waste),bundle=/bundles?\s*(per|\/)\s*square/i.test(item.coverageUnit??"");const raw=item.coverage>0?(bundle?required*item.coverage*(1+waste):after/item.coverage):null;const units=raw===null?null:Math.max(required>0?1:0,Math.ceil(raw));item.quantity=units??0;const extension=units===null?null:units*item.rate;materialRows.push({component:key,catalogueItemId:item.catalogueItemId,product:item.label,priceUnit:item.unit,coverage:item.coverage,coverageUnit:item.coverageUnit,quantitySource:key==="vents"?`vent_type_${systemSnapshot.ventType}`:item.quantitySource??"component_rule",measuredRequirement:required,waste,adjustedRequirement:after,rawUnits:raw,roundedUnits:units,unitPrice:item.rate,extension,warning:item.coverage<=0?"Missing or invalid coverage.":undefined});if(systemSnapshot.materialTraces?.[key])systemSnapshot.materialTraces[key]={...systemSnapshot.materialTraces[key],requiredQuantity:required,requiredAfterWaste:after,rawCalculatedUnits:raw,orderQuantity:units,extension} as any;if(units!==null)material+=units*item.rate;continue}
+    if (item.quantity <= 0) item.quantity = key==="vents"?ventQuantityForStructures(baseStructures,structureTotals,systemSnapshot.ventType):defaults[key];
     const units = item.coverage > 0 ? Math.ceil(item.quantity / item.coverage) : null;
     const extension = units === null ? null : units * item.rate;
     materialRows.push({component:key,product:item.label,priceUnit:item.unit,coverage:item.coverage,quantitySource:item.quantitySource??"component_rule",measuredRequirement:item.quantity,waste:0,adjustedRequirement:item.quantity,rawUnits:units,roundedUnits:units,unitPrice:item.rate,extension,warning:item.coverage<=0?"Missing or invalid coverage.":undefined});
@@ -203,15 +205,17 @@ export function calculateSystem(measurements: RoofingMeasurements, snapshot: Roo
   }
   const rateResult = rateRows(systemSnapshot, baseStructures, structureTotals);
   if (systemSnapshot.rateTraces) systemSnapshot.rateTraces = rateResult.rows;
-  const labour = rateResult.rows.length ? rateResult.rows.reduce((sum,item)=>sum+item.extension,0) : squares * systemSnapshot.labourRatePerSquare;
+  const labour = rateResult.rows.length ? rateResult.rows.reduce((sum,item)=>sum+item.extension,0) : automaticPitchLabour(baseStructures);
+  const disposal = round(squares * 25);
+  const delivery = round(500 + systemSnapshot.components.fieldShingles.quantity * 2.25);
   const adjustments = systemSnapshot.pitchAdjustment + systemSnapshot.heightAdjustment + systemSnapshot.complexityAdjustment;
-  const subtotal = material + labour + systemSnapshot.disposal + systemSnapshot.delivery + adjustments;
+  const subtotal = material + labour + disposal + delivery + adjustments;
   const strategy=systemSnapshot.pricingStrategy??{type:"fixed_profit" as const,value:100};
   let beforeTax=subtotal+100;if(strategy.type==="cost_plus_percentage")beforeTax=subtotal*(1+strategy.value/100);else if(strategy.type==="target_margin")beforeTax=strategy.value>=100?subtotal:subtotal/(1-strategy.value/100);else if(strategy.type==="strategic_price")beforeTax=strategy.value;else beforeTax=subtotal+strategy.value;
   const markup = beforeTax-subtotal;
   const gst = beforeTax * GST_RATE;
   const total = beforeTax + gst;
-  const breakdown = { material: round(material), labour: round(labour), disposal: systemSnapshot.disposal, delivery: systemSnapshot.delivery, adjustments, subtotal: round(subtotal), markup: round(markup), beforeTax: round(beforeTax), gst: round(gst), total: round(total) };
+  const breakdown = { material: round(material), labour: round(labour), disposal, delivery, adjustments, subtotal: round(subtotal), markup: round(markup), beforeTax: round(beforeTax), gst: round(gst), total: round(total) };
   return { system: systemSnapshot, breakdown, calculatedPrice: breakdown.total, finalPrice: breakdown.total, override: null, structureTotals, pricingAudit: { materialRows, rateRows: rateResult.rows, structureTotals, warnings: [...structureTotals.flatMap(t=>t.warnings), ...materialRows.filter(r=>r.warning).map(r=>`${r.component}: ${r.warning}`)], preventedRates: rateResult.preventedRates } };
 }
 
