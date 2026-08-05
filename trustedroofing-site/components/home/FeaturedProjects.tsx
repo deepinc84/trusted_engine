@@ -28,7 +28,7 @@ export default function FeaturedProjects({ projects }: { projects: HomeProject[]
               <article key={project.id} className="homev3-project-card">
                 <Link href={`/projects/${project.slug}`} className="homev3-project-card__image-link" aria-label={`Open ${project.title}`}>
                   <div className="homev3-project-card__image">
-                    <Image src={project.image} alt={project.title} fill />
+                    <Image src={project.image} alt={project.title} fill sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw" quality={75} unoptimized={project.image.endsWith(".svg")} />
                     <span>{project.neighborhood}</span>
                   </div>
                 </Link>

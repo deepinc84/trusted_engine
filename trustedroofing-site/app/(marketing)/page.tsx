@@ -6,6 +6,7 @@ import FeaturedProjects from "@/components/home/FeaturedProjects";
 import ProofStrip from "@/components/home/ProofStrip";
 import ServiceAreas from "@/components/home/ServiceAreas";
 import ServicesGrid from "@/components/home/ServicesGrid";
+import RoofRejuvenationPromo from "@/components/home/RoofRejuvenationPromo";
 import WhyTrusted from "@/components/home/WhyTrusted";
 import type { HomeActivity, HomeMetric, HomeProject, HomeService } from "@/components/home/types";
 import { countLiveQuoteSignals, listProjects, listServices } from "@/lib/db";
@@ -36,6 +37,8 @@ function HomeHero({ metrics, quoteSignals }: { metrics: HomeMetric[]; quoteSigna
         fill
         className="homev3-hero__bg"
         priority
+        sizes="100vw"
+        quality={75}
       />
       <div className="homev3-hero__overlay" />
       <div className="homev3-container homev3-hero__content home-seo-hero">
@@ -255,6 +258,7 @@ export default async function HomePage() {
       `}</style>
       <HomeHero metrics={metrics} quoteSignals={quoteSignals} />
       <ProofStrip metrics={metrics} />
+      <RoofRejuvenationPromo />
       <RoofingContractorsSection />
       <ServicesGrid services={homeServices} />
       <ActivitySection activity={activity} />

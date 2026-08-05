@@ -9,7 +9,7 @@ export default function SiteFooter() {
         <div className="site-footer__brand-block">
           <div className="site-footer__brand">
             {/* Keep original footer logo mark per stakeholder request. */}
-            <Image src="/white-transparent-t.png" alt="Trusted" width={56} height={56} className="site-footer__logo" />
+            <Image src="/white-transparent-t.png" alt="Trusted" width={56} height={56} className="site-footer__logo" unoptimized />
             <div>
               <strong className="site-footer__brand-name">
                 <BrandText className="brand-text--footer" descriptor="Roofing & Exteriors" />
@@ -26,6 +26,7 @@ export default function SiteFooter() {
           <h4>Services</h4>
           <Link href="/services/roof-replacement">Roof Replacement</Link>
           <Link href="/services/roof-repair">Roof Repair</Link>
+          <Link href="/services/roof-rejuvenation">Roof Rejuvenation</Link>
           <Link href="/services/roof-inspection-maintenance">Roof Inspection & Maintenance</Link>
           <Link href="/services/roofing">Roofing Services</Link>
           <Link href="/services/siding">Siding</Link>
