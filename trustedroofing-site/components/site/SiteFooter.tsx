@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import BrandText from "@/components/BrandText";
+import { GOOGLE_BUSINESS_URL } from "@/lib/organization";
 
 export default function SiteFooter() {
   return (
@@ -60,6 +61,7 @@ export default function SiteFooter() {
           <h4>Contact</h4>
           <a href="tel:5872883351">587-288-3351</a>
           <a href="mailto:info@trustedexteriors.ca">info@trustedexteriors.ca</a>
+          <a href={GOOGLE_BUSINESS_URL} target="_blank" rel="noreferrer">Google Business Profile</a>
           <Link href="/online-estimate">Get a Roofing Quote</Link>
         </div>
       </div>

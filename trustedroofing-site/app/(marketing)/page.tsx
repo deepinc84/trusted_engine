@@ -22,9 +22,9 @@ import { formatRelativeTime } from "@/lib/time";
 export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
-  title: "Calgary Roofing Company | Roofers & Estimates",
+  title: "Calgary Roofing Company | Trusted Roofing & Exteriors",
   description:
-    "Trusted Roofing & Exteriors is a Calgary roofing company helping homeowners with roof replacement, roof repair, siding, eavestrough, soffit, fascia, and instant online estimates.",
+    "Trusted Roofing & Exteriors provides roof replacement, repairs, siding and eavestrough services with fast online estimates for Calgary homeowners.",
   path: "/"
 });
 
@@ -44,7 +44,7 @@ function HomeHero({ metrics, quoteSignals }: { metrics: HomeMetric[]; quoteSigna
       <div className="homev3-container homev3-hero__content home-seo-hero">
         <div>
           <p className="homev3-eyebrow">Calgary roofing company</p>
-          <h1>Calgary Roofing Company for Roof Replacement, Repairs & Exterior Estimates</h1>
+          <h1>Calgary Roof Replacement, Repair & Exterior Estimates</h1>
           <p className="homev3-hero__sub">
             Compare roofing, siding, and eavestrough options with a Calgary roofing contractor that
             gives homeowners fast online estimates, recent project proof, and clear follow-up when

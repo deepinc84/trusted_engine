@@ -1,5 +1,8 @@
 import { canonicalUrl } from "./seo";
 
+export const GOOGLE_BUSINESS_URL =
+  "https://www.google.com/maps/place/Trusted+Roofing+and+Exteriors/@51.0276233,-114.087835,10z/data=!3m1!4b1!4m6!3m5!1s0x84f684b81f4abb19:0x8c7ab4360c4bc567!8m2!3d51.0276233!4d-114.087835!16s%2Fg%2F11z2bxxb2y";
+
 export const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -9,7 +12,28 @@ export const organizationSchema = {
   logo: canonicalUrl("/transparent-logo.png"),
   telephone: "+1-587-288-3351",
   areaServed: ["Calgary, AB"],
-  sameAs: [
-    "https://www.google.com/maps/place/Trusted+Roofing+and+Exteriors/@51.0276233,-114.087835,10z/data=!3m1!4b1!4m6!3m5!1s0x84f684b81f4abb19:0x8c7ab4360c4bc567!8m2!3d51.0276233!4d-114.087835!16s%2Fg%2F11z2bxxb2y"
-  ]
+  sameAs: [GOOGLE_BUSINESS_URL]
+};
+
+export const localBusinessSchema = {
+  "@context": "https://schema.org",
+  "@type": "RoofingContractor",
+  "@id": `${canonicalUrl("")}#localbusiness`,
+  name: organizationSchema.name,
+  url: organizationSchema.url,
+  logo: organizationSchema.logo,
+  telephone: organizationSchema.telephone,
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Calgary",
+    addressRegion: "AB",
+    addressCountry: "CA"
+  },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 51.0276233,
+    longitude: -114.087835
+  },
+  areaServed: organizationSchema.areaServed,
+  sameAs: organizationSchema.sameAs
 };
