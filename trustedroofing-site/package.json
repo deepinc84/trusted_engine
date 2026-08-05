@@ -8,10 +8,14 @@
     "start": "next start",
     "lint": "ESLINT_USE_FLAT_CONFIG=true eslint scripts/check-merge-conflicts.js next.config.js && tsc --noEmit",
     "type-check": "tsc --noEmit",
-    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test -r ts-node/register tests/*.test.ts",
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/*.test.ts",
     "sitemap": "ts-node --esm scripts/generate-sitemap.ts",
     "guard:conflicts": "node scripts/check-merge-conflicts.js",
-    "verify:production-readiness": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' ts-node scripts/verify-production-readiness.ts"
+    "verify:production-readiness": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' ts-node scripts/verify-production-readiness.ts",
+    "seed:demo-estimator": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/demo-estimator.ts",
+    "cleanup:demo-estimator": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/demo-estimator.ts --cleanup",
+    "test:integration": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/assert-integration-environment.ts && TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/integration-workflow.integration.ts",
+    "verify:deployment-bundles": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/integration-stabilization.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.1",
