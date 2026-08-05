@@ -1,0 +1,1 @@
+import{NextRequest,NextResponse}from"next/server";import{getServiceClient}from"@/lib/db";export async function POST(r:NextRequest,{params}:{params:{id:string}}){const db=getServiceClient();if(db)await db.from("estimates").update({archived:true,workflow_status:"archived"}).eq("id",params.id);return NextResponse.redirect(new URL("/admin/jobs",r.url),303)}

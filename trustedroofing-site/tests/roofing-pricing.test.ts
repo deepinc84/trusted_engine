@@ -1,0 +1,13 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { applyManualOverride, calculateSystem, DEFAULT_ROOFING_SYSTEMS, GST_RATE, type RoofingMeasurements } from "../lib/roofing-estimates/pricing";
+
+const measurements: RoofingMeasurements = { roofAreaSqft: 2000, squares: 20, pitch: "6/12", complexity: "moderate", existingLayers: 1, eaves: 140, rakes: 80, valleys: 35, hips: 20, ridges: 45, wallTransitions: 10, plumbingVents: 2, goosenecks: 1, staticVents: 5, stories: 2, deckingAllowance: 500, accessDifficulty: "standard", internalNotes: "test" };
+function configured(index: number) { const system = structuredClone(DEFAULT_ROOFING_SYSTEMS[index]); system.components.fieldShingles.rate = 100; system.labourRatePerSquare = 50; system.disposal = 300; system.delivery = 200; system.markupPercent = 10; return system; }
+
+for (const [index, name] of ["Good", "Better", "Best"].entries()) test(`${name} calculation`, () => { const result = calculateSystem(measurements, configured(index)); assert.equal(result.system.tierLabel, name); assert.ok(result.calculatedPrice > 0); assert.equal(result.breakdown.total, result.finalPrice); });
+test("all tiers calculate from shared measurement input", () => { const results = DEFAULT_ROOFING_SYSTEMS.map((_, i) => calculateSystem(measurements, configured(i))); assert.deepEqual(results.map(r => r.system.components.fieldShingles.quantity), [22,22,22]); });
+test("system customization is estimate-local", () => { const custom = configured(0); custom.productName = "Estimate-only product"; calculateSystem(measurements, custom); assert.equal(DEFAULT_ROOFING_SYSTEMS[0].productName, "GAF Timberline HDZ"); });
+test("manual override records complete audit fields", () => { const base = calculateSystem(measurements, configured(0)); const overridden = applyManualOverride(base, 9999, "Approved rounding", "estimator@example.com", "2026-07-29T00:00:00.000Z"); assert.deepEqual(overridden.override, { originalValue: base.calculatedPrice, newValue: 9999, reason: "Approved rounding", user: "estimator@example.com", timestamp: "2026-07-29T00:00:00.000Z" }); assert.throws(() => applyManualOverride(base, 1, "", "user")); });
+test("GST is calculated after markup", () => { const result = calculateSystem(measurements, configured(1)); assert.equal(result.breakdown.gst, Math.round((result.breakdown.beforeTax * GST_RATE + Number.EPSILON) * 100) / 100); });
+test("calculation returns an independent system snapshot", () => { const source = configured(2); const result = calculateSystem(measurements, source); source.productName = "changed default later"; assert.equal(result.system.productName, "Malarkey Legacy"); });
