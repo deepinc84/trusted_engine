@@ -28,6 +28,8 @@ if (supabaseHostname) {
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Lint runs as an explicit required deployment check before the build.
+  eslint: { ignoreDuringBuilds: true },
   images: {
     remotePatterns
   },
