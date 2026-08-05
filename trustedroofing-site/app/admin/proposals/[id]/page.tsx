@@ -1,0 +1,1 @@
+import{notFound,redirect}from"next/navigation";import{getProposal}from"@/lib/proposals/repository";export default async function Page({params}:{params:{id:string}}){const p=await getProposal(params.id);if(!p)notFound();redirect(`/admin/jobs/${p.estimateId}?tab=proposal`)}

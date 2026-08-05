@@ -1,0 +1,1 @@
+export function streetViewUrl(address:string){const key=process.env.GOOGLE_SECRET_KEY;if(!key||!address.trim())return null;const q=new URLSearchParams({size:"1280x720",location:address,fov:"58",pitch:"-4",source:"outdoor",key});return `https://maps.googleapis.com/maps/api/streetview?${q}`}

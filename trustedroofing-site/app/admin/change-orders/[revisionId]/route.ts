@@ -1,0 +1,1 @@
+import{NextRequest,NextResponse}from"next/server";import{saveChangeOrder}from"@/lib/projects/repository";export async function PUT(r:NextRequest){try{return NextResponse.json(await saveChangeOrder(await r.json(),r.headers.get("x-admin-user")||"admin-token-user"))}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Save failed"},{status:400})}}
