@@ -64,10 +64,19 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     });
   }
 
+  const heroPhoto = selectHeroProjectPhoto(project.photos);
+  const imagePath = heroPhoto?.public_url ?? getPlaceholderProjectImage({
+    seed: project.slug,
+    neighborhood: project.neighborhood,
+    quadrant: project.quadrant,
+    city: project.city
+  });
+
   return buildMetadata({
     title: buildProjectMetadataTitle(project),
     description: project.summary,
-    path: `/projects/${project.slug}`
+    path: `/projects/${project.slug}`,
+    imagePath
   });
 }
 
