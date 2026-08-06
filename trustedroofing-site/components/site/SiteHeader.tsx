@@ -13,6 +13,7 @@ const serviceLinks = [
   { href: "/services/roofing", label: "Roofing" },
   { href: "/services/roof-replacement", label: "Roof Replacement" },
   { href: "/services/roof-repair", label: "Roof Repair" },
+  { href: "/services/roof-rejuvenation", label: "Roof Rejuvenation" },
   { href: "/services/roof-inspection-maintenance", label: "Roof Inspection & Maintenance" },
   { href: "/services/siding", label: "Siding" },
   { href: "/services/vinyl-siding", label: "Vinyl Siding" },
