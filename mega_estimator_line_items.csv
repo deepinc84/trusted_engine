@@ -1,0 +1,79 @@
+row,category,description,source_formula,asphalt_qty,euroshield_qty,option_a_product,option_a_coverage,option_a_waste,option_a_order_formula,option_a_asphalt_order,option_a_euroshield_order,option_a_asphalt_cost,option_a_euroshield_cost
+12,materials,GAF Timberline HDZ,Input!C3,3287.000001,3287.000001,GAF Timberline HDZ,3,1.08,"IF(D12<>0,D12,0)*IF(E12<>0,E12,1)*IF(F12<>0,F12,1)*IF(G12<>0,G12,1)*IF(H12<>0,H12,1)/IF(I12<>0,I12,1)",106.4988000324,141.9984000432,4287,15449
+13,materials,GAF Weatherblocker Starter Strip,SUM(Input!C25+Input!C26),306,306,GAF Weatherblocker Starter Strip,100,1.1,"IF(D13<>0,D13,0)*IF(E13<>0,E13,1)*IF(F13<>0,F13,1)*IF(G13<>0,G13,1)*IF(H13<>0,H13,1)/IF(I13<>0,I13,1)",3.3660000000000005,11.22,176,0
+14,materials,GAF Seal-A-Ridge,SUM(Input!C23),320,320,GAF Seal-A-Ridge,25,1.1,"IF(D14<>0,D14,0)*IF(E14<>0,E14,1)*IF(F14<>0,F14,1)*IF(G14<>0,G14,1)*IF(H14<>0,H14,1)/IF(I14<>0,I14,1)",14.080000000000002,35.2,735,2442
+15,materials,Specialty Starter Eave,SUM(Input!C26),259,259,Specialty Starter Eave,1,1.1,,284.90000000000003,8.555555555555557,0,477
+16,materials,Specialty Starter Rake,SUM(Input!C25),47,47,Specialty Starter Rake,1,1.1,,51.7,1.5525525525525528,0,87
+17,materials,Specialty Starter Valley,SUM(Input!C24)*2,306,306,Specialty Starter Valley,1,1.1,,336.6,8.415000000000001,0,469
+18,materials,"Resisto LB1236 36"" ",SUM(Input!C24+Input!C26*E18+Input!C27+(A21*(W21-1))),413,413,"Resisto LB1236 36"" ",65,1.02,"IF(D18<>0,D18,0)*IF(F18<>0,F18,1)*IF(G18<>0,G18,1)*IF(H18<>0,H18,1)/IF(I18<>0,I18,1)",6.480923076923077,6.480923076923077,428,518
+19,materials,TriBuilt Synthetic,SUM(A12-(A18*(W25-1))),2874.000001,2874.000001,TriBuilt Synthetic,1000,1.1,"IF(D19<>0,D19,0)*IF(E19<>0,E19,1)*IF(F19<>0,F19,1)*IF(G19<>0,G19,1)*IF(H19<>0,H19,1)/IF(I19<>0,I19,1)",3.1614000011,3.1614000011,229,474
+20,materials,"Drip Edge - 26ga - 1.5"" ",SUM(Input!C26),259,259,"Drip Edge - 26ga - 1.5"" ",10,1.15,,29.784999999999997,29.784999999999997,262,262
+21,materials,"Rake Edge - 26ga - 1"" ",SUM(Input!C25),47,47,"Rake Edge - 26ga - 1"" ",10,1.15,,5.404999999999999,5.404999999999999,40,40
+22,materials,"""W"" Valley Flashing - 26ga ",SUM(Input!C24),153,153,"""W"" Valley Flashing - 26ga ",10,1.15,,17.595,17.595,682,682
+23,materials,Transition Flashing,SUM(Input!C27),1,1,Transition Flashing,10,1.15,,0.11499999999999999,1.15,3,26
+24,materials,Step Flashing - 30 ga,SUM(Input!C32),53,53,Step Flashing - 30 ga,0.67,1.1,"IF(D24<>0,D24,0)*IF(E24<>0,E24,1)*IF(F24<>0,F24,1)*IF(G24<>0,G24,1)*IF(H24<>0,H24,1)/IF(I24<>0,I24,1)",116.60000000000001,116.60000000000001,78,78
+25,materials,Wall Flashing - 30ga,SUM(Input!C33),30,30,Wall Flashing - 30ga,10,,,3,3,38,38
+26,materials,Primex Gooseneck,SUM(Input!C28),3,3,Primex Gooseneck,1,,,3,3,57,300
+27,materials,WeatherPRO50,SUM(Input!C29),3287.000001,3287.000001,WeatherPRO50,200,1,,16.435000005,4.10875000125,205,760
+28,materials,WeatherPRO50,,0,0,WeatherPRO50,200,1,,0,0,0,0
+29,materials,"4"" Oatley",SUM(Input!C30),1,1,"4"" Oatley",1,,,1,1,8,8
+30,materials,"""B"" Vent - Chimney Rain Caps & S/C",SUM(Input!C31),3,3,"""B"" Vent - Chimney Rain Caps & S/C",1,,,3,3,66,66
+31,materials,"""B"" Vent - Flange",,,,"""B"" Vent - Flange",1,,,3,3,39,39
+32,materials,"""B"" Vent - Coller Flange",,,,"""B"" Vent - Coller Flange",1,,,3,3,39,39
+33,materials,Omniseal 410 Base (Mechanical),SUM(Input!C4:C6),4,4,Omniseal 410 Base (Mechanical),1,1.3,"IF(D33<>0,D33,0)*IF(E33<>0,E33,1)*IF(F33<>0,F33,1)*IF(G33<>0,G33,1)*IF(H33<>0,H33,1)/IF(I33<>0,I33,1)",2,2,282,282
+34,materials,Omniseal 420 Base (Self-adhered),,,,Omniseal 420 Base (Self-adhered),,1.3,"IF(D34<>0,D34,0)*IF(E34<>0,E34,1)*IF(F34<>0,F34,1)*IF(G34<>0,G34,1)*IF(H34<>0,H34,1)/IF(I34<>0,I34,1)",2,2,326,326
+35,materials,Omniseal 430 Cap Sheet,,,,Omniseal 430 Cap Sheet,,1.3,"IF(D35<>0,D35,0)*IF(E35<>0,E35,1)*IF(F35<>0,F35,1)*IF(G35<>0,G35,1)*IF(H35<>0,H35,1)/IF(I35<>0,I35,1)",1,1,182,182
+36,materials,Caulking,,,,Caulking,1,,,17.595,17.595,174,174
+37,materials,Screws,,,,Screws,1,,"IF(D37<>0,D37,0)*IF(E37<>0,E37,1)*IF(F37<>0,F37,1)*IF(G37<>0,G37,1)*IF(H37<>0,H37,1)/IF(I37<>0,I37,1)",0.55496000008,0.35774000002,43,28
+38,materials,Chimney Backpan,SUM(Input!C34),1,1,Chimney Backpan,1,,,1,1,57,57
+39,materials,Sheathing / Hot Roof / Skylights,,1,1,Sheathing / Hot Roof / Skylights,0,,,0,0,0,0
+40,labour,Installation,,,,Installation,,,,,,,
+43,labour, 0 or 1:12,A33,4,4, 0 or 1:12,0.0012169151198001475,,"IF(D43<>0,D43,0)*IF(E43<>0,E43,1)*IF(F43<>0,F43,1)*IF(G43<>0,G43,1)*IF(H43<>0,H43,1)/IF(I43<>0,I43,1)",0.05027676706001113,0.05631834499144559,26,38
+44,labour,0.09166666666666667,SUM(Input!C5),4,4,0.09166666666666667,0.0012169151198001475,,"IF(D44<>0,D44,0)*IF(E44<>0,E44,1)*IF(F44<>0,F44,1)*IF(G44<>0,G44,1)*IF(H44<>0,H44,1)/IF(I44<>0,I44,1)",0.05027676706001113,0.05631834499144559,9,13
+45,labour,0.13333333333333333,SUM(Input!C6),0,0,0.13333333333333333,0,,,0,0,0,0
+46,labour,0.175,SUM(Input!C7),0,0,0.175,0,,,0,0,0,0
+47,labour,0.216666666666667,SUM(Input!C8),94,94,0.216666666666667,0.028597505315303466,,,1.1815040259102616,1.3234811072989714,207,298
+48,labour,0.258333333333334,SUM(Input!C9),0,0,0.258333333333334,0,,,0,0,0,0
+49,labour,0.3,SUM(Input!C10),3156,3156,0.3,0.9601460295223164,,,39.66836921034878,44.43517419825058,8132,11331
+50,labour,0.341666666666667,SUM(Input!C11),0,0,0.341666666666667,0,,,0,0,0,0
+51,labour,0.383333333333334,SUM(Input!C12),33,33,0.383333333333334,0.010039549738351217,,,0.4147833282450918,0.46462634617942616,131,170
+52,labour,0.425,SUM(Input!C13),0,0,0.425,0,,,0,0,0,0
+53,labour,0.466666666666667,SUM(Input!C14),0,0,0.466666666666667,0,,,0,0,0,0
+54,labour,0.508333333333334,SUM(Input!C15),0,0,0.508333333333334,0,,,0,0,0,0
+55,labour,0.55,SUM(Input!C16),0,0,0.55,0,,,0,0,0,0
+56,labour,0.591666666666667,SUM(Input!C17),0,0,0.591666666666667,0,,,0,0,0,0
+57,labour,0.633333333333334,SUM(Input!C18),0,0,0.633333333333334,0,,,0,0,0,0
+58,labour,0.675,SUM(Input!C19),0,0,0.675,0,,,0,0,0,0
+59,labour,XX:12,SUM(Input!C20),0,0,XX:12,0,,,0,0,0,0
+60,labour,Chimney Work,,Change the value to the right from 0 to 1 to add line item work to the project.,Change the value to the right from 0 to 1 to add line item work to the project.,Chimney Work,1,,,1,1,150,150
+61,labour,Ground Drop,,,,Ground Drop,0,,,0,0,0,0
+62,labour,Ice & Water,,,,Ice & Water,0,,,0,0,0,0
+63,labour,Vents Install (Cut in Vent),,,,Vents Install (Cut in Vent),0,,,0,0,0,0
+64,labour,Wall Flashing,,,,Wall Flashing,1,,,30,30,75,75
+65,labour,Step Flashing,,,,Step Flashing,,,,106,106,318,318
+66,labour,Ridge Vent (Cut in Vent /LF),,,,Ridge Vent (Cut in Vent /LF),0,,,0,0,0,0
+67,labour,High Def Cap,,,,High Def Cap,0,,,0,0,0,0
+68,labour,Oatley Reno (Remove lead pipe cover & iron pipe/ install PVC),,,,Oatley Reno (Remove lead pipe cover & iron pipe/ install PVC),0,,"IF(D68<>0,D68,0)*IF(E68<>0,E68,1)*IF(F68<>0,F68,1)*IF(G68<>0,G68,1)*IF(H68<>0,H68,1)/IF(I68<>0,I68,1)",0,0,0,0
+69,labour,Sheathing / Hot Roof / Skylights,,,,Sheathing / Hot Roof / Skylights,0,,,0,0,0,0
+71,general_requirements,General Requirements,,General Requierments should be minimum 25% for comercial or multi family projects and 10% for single family homes.,General Requierments should be minimum 25% for comercial or multi family projects and 10% for single family homes.,General Requirements,,,,,,Days,Days
+72,general_requirements,Mobilization/Demobilization,,,,Mobilization/Demobilization,,4,"IF(D72<>0,D72,0)*IF(E72<>0,E72,1)*IF(F72<>0,F72,1)*IF(G72<>0,G72,1)*IF(H72<>0,H72,1)/IF(I72<>0,I72,1)",8.262986668826667,9.25592000216,413,463
+73,general_requirements,Safety - Traffic control,,,,Safety - Traffic control,,,,1,1,0,0
+74,general_requirements,Safety - Scaffolding OHP,,,,Safety - Scaffolding OHP,,,,0,0,0,0
+75,general_requirements,Safety - Scaffolding,,,,Safety - Scaffolding,,,,1,1,0,0
+76,general_requirements,Site Control (Man on the ground),,,,Site Control (Man on the ground),,,,2.0657466672066667,2.31398000054,72,81
+77,general_requirements,Site Control (Fence et al),,,,Site Control (Fence et al),,,,1,1,0,0
+78,general_requirements,Site Control (Booms),,,,Site Control (Booms),,,,0,0,0,0
+79,general_requirements,"Disposal (Fee, Labour, Fuel)",,,,"Disposal (Fee, Labour, Fuel)",,,,32.87000001,32.87000001,1150,1479
+80,general_requirements,Delivery - Surcharge,,,,Delivery - Surcharge,,,,1,1,500,500
+81,general_requirements,Delivery - Hoisting,,,,Delivery - Hoisting,,,,133.58712311042308,198.06072312122308,301,446
+82,general_requirements,Project Manager,,,,Project Manager,,3,,6.19724000162,6.94194000162,775,868
+83,general_requirements,Misc. (Park Access),,,,Misc. (Park Access),,2,,0,0,0,0
+84,general_requirements,Misc. (Permits),,,,Misc. (Permits),,2,,0,0,0,0
+85,general_requirements,Misc. Tools & Equipment (XXX),,,,Misc. Tools & Equipment (XXX),,2,,0,0,0,0
+86,general_requirements,Travel time (Crew),,Use for projects that are out of town,Use for projects that are out of town,Travel time (Crew),0,,,0,0,0,0
+87,general_requirements,Hotel,,,,Hotel,0,,,0,0,0,0
+88,general_requirements,Per Diem,,,,Per Diem,,,,0,0,0,0
+90,general_requirements,Project Contingency,T72,413,463,Project Contingency,Driver,,"IF(D90<>0,D90,0)*IF(E90<>0,E90,1)*IF(F90<>0,F90,1)*IF(G90<>0,G90,1)*IF(H90<>0,H90,1)/IF(I90<>0,I90,1)",0.04,0.04,851.4208,1646.5684000000003
+92,totals,Sub-Total:,,Profit should be 30% for commercial or multi family proj.,Profit should be 30% for commercial or multi family proj.,Sub-Total:,,,"IF(D92<>0,D92,0)*IF(E92<>0,E92,1)*IF(F92<>0,F92,1)*IF(G92<>0,G92,1)*IF(H92<>0,H92,1)/IF(I92<>0,I92,1)",0,0,22136.9408,42810.77840000001
+93,totals,Profit:,,,,Profit:,,,,,,6641.08224,10702.694600000003
+94,totals,Project Total:,,,,Project Total:,,,(A12)/100,32.87000001,32.87000001,28778.02304,53513.47300000001
