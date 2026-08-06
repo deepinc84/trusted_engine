@@ -4,6 +4,7 @@ export const SITE_URL = "https://www.trustedroofingcalgary.com";
 export const DEFAULT_SOCIAL_IMAGE = "/opengraph-image";
 
 export function canonicalUrl(path = "") {
+  if (/^https?:\/\//i.test(path)) return path;
   return `${SITE_URL}${path}`;
 }
 
