@@ -1,0 +1,4 @@
+import AdminTabs from "../_components/AdminTabs";
+import { listCustomerChoices } from "@/lib/roofing-estimates/repository";
+export const dynamic="force-dynamic";
+export default async function Page(){let customers:Awaited<ReturnType<typeof listCustomerChoices>>=[];try{customers=await listCustomerChoices()}catch{}return <main className="section admin-shell"><div className="admin-hero"><div><p className="admin-kicker">Estimate contacts</p><h1>Customers</h1><p>Customers and properties saved from estimates.</p></div></div><AdminTabs currentPath="/admin/customers"/><div className="estimate-panel">{customers.map(c=><article key={c.customer.id}><b>{c.customer.firstName} {c.customer.lastName}</b><p>{c.properties.map(p=>p.addressLine1).join(" · ")||"No property"}</p></article>)}{!customers.length&&<p>Customers will appear after an estimate is saved.</p>}</div></main>}

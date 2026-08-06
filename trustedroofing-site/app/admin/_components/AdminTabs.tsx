@@ -1,1 +1,20 @@
-import Link from"next/link";const primary=[{href:"/admin",label:"Dashboard"},{href:"/admin/jobs",label:"Jobs"},{href:"/admin/proposals",label:"Proposals"},{href:"/admin/jobs?view=customers",label:"Customers"},{href:"/admin/pricing-catalog",label:"Pricing & Products"},{href:"/admin/roofing-systems",label:"Settings"},{href:"/admin/system-status",label:"System Status"}];export default function AdminTabs({currentPath}:{currentPath:string}){return <nav className="admin-tabs" aria-label="Administration">{primary.map(x=>{const path=x.href.split("?")[0],active=path==="/admin"?currentPath===path:currentPath===path||currentPath.startsWith(`${path}/`);return <Link key={x.label} href={x.href} className={active?"button":"button button--ghost"} aria-current={active?"page":undefined}>{x.label}</Link>})}<details className="admin-more"><summary>More</summary><div><Link href="/admin/projects/new">Create project</Link><Link href="/admin/geo-posts">Geo-posts</Link><Link href="/admin/blog">Blog</Link><Link href="/admin/instant-quotes">Instant quotes</Link><Link href="/admin/actuals">Actuals</Link><Link href="/admin/reports">Reporting</Link></div></details></nav>}
+"use client";
+import Link from "next/link";
+import {usePathname} from "next/navigation";
+
+const primary = [
+  { href: "/admin/estimates", label: "Estimates" },
+  { href: "/admin/customers", label: "Customers" },
+  { href: "/admin/pricing-catalog", label: "Pricing Defaults" },
+  { href: "/admin/roofing-systems", label: "Settings" }
+];
+
+export default function AdminTabs({ currentPath }: { currentPath?: string }) {
+  const pathname=usePathname();currentPath=currentPath??pathname;
+  return <nav className="admin-tabs admin-tabs--primary" aria-label="Administration">
+    {primary.map(item => {
+      const active = currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+      return <Link key={item.href} href={item.href} className={active ? "button" : "button button--ghost"} aria-current={active ? "page" : undefined}>{item.label}</Link>;
+    })}
+  </nav>;
+}

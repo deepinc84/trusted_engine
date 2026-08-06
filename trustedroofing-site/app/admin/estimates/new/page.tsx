@@ -1,1 +1,2 @@
-import{redirect}from"next/navigation";export default function Page(){redirect("/admin/jobs/new")}
+import MegaEstimator from "../MegaEstimator";
+export default function Page(){return <MegaEstimator/>}

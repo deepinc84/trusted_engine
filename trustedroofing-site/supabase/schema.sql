@@ -370,3 +370,10 @@ alter table if exists instant_quotes
   add column if not exists pdf_download_notification_sent_at timestamptz,
   add column if not exists marketing_tagged_at timestamptz,
   add column if not exists marketing_tagged_by text;
+create table if not exists mega_estimates (
+  id uuid primary key default gen_random_uuid(),
+  estimate_number text not null unique default ('EST-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))),
+  customer_name text not null default 'Customer not entered', property_address text not null default 'Property not entered',
+  status text not null default 'draft', final_price numeric, snapshot jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);

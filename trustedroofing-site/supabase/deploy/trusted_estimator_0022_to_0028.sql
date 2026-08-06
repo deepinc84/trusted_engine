@@ -210,3 +210,20 @@ insert into public.app_schema_migrations(migration_number, migration_name, check
 values ('0029', 'structured_roofing_estimates', 'manual-check-required', 'deployment', current_setting('app.environment', true), 'Adds labelled roof structures, pitch areas, option traces and explicit rate applications.')
 on conflict (migration_number) do nothing;
 notify pgrst, 'reload schema';
+
+-- ===== 0030_mega_estimates.sql | sha256 30cbcf6f7d2cab59311c1ef9560bb7255e93b87d655046434a74ed14057eb4e8 =====
+create table if not exists mega_estimates (
+  id uuid primary key default gen_random_uuid(),
+  estimate_number text not null unique default ('EST-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))),
+  customer_name text not null default 'Customer not entered',
+  property_address text not null default 'Property not entered',
+  status text not null default 'draft' check (status in ('draft','proposal_generated','sent','accepted','archived')),
+  final_price numeric,
+  snapshot jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists mega_estimates_updated_at_idx on mega_estimates(updated_at desc);
+
+insert into public.app_schema_migrations(migration_number, migration_name, checksum, applied_by, environment, notes) values ('0030', 'mega_estimates', '30cbcf6f7d2cab59311c1ef9560bb7255e93b87d655046434a74ed14057eb4e8', 'deployment', current_setting('app.environment', true), 'Independent workbook estimator snapshots.') on conflict (migration_number) do nothing;
+notify pgrst, 'reload schema';
