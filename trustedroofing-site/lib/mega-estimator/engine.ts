@@ -6,6 +6,7 @@ export type Override = Partial<{product:string;coverage:number;multiplier:number
 export type CalculatedRow = Rule & {sourceQuantity:number;requiredQuantity:number;rawOrderQuantity:number;roundedOrderQuantity:number;effectiveQuantity:number;rate:number;extension:number;included:boolean;override:Override};
 
 export const signalHill: Measurements = {totalArea:3287.000001,pitches:{1:0,2:4,3:0,4:0,5:94,6:0,7:3156,8:0,9:33,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0},ridgesHips:320,valleys:153,rakes:47,eaves:259,transition:1,goosenecks:3,vents:3287.000001,oatey:1,bVents:3,stepFlashing:53,wallFlashing:30,chimneyBackpan:1};
+export const blankMeasurements:Measurements={totalArea:0,pitches:Object.fromEntries(Array.from({length:17},(_,i)=>[i+1,0])),ridgesHips:0,valleys:0,rakes:0,eaves:0,transition:0,goosenecks:0,vents:0,oatey:0,bVents:0,stepFlashing:0,wallFlashing:0,chimneyBackpan:0};
 export const defaultSwitches:Switches={chimney:true,groundDrop:false,extraIce:false,cutInVents:false,ridgeVent:false,highDefCap:false,travel:false,hotel:false,perDiem:false};
 const on=(q:(m:Measurements,s:Switches)=>number)=>(m:Measurements,s:Switches)=>q(m,s)>0;
 const materialData:[number,string,string,(m:Measurements,s:Switches)=>number,number,number,number,number][]=[
