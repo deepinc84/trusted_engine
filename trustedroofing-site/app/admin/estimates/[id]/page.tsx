@@ -1,1 +1,2 @@
-import{redirect}from"next/navigation";export default function Page({params}:{params:{id:string}}){redirect(`/admin/jobs/${params.id}?tab=measurements`)}
+import MegaEstimator from "../MegaEstimator";
+export default function Page(){return <MegaEstimator/>}
