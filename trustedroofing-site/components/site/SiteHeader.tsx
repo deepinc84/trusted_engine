@@ -97,7 +97,7 @@ export default async function SiteHeader() {
 
         <div className="nav-right">
           {isAdminSession ? (
-            <Link href="/admin" className="cta" style={{ marginRight: 8 }}>
+            <Link href="/admin/estimates" className="cta" style={{ marginRight: 8 }}>
               Admin
             </Link>
           ) : null}
