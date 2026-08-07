@@ -7,3 +7,5 @@ test("new estimator starts blank and saved estimator loads a snapshot",()=>{asse
 test("admin shell suppresses marketing chrome",()=>{const css=read("app/admin/admin-app.css");assert.match(css,/\.site-header/);assert.match(css,/\.site-footer/)});
 test("Mega estimate migration stores independent worksheet snapshots",()=>{const migration=read("supabase/migrations/0030_mega_estimates.sql");assert.match(migration,/create table if not exists mega_estimates/);assert.match(migration,/snapshot jsonb/)});
 test("new estimate remains available before company-default migration is applied",()=>{const repository=read("lib/mega-estimator/repository.ts");assert.match(repository,/if\(error\)return fallback\(\)/);assert.match(repository,/catch\{return fallback\(\)\}/)});
+
+test("only table columns stick below admin header",()=>{const css=read("app/admin/estimates/mega-estimator.css");assert.match(css,/sticky-section-title\{position:static/);assert.match(css,/thead th\{position:sticky;top:58px/);assert.doesNotMatch(css,/table-wrap\{overflow-x:auto/) });
