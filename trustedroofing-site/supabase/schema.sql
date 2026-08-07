@@ -377,3 +377,6 @@ create table if not exists mega_estimates (
   status text not null default 'draft', final_price numeric, snapshot jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+
+create table if not exists mega_company_defaults (key text primary key, value jsonb not null, updated_at timestamptz not null default now(), updated_by text not null);
+create table if not exists mega_company_default_audit (id uuid primary key default gen_random_uuid(), key text not null, previous_value jsonb, new_value jsonb not null, changed_at timestamptz not null default now(), changed_by text not null);
