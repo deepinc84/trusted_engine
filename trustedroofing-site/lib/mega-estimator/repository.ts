@@ -23,7 +23,8 @@ export async function getCompanyDefaults():Promise<WorksheetDefaults>{
     // A missing 0030 table must not prevent a blank estimate from opening. The
     // save-default action still reports the migration problem explicitly.
     if(error)return fallback();
-    return data?.value??fallback();
+    if(!data?.value)return fallback();
+    return{...fallback(),...data.value,labourRates:{...defaultRates.labourRates,...data.value.labourRates},otherLabourRates:{...defaultRates.otherLabourRates,...data.value.otherLabourRates}};
   }catch{return fallback()}
 }
 export async function saveCompanyDefaults(value:WorksheetDefaults,actor:string){const db=getServiceClient();if(!db)throw new Error("Company-default storage is not configured.");const previous=await getCompanyDefaults();const{error:auditError}=await db.from("mega_company_default_audit").insert({key:"roofing",previous_value:previous,new_value:value,changed_by:actor});if(auditError)throw auditError;const{error}=await db.from("mega_company_defaults").upsert({key:"roofing",value,updated_at:new Date().toISOString(),updated_by:actor});if(error)throw error;return value}
