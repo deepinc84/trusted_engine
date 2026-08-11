@@ -11,6 +11,7 @@
     "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/*.test.ts",
     "sitemap": "ts-node --esm scripts/generate-sitemap.ts",
     "guard:conflicts": "node scripts/check-merge-conflicts.js",
+    "catalog:mega": "python3 scripts/extract-mega-product-catalog.py",
     "verify:production-readiness": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' ts-node scripts/verify-production-readiness.ts",
     "seed:demo-estimator": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/demo-estimator.ts",
     "cleanup:demo-estimator": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/demo-estimator.ts --cleanup",
