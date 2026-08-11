@@ -1,0 +1,122 @@
+{
+  "workbook": "Mega Roofing - blank spreadsheet.xlsm",
+  "rows": [
+    {
+      "workbookRow": 12,
+      "materialType": "roofing",
+      "workbookRange": "R Data!F2:F79",
+      "workbookDropdownCount": 48,
+      "trustedDropdownCount": 48,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 13,
+      "materialType": "standard starter",
+      "workbookRange": "R Data!K2:K39",
+      "workbookDropdownCount": 21,
+      "trustedDropdownCount": 21,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 15,
+      "materialType": "specialty eave",
+      "workbookRange": "R Data!K40:K49",
+      "workbookDropdownCount": 4,
+      "trustedDropdownCount": 4,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 16,
+      "materialType": "specialty rake",
+      "workbookRange": "R Data!K50:K59",
+      "workbookDropdownCount": 4,
+      "trustedDropdownCount": 4,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 17,
+      "materialType": "specialty valley",
+      "workbookRange": "R Data!K60:K79",
+      "workbookDropdownCount": 4,
+      "trustedDropdownCount": 4,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 14,
+      "materialType": "hip / ridge",
+      "workbookRange": "R Data!O2:O39",
+      "workbookDropdownCount": 29,
+      "trustedDropdownCount": 29,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 20,
+      "materialType": "drip edge",
+      "workbookRange": "R Data!O40:O49",
+      "workbookDropdownCount": 10,
+      "trustedDropdownCount": 10,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 21,
+      "materialType": "rake edge",
+      "workbookRange": "R Data!O50:O59",
+      "workbookDropdownCount": 10,
+      "trustedDropdownCount": 10,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 22,
+      "materialType": "valley flashing",
+      "workbookRange": "R Data!O60:O69",
+      "workbookDropdownCount": 10,
+      "trustedDropdownCount": 10,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 18,
+      "materialType": "ice & water",
+      "workbookRange": "R Data!S2:S39",
+      "workbookDropdownCount": 20,
+      "trustedDropdownCount": 20,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 19,
+      "materialType": "underlayment",
+      "workbookRange": "R Data!S40:S79",
+      "workbookDropdownCount": 28,
+      "trustedDropdownCount": 28,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 27,
+      "materialType": "roof ventilation",
+      "workbookRange": "R Data!K80:K211",
+      "workbookDropdownCount": 23,
+      "trustedDropdownCount": 23,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    },
+    {
+      "workbookRow": 28,
+      "materialType": "roof ventilation",
+      "workbookRange": "R Data!K80:K211",
+      "workbookDropdownCount": 23,
+      "trustedDropdownCount": 23,
+      "missingInTrusted": [],
+      "extraInTrusted": []
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { getServiceClient } from "@/lib/db";
 import {defaultRates,type WorksheetDefaults} from "./worksheet";
+import {MATERIAL_PRODUCTS,type CatalogProduct} from "./product-catalog";
 
 export type MegaEstimateSummary={id:string;estimateNumber:string;customer:string;property:string;status:string;updatedAt:string;finalPrice:number|null};
 export type MegaEstimateRecord=MegaEstimateSummary&{snapshot:Record<string,unknown>};
@@ -26,3 +27,5 @@ export async function getCompanyDefaults():Promise<WorksheetDefaults>{
   }catch{return fallback()}
 }
 export async function saveCompanyDefaults(value:WorksheetDefaults,actor:string){const db=getServiceClient();if(!db)throw new Error("Company-default storage is not configured.");const previous=await getCompanyDefaults();const{error:auditError}=await db.from("mega_company_default_audit").insert({key:"roofing",previous_value:previous,new_value:value,changed_by:actor});if(auditError)throw auditError;const{error}=await db.from("mega_company_defaults").upsert({key:"roofing",value,updated_at:new Date().toISOString(),updated_by:actor});if(error)throw error;return value}
+export async function getMaterialCatalog():Promise<Record<number,CatalogProduct[]>>{const fallback=()=>structuredClone(MATERIAL_PRODUCTS);const db=getServiceClient();if(!db)return fallback();try{const{data,error}=await db.from("mega_company_defaults").select("value").eq("key","material_catalog").maybeSingle();return error||!data?.value?fallback():data.value}catch{return fallback()}}
+export async function saveMaterialCatalog(value:Record<number,CatalogProduct[]>,actor:string){const db=getServiceClient();if(!db)throw new Error("Material-catalog storage is not configured.");const previous=await getMaterialCatalog();const{error:auditError}=await db.from("mega_company_default_audit").insert({key:"material_catalog",previous_value:previous,new_value:value,changed_by:actor});if(auditError)throw auditError;const{error}=await db.from("mega_company_defaults").upsert({key:"material_catalog",value,updated_at:new Date().toISOString(),updated_by:actor});if(error)throw error;return value}
