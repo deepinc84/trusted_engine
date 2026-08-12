@@ -7,22 +7,11 @@ import {
 } from "@/lib/db";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { processLeadSubmissionEmails, sendQuoteLeadSubmittedEmail } from "@/lib/email";
+import { normalizeAttributionMetadata } from "@/lib/attribution";
 
-function sourceTypeFromSubmission(body: Record<string, unknown>) {
-  const metadata = body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata as Record<string, unknown> : null;
-  if (!metadata) return "Direct/Unknown";
-  if (metadata.utm_source || metadata.utm_medium || metadata.utm_campaign) return metadata.utm_medium === "organic" ? "Organic Search" : "Campaign / UTM";
-  const referrer = String(metadata.referrer ?? "").toLowerCase();
-  return /(google|bing|duckduckgo|yahoo|ecosia)/.test(referrer) ? "Organic Search" : referrer ? "Referral" : "Direct/Unknown";
-}
-
-function sourceMetadataFromSubmission(body: Record<string, unknown>): Record<string, string | null> | undefined {
-  const metadata = body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata as Record<string, string | null> : undefined;
-  if (!metadata) return undefined;
-  return {
-    ...metadata,
-    source_type: metadata.source_type ?? sourceTypeFromSubmission(body)
-  };
+function sourceMetadataFromSubmission(body: Record<string, unknown>): Record<string, unknown> | undefined {
+  const metadata = normalizeAttributionMetadata(body.sourceMetadata);
+  return Object.keys(metadata).length ? metadata : undefined;
 }
 
 export async function POST(request: Request) {

@@ -5,6 +5,7 @@ import ChunkLoadRecovery from "@/components/ChunkLoadRecovery";
 import OrganizationSchema from "@/components/OrganizationSchema";
 import Script from "next/script";
 import { buildMetadata } from "@/lib/seo";
+import AttributionTracker from "@/components/AttributionTracker";
 
 export const metadata = buildMetadata({
   title: "Trusted Roofing & Exteriors | Calgary Roofing Company",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <a className="skip-link" href="#main-content">Skip to main content</a>
         <OrganizationSchema />
         <ChunkLoadRecovery />
+        <AttributionTracker />
         <div className="page">
           <SiteHeader />
           <main id="main-content">{children}</main>

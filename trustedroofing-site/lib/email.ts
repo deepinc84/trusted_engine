@@ -1,4 +1,5 @@
 import { listLeadEmailNotifications, type LeadRecord, type InstantQuoteRecord, upsertLeadEmailNotification } from "@/lib/db";
+import { sourceLabel, type SourceCategory } from "@/lib/attribution";
 
 type SendResult = {
   ok: boolean;
@@ -254,9 +255,21 @@ function areaOrCity(address: string | null | undefined) {
 }
 
 function sourceRows(quote: Partial<InstantQuoteRecord>) {
+  const history = quote.quote_history ?? {};
+  const journey = (quote.journey ?? []).slice(-8).map((item) => {
+    const event = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return String(event.label || event.path || event.event || "");
+  }).filter(Boolean).join(" → ");
   return [
-    { label: "Source type", value: quote.source_type ?? "Direct/Unknown" },
-    { label: "Landing page", value: quote.landing_page ?? "n/a" },
+    { label: "Acquisition — first touch", value: sourceLabel(quote.first_source_category as SourceCategory) },
+    { label: "First landing page", value: quote.landing_page ?? "n/a" },
+    { label: "Last touch", value: sourceLabel(quote.last_source_category as SourceCategory) },
+    { label: "Returning visitor", value: yesNo(quote.is_returning_visitor === true) },
+    { label: "Previous browser quotes", value: history.previous_quote_count ?? 0 },
+    { label: "Previous quotes at this address", value: history.number_of_quotes_same_address ?? 0 },
+    { label: "Previous service", value: history.previous_quote_service ?? "n/a" },
+    { label: "Previous quote time", value: history.previous_quote_created_at ?? "n/a" },
+    { label: "Journey", value: journey || "n/a" },
     { label: "Referrer", value: quote.referrer ?? "n/a" },
     { label: "UTM source", value: quote.utm_source ?? "n/a" },
     { label: "UTM medium", value: quote.utm_medium ?? "n/a" },
@@ -266,7 +279,7 @@ function sourceRows(quote: Partial<InstantQuoteRecord>) {
     { label: "First page path", value: quote.first_page_path ?? "n/a" },
     { label: "Current page path", value: quote.current_page_path ?? "n/a" },
     { label: "Device category", value: quote.device_category ?? "n/a" },
-    { label: "Browser / UA", value: quote.user_agent_summary ?? "n/a" },
+    { label: "Session first seen", value: quote.session_started_at ?? "n/a" },
   ];
 }
 
