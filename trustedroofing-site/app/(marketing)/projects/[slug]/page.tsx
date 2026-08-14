@@ -54,6 +54,20 @@ function buildProjectMetadataTitle(project: { service_slug: string; neighborhood
   return `${area} ${formatServiceForTitle(project.service_slug)} | Trusted`;
 }
 
+function roofReplacementServiceLink(project: { slug: string; service_slug: string; title: string; summary: string; description: string | null }) {
+  const service = project.service_slug.toLowerCase();
+  if (service.includes("repair")) return null;
+
+  const projectText = `${project.title} ${project.summary} ${project.description ?? ""}`.toLowerCase();
+  const isReplacement = service === "roof-replacement"
+    || (service === "roofing" && ["roof replacement", "shingle replacement", "full reroof", "full re-roof", "complete reroof", "tear-off and replacement"].some((term) => projectText.includes(term)));
+  if (!isReplacement) return null;
+
+  const anchors = ["roof replacement services", "asphalt shingle replacement options", "complete roof replacement planning"];
+  const anchorIndex = Array.from(project.slug).reduce((sum, character) => sum + character.charCodeAt(0), 0) % anchors.length;
+  return { href: "/services/roof-replacement", label: anchors[anchorIndex] };
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const project = await getProjectBySlug(params.slug);
   if (!project) {
@@ -64,10 +78,19 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     });
   }
 
+  const heroPhoto = selectHeroProjectPhoto(project.photos);
+  const imagePath = heroPhoto?.public_url ?? getPlaceholderProjectImage({
+    seed: project.slug,
+    neighborhood: project.neighborhood,
+    quadrant: project.quadrant,
+    city: project.city
+  });
+
   return buildMetadata({
     title: buildProjectMetadataTitle(project),
     description: project.summary,
-    path: `/projects/${project.slug}`
+    path: `/projects/${project.slug}`,
+    imagePath
   });
 }
 
@@ -84,6 +107,7 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
   })).filter((entry) => entry.photos.length > 0);
   const heroPhoto = selectHeroProjectPhoto(gallery);
   const relatedNeighborhoods = await getNearestNeighborhoodLinksForProject(project, 3);
+  const replacementLink = roofReplacementServiceLink(project);
 
   return (
     <>
@@ -101,7 +125,9 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
         description={`${project.neighborhood ?? "Calgary"}, ${project.city}, ${project.province}`}
         actions={
           <>
-            <Link href={`/services/${project.service_slug}`} className="button">Back to service</Link>
+            <Link href={replacementLink?.href ?? `/services/${project.service_slug}`} className="button">
+              {replacementLink?.label ?? "Back to service"}
+            </Link>
             <Link href="/projects" className="button button--ghost">All projects</Link>
           </>
         }
@@ -145,6 +171,8 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
                             width={960}
                             height={720}
                             style={{ width: "100%", height: "auto", borderRadius: 12 }}
+                            sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
+                            quality={75}
                           />
                           <p style={{ margin: "10px 0 6px", fontWeight: 600, fontSize: 12, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--color-primary)" }}>
                             {group.label}
@@ -171,6 +199,8 @@ export default async function ProjectDetailPage({ params }: { params: { slug: st
                 width={960}
                 height={720}
                 style={{ width: "100%", height: "auto", borderRadius: 12 }}
+                sizes="(max-width: 1000px) 100vw, 960px"
+                unoptimized
               />
             </article>
           )}

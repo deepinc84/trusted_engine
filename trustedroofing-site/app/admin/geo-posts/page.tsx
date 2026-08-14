@@ -94,7 +94,7 @@ export default async function GeoPostsAdminPage({
             return (
               <article key={project.id} className="admin-project-card">
                 <div className="admin-card-media">
-                  <Image src={image} alt="" width={640} height={420} />
+                  <Image src={image} alt="" width={640} height={420} sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw" quality={75} unoptimized={image.endsWith(".svg")} />
                   <span className="admin-status-pill is-missing">No geo-post</span>
                 </div>
                 <div className="admin-project-card__body">
@@ -133,7 +133,7 @@ export default async function GeoPostsAdminPage({
             return (
               <article key={post.id} className="admin-project-card">
                 <div className="admin-card-media">
-                  <Image src={image} alt="" width={640} height={420} />
+                  <Image src={image} alt="" width={640} height={420} sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw" quality={75} unoptimized={image.endsWith(".svg")} />
                   <span className={`admin-status-pill ${statusClass}`}>{statusLabel(post.status)}</span>
                 </div>
                 <div className="admin-project-card__body">

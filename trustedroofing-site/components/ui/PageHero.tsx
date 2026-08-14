@@ -43,6 +43,8 @@ export default function PageHero({
             className="ui-page-hero__image"
             priority={imagePriority}
             sizes="100vw"
+            quality={75}
+            unoptimized={imageSrc.endsWith(".svg")}
           />
           <div className="ui-page-hero__overlay" />
         </>

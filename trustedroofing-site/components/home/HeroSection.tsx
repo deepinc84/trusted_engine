@@ -17,6 +17,8 @@ export default function HeroSection({ metrics, quoteSignals }: Props) {
         fill
         className="homev3-hero__bg"
         priority
+        sizes="100vw"
+        quality={75}
       />
       <div className="homev3-hero__overlay" />
       <div className="homev3-container homev3-hero__content">

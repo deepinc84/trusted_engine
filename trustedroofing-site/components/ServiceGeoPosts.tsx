@@ -6,6 +6,8 @@ import Link from "next/link";
 import type { ResolvedGeoPost } from "@/lib/db";
 import PageContainer from "@/components/ui/PageContainer";
 import { getPlaceholderProjectImage } from "@/lib/images";
+import { organizationSchema } from "@/lib/organization";
+import { canonicalUrl } from "@/lib/seo";
 
 const BATCH_SIZE = 10;
 const AUTO_SCROLL_INTERVAL_MS = 4500;
@@ -30,6 +32,10 @@ function excerptContent(content: string | null, summary: string | null): string 
   return `${text.slice(0, maxLength).trim()}…`;
 }
 
+function selectedGeoPostImage(post: ResolvedGeoPost) {
+  return post.heroImage ?? getPlaceholderProjectImage({ seed: post.slug ?? post.id, neighborhood: post.neighborhood, city: post.city });
+}
+
 export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: ResolvedGeoPost[]; heading?: string }) {
   const sectionId = useId();
   const trackRef = useRef<HTMLDivElement>(null);
@@ -52,8 +58,22 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
         item: {
           "@type": "BlogPosting",
           headline: post.title ?? "Roof replacement update",
-          url: post.slug ? `/projects/${post.slug}` : "/projects",
+          url: canonicalUrl(post.slug ? `/projects/${post.slug}` : "/projects"),
           datePublished: post.published_at ?? post.created_at,
+          author: {
+            "@type": "Organization",
+            name: organizationSchema.name,
+            url: organizationSchema.url,
+          },
+          publisher: {
+            "@type": "Organization",
+            name: organizationSchema.name,
+            logo: {
+              "@type": "ImageObject",
+              url: organizationSchema.logo,
+            },
+          },
+          image: [canonicalUrl(selectedGeoPostImage(post))],
           contentLocation: {
             "@type": "Place",
             name: [post.neighborhood, post.city, post.province].filter(Boolean).join(", "),
@@ -154,9 +174,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
               const title = post.title ?? post.slug ?? "Project update";
               const fullPostHref = post.slug ? `/projects/${post.slug}` : "/projects";
               const projectLink = projectLinkFromContent(post.content);
-              const heroImage =
-                post.heroImage ??
-                getPlaceholderProjectImage({ seed: post.slug ?? post.id, neighborhood: post.neighborhood, city: post.city });
+              const heroImage = selectedGeoPostImage(post);
               const isBeyondCurrentBatch = index >= visibleBatchEnd;
               const isExpanded = expandedCards[post.id] ?? false;
               const detailsId = `${sectionId}-${post.id}-details`;
@@ -172,7 +190,7 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
                   aria-current={activeIndex === index ? "true" : undefined}
                   tabIndex={-1}
                 >
-                  <Image src={heroImage} alt={title} width={520} height={300} className="service-geo-posts__image" loading={index < 2 ? "eager" : "lazy"} />
+                  <Image src={heroImage} alt={title} width={520} height={300} className="service-geo-posts__image" loading={index < 2 ? "eager" : "lazy"} sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 520px" quality={75} unoptimized={heroImage.endsWith(".svg")} />
                   <div className="service-geo-posts__body">
                     <h3>{title}</h3>
                     <p className="service-geo-posts__location">

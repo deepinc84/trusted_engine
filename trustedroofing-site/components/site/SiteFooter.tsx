@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import BrandText from "@/components/BrandText";
+import { GOOGLE_BUSINESS_URL } from "@/lib/organization";
 
 export default function SiteFooter() {
   return (
@@ -9,7 +10,7 @@ export default function SiteFooter() {
         <div className="site-footer__brand-block">
           <div className="site-footer__brand">
             {/* Keep original footer logo mark per stakeholder request. */}
-            <Image src="/white-transparent-t.png" alt="Trusted" width={56} height={56} className="site-footer__logo" />
+            <Image src="/white-transparent-t.png" alt="Trusted" width={56} height={56} className="site-footer__logo" unoptimized />
             <div>
               <strong className="site-footer__brand-name">
                 <BrandText className="brand-text--footer" descriptor="Roofing & Exteriors" />
@@ -60,6 +61,7 @@ export default function SiteFooter() {
           <h4>Contact</h4>
           <a href="tel:5872883351">587-288-3351</a>
           <a href="mailto:info@trustedexteriors.ca">info@trustedexteriors.ca</a>
+          <a href={GOOGLE_BUSINESS_URL} target="_blank" rel="noreferrer">Google Business Profile</a>
           <Link href="/online-estimate">Get a Roofing Quote</Link>
         </div>
       </div>

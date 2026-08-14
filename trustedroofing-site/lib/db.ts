@@ -3,6 +3,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { haversineKm } from "./geo";
 import { roundLatLng, sanitizeMultilineText, sanitizeText } from "./sanitize";
 import { getProjectPhotosBucketName } from "./storage";
+import { summarizeQuoteHistory } from "./attribution";
 import {
   buildSolarSuitabilityRecord,
   type SolarSourceType,
@@ -166,6 +167,18 @@ export type QuoteSourceMetadata = {
   current_page_path?: string | null;
   device_category?: string | null;
   user_agent_summary?: string | null;
+  visitor_id?: string | null;
+  session_id?: string | null;
+  first_seen_at?: string | null;
+  session_started_at?: string | null;
+  quote_generated_at?: string | null;
+  is_returning_visitor?: boolean;
+  previous_visit_count?: number;
+  first_source_category?: string | null;
+  last_source_category?: string | null;
+  attribution?: Record<string, unknown> | null;
+  journey?: unknown[];
+  quote_history?: Record<string, unknown> | null;
 };
 
 type QuoteEventStep1 = QuoteSourceMetadata & {
@@ -2078,6 +2091,11 @@ export type InstantQuoteRecord = {
   pdf_download_notification_sent_at?: string | null;
   marketing_tagged_at?: string | null;
   marketing_tagged_by?: string | null;
+  visitor_id?: string | null; session_id?: string | null; first_seen_at?: string | null;
+  session_started_at?: string | null; quote_generated_at?: string | null; is_returning_visitor?: boolean | null;
+  previous_visit_count?: number | null; first_source_category?: string | null;
+  last_source_category?: string | null; attribution?: Record<string, unknown> | null;
+  journey?: unknown[] | null; quote_history?: Record<string, unknown> | null;
 };
 
 export type LeadRecord = {
@@ -2479,6 +2497,14 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       .maybeSingle();
     if (existing) return existing as InstantQuoteRecord;
 
+    // Correlate by this browser and by the normalized/geocoded address. Only
+    // operational quote facts are copied; contact details are never exposed.
+    const [{ data: browserHistory }, { data: addressHistory }] = await Promise.all([
+      input.source_metadata?.visitor_id ? client.from("instant_quotes").select("id,service_type,created_at,address").eq("visitor_id", input.source_metadata.visitor_id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
+      client.from("instant_quotes").select("id,service_type,created_at").eq("address", input.address).order("created_at", { ascending: false }).limit(20)
+    ]);
+    payload.quote_history = summarizeQuoteHistory(browserHistory ?? [], addressHistory ?? []);
+
     await ensureLegacyAddressQueryForInstantQuote(client, input);
 
     let { data, error } = await client
@@ -2487,7 +2513,7 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       .select("*")
       .single();
     if (isMissingColumnError(error) && input.source_metadata) {
-      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, ...legacyPayload } = payload;
+      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, visitor_id, session_id, first_seen_at, session_started_at, quote_generated_at, is_returning_visitor, previous_visit_count, first_source_category, last_source_category, attribution, journey, quote_history, ...legacyPayload } = payload;
       void source_type;
       void landing_page;
       void referrer;
@@ -2500,6 +2526,7 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       void current_page_path;
       void device_category;
       void user_agent_summary;
+      void visitor_id; void session_id; void first_seen_at; void session_started_at; void quote_generated_at; void is_returning_visitor; void previous_visit_count; void first_source_category; void last_source_category; void attribution; void journey; void quote_history;
       const retry = await client
         .from("instant_quotes")
         .insert(legacyPayload)
@@ -3005,6 +3032,12 @@ function mapQuoteEventToInstantQuote(
     pdf_download_notification_sent_at: row.pdf_download_notification_sent_at ?? null,
     marketing_tagged_at: row.marketing_tagged_at ?? null,
     marketing_tagged_by: row.marketing_tagged_by ?? null,
+    visitor_id: row.visitor_id ?? null, session_id: row.session_id ?? null,
+    first_seen_at: row.first_seen_at ?? null, session_started_at: row.session_started_at ?? null,
+    quote_generated_at: row.quote_generated_at ?? null,
+    is_returning_visitor: row.is_returning_visitor ?? null, previous_visit_count: row.previous_visit_count ?? null,
+    first_source_category: row.first_source_category ?? null, last_source_category: row.last_source_category ?? null,
+    attribution: row.attribution ?? null, journey: row.journey ?? null, quote_history: row.quote_history ?? null,
   };
 }
 
@@ -3108,7 +3141,7 @@ export async function listAdminInstantQuotes(filters?: {
       let eventQuery = client
         .from("quote_events")
         .select(
-          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone, source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, pdf_available, pdf_generated_at, pdf_downloaded_at, pdf_download_count, last_pdf_downloaded_at, quote_event_notified_at, lead_notification_sent_at, pdf_download_notification_sent_at, marketing_tagged_at, marketing_tagged_by",
+          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone, source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, pdf_available, pdf_generated_at, pdf_downloaded_at, pdf_download_count, last_pdf_downloaded_at, quote_event_notified_at, lead_notification_sent_at, pdf_download_notification_sent_at, marketing_tagged_at, marketing_tagged_by, visitor_id,session_id,first_seen_at,session_started_at,quote_generated_at,is_returning_visitor,previous_visit_count,first_source_category,last_source_category,attribution,journey,quote_history",
         )
         .order("created_at", { ascending: false })
         .limit(limit);

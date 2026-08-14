@@ -1,40 +1,20 @@
+"use client";
 import Link from "next/link";
+import {usePathname} from "next/navigation";
 
-type AdminTab = {
-  href: string;
-  label: string;
-};
-
-const adminTabs: AdminTab[] = [
-  { href: "/admin", label: "Projects" },
-  { href: "/admin/projects/new", label: "Create project" },
-  { href: "/admin/geo-posts", label: "Geo-post management" },
-  { href: "/admin/blog", label: "Blog management" },
-  { href: "/admin/instant-quotes", label: "Instant quote dashboard" },
-  { href: "/admin/estimates", label: "Roofing estimates" },
-  { href: "/admin/proposals", label: "Proposals" },
-  { href: "/admin/pricing-catalog", label: "Pricing catalogue" },
-  { href: "/admin/roofing-systems", label: "Roofing systems" },
-  { href: "/admin/actuals", label: "Actuals" },
-  { href: "/admin/reports", label: "Reporting" }
+const primary = [
+  { href: "/admin/estimates", label: "Estimates" },
+  { href: "/admin/customers", label: "Customers" },
+  { href: "/admin/pricing-catalog", label: "Pricing Defaults" },
+  { href: "/admin/roofing-systems", label: "Settings" }
 ];
 
-export default function AdminTabs({ currentPath }: { currentPath: string }) {
-  return (
-    <div className="admin-tabs">
-      {adminTabs.map((tab) => {
-        const isActive = tab.href === "/admin" ? currentPath === tab.href : currentPath === tab.href || currentPath.startsWith(`${tab.href}/`);
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={isActive ? "button" : "button button--ghost"}
-            aria-current={isActive ? "page" : undefined}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
+export default function AdminTabs({ currentPath }: { currentPath?: string }) {
+  const pathname=usePathname();currentPath=currentPath??pathname;
+  return <nav className="admin-tabs admin-tabs--primary" aria-label="Administration">
+    {primary.map(item => {
+      const active = currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+      return <Link key={item.href} href={item.href} className={active ? "button" : "button button--ghost"} aria-current={active ? "page" : undefined}>{item.label}</Link>;
+    })}
+  </nav>;
 }

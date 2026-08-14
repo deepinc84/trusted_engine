@@ -1,0 +1,1 @@
+export default[{files:["scripts/check-merge-conflicts.js","next.config.js"],languageOptions:{ecmaVersion:2022,sourceType:"commonjs",globals:{process:"readonly",console:"readonly",URL:"readonly",require:"readonly",module:"readonly",__dirname:"readonly"}},rules:{"no-undef":"error","no-unused-vars":"error","no-unreachable":"error","no-constant-condition":"error"}}];

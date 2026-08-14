@@ -1,2 +1,4 @@
-import AdminTabs from"@/app/admin/_components/AdminTabs";import EstimateEditor from"../EstimateEditor";import{listCustomerChoices,newDraft}from"@/lib/roofing-estimates/repository";import{loadActiveConfiguredSystems}from"@/lib/roofing-systems/repository";export const dynamic="force-dynamic";
-export default async function NewEstimatePage(){const[choices,systems]=await Promise.all([listCustomerChoices(),loadActiveConfiguredSystems()]);const catalog=(systems[0]as any).catalogVersion;return <section className="section admin-shell"><div className="admin-hero"><div><p className="admin-kicker">Internal estimating</p><h1 className="hero-title">New roofing estimate</h1><p className="hero-subtitle">Using active roofing-system versions from {catalog?.name??"the approved catalogue"}. Reusable defaults are snapshotted for this estimate.</p></div></div><AdminTabs currentPath="/admin/estimates"/><EstimateEditor initial={newDraft(systems)} customerChoices={choices}/></section>}
+import MegaEstimator from "../MegaEstimator";
+import {getCompanyDefaults,getMaterialCatalog} from "@/lib/mega-estimator/repository";
+export const dynamic="force-dynamic";
+export default async function Page(){const[companyDefaults,productCatalog]=await Promise.all([getCompanyDefaults(),getMaterialCatalog()]);return <MegaEstimator companyDefaults={companyDefaults} productCatalog={productCatalog}/>}

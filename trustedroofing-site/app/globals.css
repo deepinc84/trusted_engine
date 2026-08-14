@@ -49,6 +49,24 @@ a {
   text-decoration: none;
 }
 
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: 12px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f1e38;
+  font-weight: 800;
+  box-shadow: 0 4px 18px rgba(15, 30, 56, 0.28);
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .page {
   display: flex;
   min-height: 100vh;
@@ -897,7 +915,7 @@ main {
 }
 
 .homev3-copy--muted {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .homev3-hero {
@@ -969,7 +987,7 @@ main {
 
 .homev3-hero__proof span {
   font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.64);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .homev3-activity-card {
@@ -1022,13 +1040,13 @@ main {
 
 .homev3-activity-card li p {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .homev3-activity-card li em {
   font-style: normal;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, 0.82);
   white-space: nowrap;
 }
 

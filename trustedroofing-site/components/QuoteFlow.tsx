@@ -42,7 +42,7 @@ function gtagSendEvent(url?: string) {
 type BudgetResponse = "yes" | "financing" | "too_expensive";
 type ServiceInterest = "roof_replacement" | "roof_rejuvenation";
 type SidingMaterial = "vinyl" | "hardie";
-type SourceMetadata = Record<string, string | null>;
+type SourceMetadata = Record<string, unknown>;
 
 type EstimateResult = {
   ok: true;
@@ -430,27 +430,14 @@ export default function QuoteFlow({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storageKey = "trusted_quote_source";
-    const params = new URLSearchParams(window.location.search);
-    const existing = JSON.parse(window.localStorage.getItem(storageKey) || "{}") as SourceMetadata;
-    const firstPage = existing.first_page_path || window.location.pathname + window.location.search;
-    const metadata: SourceMetadata = {
-      ...existing,
-      landing_page: existing.landing_page || firstPage,
-      first_page_path: firstPage,
-      current_page_path: window.location.pathname + window.location.search,
-      referrer: existing.referrer || document.referrer || null,
-      utm_source: params.get("utm_source") || existing.utm_source || null,
-      utm_medium: params.get("utm_medium") || existing.utm_medium || null,
-      utm_campaign: params.get("utm_campaign") || existing.utm_campaign || null,
-      utm_term: params.get("utm_term") || existing.utm_term || null,
-      utm_content: params.get("utm_content") || existing.utm_content || null,
-      device_category: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : /iPad|Tablet/i.test(navigator.userAgent) ? "tablet" : "desktop",
-      user_agent_summary: navigator.userAgent.slice(0, 240),
-    };
-    window.localStorage.setItem(storageKey, JSON.stringify(metadata));
-    setSourceMetadata(metadata);
+    window.trustedAttribution?.track("estimator_started");
+    setSourceMetadata({ attribution: window.trustedAttribution?.snapshot() ?? null });
   }, []);
+
+  const currentSourceMetadata = () => {
+    const attribution = window.trustedAttribution?.snapshot() ?? sourceMetadata.attribution ?? null;
+    return { attribution };
+  };
 
   const submitStep1 = async () => {
     setSubmitting(true);
@@ -459,13 +446,14 @@ export default function QuoteFlow({
     setSuggestionsOpen(false);
 
     try {
+      window.trustedAttribution?.track("address_submitted", selectedLabel);
       const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
         },
-        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode, sourceMetadata: { ...sourceMetadata, current_page_path: window.location.pathname + window.location.search } })
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode, sourceMetadata: currentSourceMetadata() })
       });
 
       const text = await res.text();
@@ -479,6 +467,8 @@ export default function QuoteFlow({
 
       const result = payload as unknown as EstimateResult;
       setEstimate(result);
+      window.trustedAttribution?.track("estimate_generated", selectedLabel);
+      window.trustedAttribution?.track("contact_form_shown", selectedLabel);
       setAddress(result.address ?? address);
       setPlaceId(result.placeId ?? placeId);
       setLat(result.lat ?? lat);
@@ -558,7 +548,7 @@ export default function QuoteFlow({
           isResumedLead: isResumedEstimate,
           pdfDownloaded,
           pdfDownloadStatus: pdfDownloaded ? "downloaded_before_submission" : "not_downloaded_before_submission",
-          sourceMetadata: { ...sourceMetadata, current_page_path: window.location.pathname + window.location.search }
+          sourceMetadata: currentSourceMetadata()
         })
       });
 
@@ -680,6 +670,8 @@ export default function QuoteFlow({
       link.download = `instant-estimate-${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
+      window.trustedAttribution?.track("pdf_generated", selectedLabel);
+      window.trustedAttribution?.track("pdf_downloaded", selectedLabel);
       setPdfDownloaded(true);
       link.remove();
       URL.revokeObjectURL(url);
