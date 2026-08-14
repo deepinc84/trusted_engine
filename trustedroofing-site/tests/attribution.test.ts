@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { appendJourney, classifySource, makeTouch, normalizeAttributionMetadata, safePath, summarizeQuoteHistory } from "../lib/attribution";
 
 const source = (url: string, referrer = "") => makeTouch(url, referrer).source_category;
@@ -43,4 +44,10 @@ test("roof then siding and a different visitor at the same address are summarize
 test("missing or legacy attribution is safe", () => {
   assert.deepEqual(normalizeAttributionMetadata(undefined), {});
   assert.deepEqual(normalizeAttributionMetadata({ referrer:"legacy" }), {});
+});
+
+test("root attribution tracking does not force a search-param CSR bailout", () => {
+  const tracker = readFileSync("components/AttributionTracker.tsx", "utf8");
+  assert.doesNotMatch(tracker, /useSearchParams/);
+  assert.match(tracker, /window\.location\.href/);
 });

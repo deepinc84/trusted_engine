@@ -1,13 +1,13 @@
 "use client";
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { appendJourney, ATTRIBUTION_STORAGE_KEY, makeTouch, safePath, SESSION_STORAGE_KEY, type AttributionSnapshot, type JourneyEventName } from "@/lib/attribution";
 
 declare global { interface Window { trustedAttribution?: { snapshot: () => AttributionSnapshot | null; track: (event: JourneyEventName, label?: string) => void } } }
 const parse = <T,>(value: string | null): T | null => { try { return value ? JSON.parse(value) as T : null; } catch { return null; } };
 
 export default function AttributionTracker() {
-  const pathname = usePathname(); const searchParams = useSearchParams();
+  const pathname = usePathname();
   useEffect(() => {
     try {
       const now = new Date().toISOString(); const url = window.location.href;
@@ -25,6 +25,6 @@ export default function AttributionTracker() {
       const pageEvent = classifyPath(pathname); if (pageEvent) track(pageEvent);
       persist(); window.trustedAttribution = { snapshot: () => snapshot, track };
     } catch { window.trustedAttribution = { snapshot: () => null, track: () => undefined }; }
-  }, [pathname, searchParams]);
+  }, [pathname]);
   return null;
 }
