@@ -250,7 +250,8 @@ main {
 }
 
 .carousel .card {
-  flex: 0 0 min(340px, calc(100vw - 72px));
+  flex: 0 0 calc((100% - 32px) / 3);
+  min-width: 0;
   scroll-snap-align: start;
 }
 
