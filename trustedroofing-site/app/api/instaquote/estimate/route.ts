@@ -5,12 +5,14 @@ import {
   findHistoricalRoofProfile,
   refreshInstaquoteAddressQuery,
   upsertInstantQuoteFromAddressQuery,
-  updateInstantQuoteNotificationState
+  updateInstantQuoteNotificationState,
+  type QuoteSourceMetadata
 } from "@/lib/db";
 import { sendQuoteEventCreatedEmail } from "@/lib/email";
 import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { calculateRoofRejuvenationQuote } from "@/lib/roof-rejuvenation";
+import { normalizeAttributionMetadata } from "@/lib/attribution";
 
 type EstimateBody = {
   address?: string;
@@ -21,15 +23,8 @@ type EstimateBody = {
   benchmarkQuotedAmount?: number | null;
   benchmarkLabel?: string | null;
   serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
-  sourceMetadata?: Record<string, string | null>;
+  sourceMetadata?: Record<string, unknown>;
 };
-
-function sourceType(metadata: Record<string, string | null> | undefined) {
-  if (!metadata) return "Direct/Unknown";
-  if (metadata.utm_source || metadata.utm_medium || metadata.utm_campaign) return metadata.utm_medium === "organic" ? "Organic Search" : "Campaign / UTM";
-  const referrer = String(metadata.referrer ?? "").toLowerCase();
-  return /(google|bing|duckduckgo|yahoo|ecosia)/.test(referrer) ? "Organic Search" : referrer ? "Referral" : "Direct/Unknown";
-}
 
 function isLikelyServedLocation(address: string) {
   const normalized = address.toLowerCase();
@@ -911,10 +906,11 @@ export async function POST(request: Request) {
   const requestedScopes = mapScopeToRequestedScopes(serviceScope);
   const serviceType = mapScopeToServiceType(serviceScope);
   const sourceMetadata = {
-    ...(body.sourceMetadata ?? {}),
-    source_type: sourceType(body.sourceMetadata),
-    user_agent_summary: request.headers.get("user-agent")?.slice(0, 240) ?? body.sourceMetadata?.user_agent_summary ?? null,
-  };
+    ...normalizeAttributionMetadata(body.sourceMetadata),
+    quote_generated_at: new Date().toISOString(),
+    user_agent_summary: request.headers.get("user-agent")?.slice(0, 240) ?? null,
+  } as QuoteSourceMetadata;
+  if (Array.isArray(sourceMetadata.journey)) sourceMetadata.journey = [...sourceMetadata.journey, { event: "estimate_generated", path: String(sourceMetadata.current_page_path ?? "/online-estimate"), at: sourceMetadata.quote_generated_at, label: serviceScope }].slice(-20);
 
   let normalizedAddress = body.address?.trim() ?? "";
   let placeId = body.placeId ?? null;
