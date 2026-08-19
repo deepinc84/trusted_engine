@@ -12,7 +12,6 @@ import { sendQuoteEventCreatedEmail } from "@/lib/email";
 import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAreas";
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { calculateRoofRejuvenationQuote } from "@/lib/roof-rejuvenation";
-import { normalizeAttributionMetadata } from "@/lib/attribution";
 
 type EstimateBody = {
   address?: string;

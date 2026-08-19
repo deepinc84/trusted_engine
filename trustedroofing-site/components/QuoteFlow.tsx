@@ -562,7 +562,6 @@ export default function QuoteFlow({
       }
 
       gtagSendEvent();
-      window.trustedAttribution?.track("contact_submitted", selectedLabel);
       if (serviceInterest === "roof_rejuvenation") {
         window.gtag?.("event", "roof_rejuvenation_lead_submitted", { value: estimate.rejuvenation.price, currency: "CAD" });
       }
@@ -867,24 +866,36 @@ export default function QuoteFlow({
           </div>
 
           {selectedScope === "roofing" ? (
-            <section className={`roof-rejuvenation-quote ${serviceInterest === "roof_rejuvenation" ? "is-selected" : ""}`}>
-              <p className="homev3-eyebrow">Lower-cost roof preservation option</p>
-              <h2>Your Fixed Roof Rejuvenation Quote</h2>
-              <p className="roof-rejuvenation-quote__price">${estimate.rejuvenation.price.toLocaleString()} <small>plus GST</small></p>
-              <ul>
+            <section
+              className={`rejuvenation-quote-card ${serviceInterest === "roof_rejuvenation" ? "rejuvenation-quote-card--selected" : ""}`}
+              aria-labelledby="rejuvenation-quote-title"
+            >
+              <p className="rejuvenation-quote-eyebrow">Lower-cost roof preservation option</p>
+              <h2 id="rejuvenation-quote-title" className="rejuvenation-quote-title">Your Fixed Roof Rejuvenation Quote</h2>
+              <p className="rejuvenation-quote-price-row">
+                <strong className="rejuvenation-quote-price">${estimate.rejuvenation.price.toLocaleString()}</strong>
+                <span className="rejuvenation-quote-tax">plus GST</span>
+              </p>
+              <ul className="rejuvenation-quote-details">
                 <li>{estimate.rejuvenation.roofAreaSqft.toLocaleString()} sq. ft. measured roof area</li>
                 <li>{estimate.rejuvenation.pitchRatio} roof pitch</li>
                 <li>${estimate.rejuvenation.ratePerSqft.toFixed(2)} per sq. ft.</li>
                 {estimate.rejuvenation.minimumApplied ? <li>Minimum charge applied</li> : null}
               </ul>
-              <div className="roof-rejuvenation-quote__comparison">
-                <p><strong>Current roof replacement estimate:</strong><br />${estimate.ranges.good.low.toLocaleString()} to ${estimate.ranges.good.high.toLocaleString()}</p>
-                <p><strong>Potential price difference:</strong><br />${Math.max(0, estimate.ranges.good.low - estimate.rejuvenation.price).toLocaleString()} to ${Math.max(0, estimate.ranges.good.high - estimate.rejuvenation.price).toLocaleString()}</p>
+              <div className="rejuvenation-quote-comparison">
+                <div className="rejuvenation-quote-comparison-item">
+                  <strong>Current roof replacement estimate</strong>
+                  <span>${estimate.ranges.good.low.toLocaleString()} to ${estimate.ranges.good.high.toLocaleString()}</span>
+                </div>
+                <div className="rejuvenation-quote-comparison-item">
+                  <strong>Potential price difference</strong>
+                  <span>${Math.max(0, estimate.ranges.good.low - estimate.rejuvenation.price).toLocaleString()} to ${Math.max(0, estimate.ranges.good.high - estimate.rejuvenation.price).toLocaleString()}</span>
+                </div>
               </div>
-              <p>This fixed treatment quote is based on the measured roof area and pitch. The roof must still pass a condition review. The review can approve or disqualify the roof, but it does not change the treatment price. Repairs, required cleaning and additional structures are separate.</p>
-              <div className="instant-quote__step-actions">
-                <button className="button" type="button" onClick={() => { setServiceInterest("roof_rejuvenation"); window.gtag?.("event", "roof_rejuvenation_selected", { value: estimate.rejuvenation.price, currency: "CAD" }); }}>Choose Roof Rejuvenation</button>
-                <button className="button button--ghost" type="button" onClick={() => setServiceInterest("roof_replacement")}>Continue With Roof Replacement</button>
+              <p className="rejuvenation-quote-disclaimer">This fixed treatment quote is based on the measured roof area and pitch. The roof must still pass a condition review. The review can approve or disqualify the roof, but it does not change the treatment price. Repairs, required cleaning and additional structures are separate.</p>
+              <div className="rejuvenation-quote-actions">
+                <button className="button rejuvenation-quote-action rejuvenation-quote-action--primary" type="button" aria-pressed={serviceInterest === "roof_rejuvenation"} onClick={() => { setServiceInterest("roof_rejuvenation"); window.gtag?.("event", "roof_rejuvenation_selected", { value: estimate.rejuvenation.price, currency: "CAD" }); }}>Choose Roof Rejuvenation</button>
+                <button className="button rejuvenation-quote-action rejuvenation-quote-action--secondary" type="button" aria-pressed={serviceInterest === "roof_replacement"} onClick={() => setServiceInterest("roof_replacement")}>Continue With Roof Replacement</button>
               </div>
             </section>
           ) : null}

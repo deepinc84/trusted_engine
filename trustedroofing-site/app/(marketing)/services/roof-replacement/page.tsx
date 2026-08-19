@@ -205,6 +205,10 @@ export default async function RoofReplacementPage() {
         </PageContainer>
       </section>
 
+      <section className="ui-page-section">
+        <PageContainer><article className="ui-card"><h2>Before You Replace an Aging Roof</h2><p>Qualifying asphalt shingles that remain serviceable may be preserved rather than removed prematurely. Learn how <Link href="/services/roof-rejuvenation">roof rejuvenation</Link> is assessed, or <Link href="/online-estimate?intent=roof-rejuvenation">compare a fixed treatment quote with replacement</Link>.</p></article></PageContainer>
+      </section>
+
       <section className="ui-page-section ui-page-section--soft">
         <PageContainer>
           <h2>Repair, rejuvenation or replacement?</h2>
