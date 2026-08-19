@@ -70,8 +70,32 @@ const completeScope = [
 ] as const;
 
 function isRoofReplacementQuote(quote: Awaited<ReturnType<typeof getAllQuoteCards>>[number]) {
-  const haystack = `${quote.material} ${quote.serviceType ?? ""} ${(quote.requestedScopes ?? []).join(" ")}`.toLowerCase();
-  return (haystack.includes("roof") || haystack.includes("shingle")) && !haystack.includes("repair");
+  const requestedScopes = (quote.requestedScopes ?? []).map((scope) =>
+    scope.toLowerCase()
+  );
+  const serviceType = (quote.serviceType ?? "").toLowerCase();
+  const material = quote.material.toLowerCase();
+  const hasExplicitNonRoofScope =
+    requestedScopes.some(
+      (scope) => scope.includes("eaves") || scope.includes("siding")
+    ) ||
+    serviceType.includes("eaves") ||
+    serviceType.includes("siding");
+  const hasRoofScope =
+    requestedScopes.some(
+      (scope) => scope.includes("roof") || scope.includes("shingle")
+    ) ||
+    serviceType.includes("roof") ||
+    serviceType.includes("shingle") ||
+    material.includes("roof") ||
+    material.includes("shingle");
+
+  return (
+    hasRoofScope &&
+    !hasExplicitNonRoofScope &&
+    !serviceType.includes("repair") &&
+    !material.includes("repair")
+  );
 }
 
 export default async function RoofReplacementPage() {

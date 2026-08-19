@@ -2720,7 +2720,7 @@ export async function listRecentInstaquoteAddressQueries(
     const { data: legacyData } = await readClient
       .from("quote_events")
       .select(
-        "id,address,city,province,lat,lng,estimate_low,estimate_high,status,created_at,updated_at,notes",
+        "id,address,city,province,lat,lng,estimate_low,estimate_high,status,service_type,requested_scopes,created_at,updated_at,notes",
       )
       .or("status.eq.instaquote_estimated,status.eq.instaquote_lead_submitted")
       .order("updated_at", { ascending: false })
@@ -2783,6 +2783,11 @@ export async function listRecentInstaquoteAddressQueries(
               (value): value is string => typeof value === "string",
             )
           : [];
+        const rowScopes = Array.isArray(row.requested_scopes)
+          ? row.requested_scopes.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
         const extras =
           typeof parsedNotes.extras === "object" && parsedNotes.extras !== null
             ? (parsedNotes.extras as Record<string, unknown>)
@@ -2801,11 +2806,15 @@ export async function listRecentInstaquoteAddressQueries(
               ? parsedNotes.neighborhood
               : null,
           service_type:
-            typeof parsedNotes.service_type === "string"
+            typeof row.service_type === "string"
+              ? row.service_type
+              : typeof parsedNotes.service_type === "string"
               ? parsedNotes.service_type
               : "InstantQuote:Roof",
           requested_scopes:
-            noteScopes.length > 0
+            rowScopes.length > 0
+              ? rowScopes
+              : noteScopes.length > 0
               ? noteScopes
               : extraScopes.length > 0
                 ? extraScopes
