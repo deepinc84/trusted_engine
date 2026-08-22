@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { appendJourney, classifySource, makeTouch, normalizeAttributionMetadata, safePath, summarizeQuoteHistory } from "../lib/attribution";
+import { dailyIpHash } from "../lib/quote-telemetry";
 
 const source = (url: string, referrer = "") => makeTouch(url, referrer).source_category;
 test("classifies supported acquisition sources centrally", () => {
@@ -46,8 +47,23 @@ test("missing or legacy attribution is safe", () => {
   assert.deepEqual(normalizeAttributionMetadata({ referrer:"legacy" }), {});
 });
 
+test("missing visitor identity remains unknown rather than a confirmed new visitor", () => {
+  const touch = makeTouch("https://trusted.ca/online-estimate");
+  const metadata = normalizeAttributionMetadata({ attribution: { visitor_id:"", session_id:"", first_seen_at:"2026-08-22T00:00:00Z", session_started_at:"2026-08-22T00:00:00Z", visit_count:1, is_returning_visitor:false, first_touch:touch, last_touch:touch, journey:[] } });
+  assert.equal(metadata.is_returning_visitor, null);
+});
+
+test("daily IP correlation is deterministic for one day and rotates across days", () => {
+  const first = dailyIpHash("::ffff:192.0.2.10", "2026-08-21", "test-secret");
+  assert.equal(first, dailyIpHash("192.0.2.10", "2026-08-21", "test-secret"));
+  assert.notEqual(first, dailyIpHash("192.0.2.10", "2026-08-22", "test-secret"));
+  assert.equal(dailyIpHash("192.0.2.10", "2026-08-22", ""), null);
+});
+
 test("root attribution tracking does not force a search-param CSR bailout", () => {
   const tracker = readFileSync("components/AttributionTracker.tsx", "utf8");
+  const attribution = readFileSync("lib/attribution.ts", "utf8");
   assert.doesNotMatch(tracker, /useSearchParams/);
-  assert.match(tracker, /window\.location\.href/);
+  assert.match(attribution, /window\.location\.href/);
+  assert.match(tracker, /ensureBrowserAttribution/);
 });

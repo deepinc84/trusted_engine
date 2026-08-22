@@ -400,3 +400,8 @@ alter table if exists instant_quotes
   add column if not exists quote_history jsonb;
 create index if not exists instant_quotes_visitor_created_idx on instant_quotes(visitor_id, created_at desc) where visitor_id is not null;
 create index if not exists quote_events_visitor_created_idx on quote_events(visitor_id, created_at desc) where visitor_id is not null;
+
+-- Server-only, daily rotating anonymous request correlation (0032).
+alter table if exists quote_events add column if not exists daily_ip_hash text, add column if not exists telemetry_status text, add column if not exists likely_automation boolean;
+alter table if exists instant_quotes add column if not exists daily_ip_hash text, add column if not exists telemetry_status text, add column if not exists likely_automation boolean, add column if not exists same_anonymous_network_today boolean;
+create index if not exists instant_quotes_daily_ip_created_idx on instant_quotes(daily_ip_hash, created_at desc) where daily_ip_hash is not null;
