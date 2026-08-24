@@ -1,6 +1,7 @@
 import type { Project, ResolvedGeoPost } from "@/lib/db";
 import { canonicalUrl } from "@/lib/seo";
 import { neighborhoodSlug } from "@/lib/serviceAreas";
+import { ORGANIZATION_ID } from "@/lib/organization";
 
 type Props =
   | { project: Project; geoPost?: never }
@@ -71,25 +72,12 @@ export default function ProjectSchema(props: Props) {
 
   const schema = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: "Trusted Roofing & Exteriors",
-    url: canonicalUrl(""),
-    areaServed: {
-      "@type": "Place",
-      name: `${neighborhood}, ${city}`,
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: city,
-        addressRegion: province,
-        addressCountry: "CA",
-      },
-      geo: buildNeighborhoodGeo(latPublic, lngPublic),
-    },
-    hasPart: {
+    "@graph": [{ "@id": ORGANIZATION_ID }, {
       "@type": "Project",
       name: title,
       description: summary,
       url,
+      provider: { "@id": ORGANIZATION_ID },
       category: serviceSlug,
       image: imageUrls,
       areaServed: {
@@ -98,15 +86,15 @@ export default function ProjectSchema(props: Props) {
         geo: buildNeighborhoodGeo(latPublic, lngPublic),
       },
       isRelatedTo: [relatedServiceArea],
-    },
+    }],
   };
 
   if (projectUrl) {
-    (schema.hasPart as Record<string, unknown>).isPartOf = {
+    (schema["@graph"][1] as Record<string, unknown>).isPartOf = {
       "@type": "WebPage",
       url: projectUrl,
     };
-    (schema.hasPart as Record<string, unknown>).mentions = [projectUrl];
+    (schema["@graph"][1] as Record<string, unknown>).mentions = [projectUrl];
   }
 
   return (

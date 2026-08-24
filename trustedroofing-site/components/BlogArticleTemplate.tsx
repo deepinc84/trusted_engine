@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import { canonicalUrl } from "@/lib/seo";
+import { ORGANIZATION_ID } from "@/lib/organization";
 import styles from "@/app/(marketing)/blog/how-much-does-a-roof-replacement-cost-in-calgary-2026/page.module.css";
 
 export type BlogSection = {
@@ -36,8 +37,8 @@ function buildBlogSchema(article: BlogArticleData) {
     description: article.description,
     datePublished: article.publishAt,
     dateModified: article.updatedAt ?? article.publishAt,
-    author: { "@type": "Organization", name: "Trusted Roofing & Exteriors" },
-    publisher: { "@type": "Organization", name: "Trusted Roofing & Exteriors" },
+    author: { "@id": ORGANIZATION_ID },
+    publisher: { "@id": ORGANIZATION_ID },
     mainEntityOfPage: url,
     url,
     image: [canonicalUrl(article.heroImage)]
