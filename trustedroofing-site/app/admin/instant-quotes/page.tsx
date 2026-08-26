@@ -157,7 +157,10 @@ export default async function InstantQuotesAdminPage({ searchParams }: { searchP
                   <strong>{quote.source_type ?? "Direct/Unknown"}</strong>
                   <span>First / last: {quote.first_source_category ?? "unknown"} / {quote.last_source_category ?? "unknown"}</span>
                   <span>Landing: {quote.landing_page ?? quote.first_page_path ?? "n/a"}</span>
-                  <span>Returning: {quote.is_returning_visitor ? "Yes" : "No"} · Previous browser quotes: {String(quote.quote_history?.previous_quote_count ?? 0)} · Same address: {String(quote.quote_history?.number_of_quotes_same_address ?? 0)}</span>
+                  <span>Visitor ID: {quote.visitor_id ? "present" : "missing"} · Session ID: {quote.session_id ? "present" : "missing"}</span>
+                  <span>Returning: {quote.is_returning_visitor == null ? "Unknown" : quote.is_returning_visitor ? "Yes" : "No"} · Previous browser quotes: {quote.visitor_id ? String(quote.quote_history?.previous_quote_count ?? 0) : "Unknown"} · Same address: {String(quote.quote_history?.number_of_quotes_same_address ?? 0)}</span>
+                  <span>Device: {quote.device_category ?? "Unknown"} · Telemetry: {quote.telemetry_status ?? "Unavailable"} · Likely automation: {quote.likely_automation == null ? "Unknown" : quote.likely_automation ? "Yes" : "No"}</span>
+                  <span>Same anonymous network today: {quote.daily_ip_hash ? quote.same_anonymous_network_today ? "Yes" : "No" : "Unknown"}</span>
                   <span>Referrer: {quote.utm_source ?? quote.referrer ?? "n/a"}</span>
                   <span>PDF: {quote.pdf_available ? "available" : "not yet"} · {quote.pdf_downloaded_at ? "downloaded" : "not downloaded"} · {quote.pdf_download_count ?? 0} download{quote.pdf_download_count === 1 ? "" : "s"}</span>
                   <span>Contact: {quote.has_contact_submission || leadIds.has(quote.id) ? "Yes" : "No"} · Marketing: {quote.is_marketing ? "Yes" : "No"}</span>

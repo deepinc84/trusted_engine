@@ -264,8 +264,8 @@ function sourceRows(quote: Partial<InstantQuoteRecord>) {
     { label: "Acquisition — first touch", value: sourceLabel(quote.first_source_category as SourceCategory) },
     { label: "First landing page", value: quote.landing_page ?? "n/a" },
     { label: "Last touch", value: sourceLabel(quote.last_source_category as SourceCategory) },
-    { label: "Returning visitor", value: yesNo(quote.is_returning_visitor === true) },
-    { label: "Previous browser quotes", value: history.previous_quote_count ?? 0 },
+    { label: "Returning visitor", value: quote.is_returning_visitor == null ? "Unknown" : yesNo(quote.is_returning_visitor) },
+    { label: "Previous browser quotes", value: quote.visitor_id ? (history.previous_quote_count ?? 0) : "Unknown" },
     { label: "Previous quotes at this address", value: history.number_of_quotes_same_address ?? 0 },
     { label: "Previous service", value: history.previous_quote_service ?? "n/a" },
     { label: "Previous quote time", value: history.previous_quote_created_at ?? "n/a" },
@@ -280,6 +280,9 @@ function sourceRows(quote: Partial<InstantQuoteRecord>) {
     { label: "Current page path", value: quote.current_page_path ?? "n/a" },
     { label: "Device category", value: quote.device_category ?? "n/a" },
     { label: "Session first seen", value: quote.session_started_at ?? "n/a" },
+    { label: "Telemetry", value: quote.telemetry_status ?? "Unavailable" },
+    { label: "Same anonymous network today", value: quote.daily_ip_hash ? yesNo(quote.same_anonymous_network_today === true) : "Unknown" },
+    { label: "Likely automation", value: quote.likely_automation == null ? "Unknown" : yesNo(quote.likely_automation) },
   ];
 }
 
