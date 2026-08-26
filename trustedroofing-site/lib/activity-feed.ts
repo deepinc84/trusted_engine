@@ -4,7 +4,11 @@ import {
   listRecentInstaquoteAddressQueries,
   listSolarSuitabilityAnalyses,
 } from "./db";
-import { quoteMaterialLabel, resolvePublicLocation } from "./serviceAreas";
+import {
+  neighborhoodSlug,
+  quoteMaterialLabel,
+  resolvePublicLocation,
+} from "./serviceAreas";
 
 export type LiveActivityItem = {
   id: string;
@@ -44,6 +48,12 @@ export async function getRecentQuoteSignals(
       address: row.address,
     });
     const service = quoteMaterialLabel(row.service_type, row.requested_scopes);
+    const serviceAreaSlug = location.city === "Calgary"
+      ? neighborhoodSlug(location.locality)
+      : neighborhoodSlug(`${location.city}-${location.locality}`);
+    const href = location.kind === "neighborhood"
+      ? `/service-areas/${serviceAreaSlug}`
+      : `/quotes#quote-${row.id}`;
 
     return {
       id: `quote-${row.id}`,
@@ -52,7 +62,7 @@ export async function getRecentQuoteSignals(
       location: location.label,
       message: `${service} quote generated in ${location.label}`,
       occurredAt: row.queried_at,
-      href: `/quotes#quote-${row.id}`,
+      href,
     };
   });
 }
