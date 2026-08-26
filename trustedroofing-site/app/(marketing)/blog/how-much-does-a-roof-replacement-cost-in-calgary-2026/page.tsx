@@ -5,6 +5,7 @@ import styles from "./page.module.css";
 
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import { getBlogPost, isBlogPostPublished } from "@/lib/blog";
+import { ORGANIZATION_ID } from "@/lib/organization";
 export const metadata = buildMetadata({
   title: "Roof Replacement Cost Calgary 2026 | Trusted",
   description: "Learn what affects roof replacement costs in Calgary in 2026, including size, pitch, materials, and real local estimate ranges.",
@@ -22,12 +23,10 @@ function buildBlogSchema() {
     datePublished: getBlogPost("how-much-does-a-roof-replacement-cost-in-calgary-2026")?.publishAt ?? "2026-03-25T13:00:00-06:00",
     dateModified: getBlogPost("how-much-does-a-roof-replacement-cost-in-calgary-2026")?.publishAt ?? "2026-03-25T13:00:00-06:00",
     author: {
-      "@type": "Organization",
-      name: "Trusted Roofing & Exteriors"
+      "@id": ORGANIZATION_ID
     },
     publisher: {
-      "@type": "Organization",
-      name: "Trusted Roofing & Exteriors"
+      "@id": ORGANIZATION_ID
     },
     mainEntityOfPage: url,
     url,

@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import LocalBusinessSchema from "@/components/LocalBusinessSchema";
 import ActivitySection from "@/components/home/ActivitySection";
 import FeaturedProjects from "@/components/home/FeaturedProjects";
 import ProofStrip from "@/components/home/ProofStrip";
@@ -226,7 +225,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <LocalBusinessSchema />
       <style>{`
         .home-seo-hero {
           grid-template-columns: minmax(0, 1.35fr) minmax(280px, 360px);

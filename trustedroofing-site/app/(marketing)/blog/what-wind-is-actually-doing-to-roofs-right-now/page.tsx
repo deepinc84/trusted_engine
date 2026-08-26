@@ -5,6 +5,7 @@ import styles from "../how-much-does-a-roof-replacement-cost-in-calgary-2026/pag
 
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import { getBlogPost, isBlogPostPublished } from "@/lib/blog";
+import { ORGANIZATION_ID } from "@/lib/organization";
 export const metadata = buildMetadata({
   title: "Calgary Wind Damage This Week",
   description:
@@ -24,12 +25,10 @@ function buildBlogSchema() {
     datePublished: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-04-30T09:00:00-06:00",
     dateModified: getBlogPost("what-wind-is-actually-doing-to-roofs-right-now")?.publishAt ?? "2026-04-30T09:00:00-06:00",
     author: {
-      "@type": "Organization",
-      name: "Trusted Roofing & Exteriors"
+      "@id": ORGANIZATION_ID
     },
     publisher: {
-      "@type": "Organization",
-      name: "Trusted Roofing & Exteriors"
+      "@id": ORGANIZATION_ID
     },
     mainEntityOfPage: url,
     url,

@@ -1,20 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GOOGLE_BUSINESS_URL, localBusinessSchema, organizationSchema } from "../lib/organization";
+import { GOOGLE_BUSINESS_URL, ORGANIZATION_ID, organizationSchema } from "../lib/organization";
 import { buildMetadata } from "../lib/seo";
 
 test("publishes the verified organization contact details", () => {
-  assert.equal(organizationSchema.telephone, "+1-587-288-3351");
-  assert.equal(organizationSchema.logo, "https://www.trustedroofingcalgary.com/transparent-logo.png");
-  assert.deepEqual(organizationSchema.sameAs, [
-    "https://www.google.com/maps/place/Trusted+Roofing+and+Exteriors/@51.0276233,-114.087835,10z/data=!3m1!4b1!4m6!3m5!1s0x84f684b81f4abb19:0x8c7ab4360c4bc567!8m2!3d51.0276233!4d-114.087835!16s%2Fg%2F11z2bxxb2y"
-  ]);
-  assert.deepEqual(localBusinessSchema.geo, {
-    "@type": "GeoCoordinates",
-    latitude: 51.0276233,
-    longitude: -114.087835
-  });
-  assert.deepEqual(localBusinessSchema.sameAs, [GOOGLE_BUSINESS_URL]);
+  const business = organizationSchema["@graph"][0];
+  assert.equal(business["@id"], ORGANIZATION_ID);
+  assert.equal(business.telephone, "+1-587-288-3351");
+  assert.equal(business.logo, "https://www.trustedroofingcalgary.com/transparent-logo.png");
+  assert.equal(business.hasMap, GOOGLE_BUSINESS_URL);
+  assert.deepEqual(business.sameAs, [GOOGLE_BUSINESS_URL]);
+  assert.equal("geo" in business, false);
 });
 
 test("adds a branded image to Open Graph and Twitter metadata by default", () => {
