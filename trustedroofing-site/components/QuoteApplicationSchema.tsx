@@ -2,34 +2,44 @@ import { canonicalUrl } from "@/lib/seo";
 
 export const quoteFaqItems = [
   {
-    question: "How accurate is the instant quote?",
+    question: "Can I get an instant roof quote without a salesperson visit?",
     answer:
-      "The instant quote uses address data, roof geometry, and current pricing bands to generate a fast planning range. We refine the final number after confirming access, material choices, and any site-specific complexity."
+      "Yes. You can start with an online estimate using your address before deciding whether you want a detailed site visit or follow-up quote."
+  },
+  {
+    question: "Is the instant roof quote free?",
+    answer:
+      "Yes. The instant estimate is free to use, and you can review the estimate before choosing whether to request follow-up."
   },
   {
     question: "Do I need to enter my contact information first?",
     answer:
-      "No. You can generate the instant estimate before sharing any contact details. Contact information is only requested if you want a detailed follow-up quote."
+      "No. The tool is designed so Calgary homeowners can start with the estimate first. Contact details are only requested if you want detailed follow-up."
   },
   {
-    question: "What project types can I price here?",
+    question: "How accurate is the instant roofing estimate?",
     answer:
-      "The tool can model roofing, vinyl siding, Hardie siding, eavestrough work, and bundled full-exterior scopes for Calgary-area homes."
+      "The estimate is a planning range based on address-level roof data, project scope, and local pricing bands. Final pricing is confirmed after details such as access, material choice, roof condition, and site-specific complexity are reviewed."
   },
   {
-    question: "What happens after I submit my detailed quote request?",
+    question: "What information affects the roof quote?",
     answer:
-      "Once you submit, the team reviews the estimate, confirms scope assumptions, and follows up with next-step recommendations, timing, and any material options that affect the final price."
+      "Roof size, slope, complexity, layers, access, disposal, material selection, ventilation, flashing, and roof condition can all affect the final quote."
+  },
+  {
+    question: "Can I estimate siding or eavestrough work too?",
+    answer:
+      "Yes. The tool can also help start estimates for vinyl siding, James Hardie siding, eavestrough, and larger exterior scopes."
   }
 ] as const;
 
 const quoteApplicationSchema = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "Trusted Roofing Instant Estimator",
+  name: "Instant Roof Quote Calgary",
   url: canonicalUrl("/online-estimate"),
   description:
-    "Anonymous instant roofing, siding, and eavestrough pricing tool for Calgary homeowners using address-level roof data and local pricing bands.",
+    "Free instant roofing, siding, and eavestrough estimate tool for Calgary homeowners using address-level roof data and local pricing bands.",
   applicationCategory: "BusinessApplication",
   operatingSystem: "All",
   areaServed: {
@@ -40,7 +50,15 @@ const quoteApplicationSchema = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "CAD"
-  }
+  },
+  keywords: [
+    "instant roof quote",
+    "instant roof estimate",
+    "Calgary roof quote",
+    "online roofing estimate",
+    "instant exterior estimate",
+    "roof estimate Calgary"
+  ]
 };
 
 const quoteFaqSchema = {

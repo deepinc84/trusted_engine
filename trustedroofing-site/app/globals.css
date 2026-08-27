@@ -657,7 +657,7 @@ main {
 
 .quote-flow-overview__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 16px;
 }
 
@@ -3192,9 +3192,17 @@ main {
 
 .online-estimate-hero__trust-list li {
   position: relative;
+  display: grid;
+  gap: 4px;
   padding-left: 28px;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 700;
+}
+
+.online-estimate-hero__trust-list span {
+  color: rgba(255, 255, 255, 0.74);
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .online-estimate-hero__trust-list li::before {

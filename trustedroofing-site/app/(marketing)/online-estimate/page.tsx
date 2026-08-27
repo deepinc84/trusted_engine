@@ -6,6 +6,7 @@ import QuoteActivitySummary from "@/components/QuoteActivitySummary";
 import { buildMetadata } from "@/lib/seo";
 import dynamicImport from "next/dynamic";
 import Image from "next/image";
+import Link from "next/link";
 
 const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
   ssr: false,
@@ -14,22 +15,22 @@ const FaqAccordion = dynamicImport(() => import("@/components/FaqAccordion"), {
 
 const quoteBenefits = [
   {
-    title: "Download a free proposal first",
-    body: "Generate your estimate and download a PDF proposal right away — no name, phone, or email required."
+    title: "Free instant estimate before contact details",
+    body: "Start with a free instant estimate before sharing contact details, then choose whether you want a detailed follow-up."
   },
   {
-    title: "Compare scope options quickly",
-    body: "Switch between roofing, siding, eavestrough, or whole-exterior work without leaving the quote flow."
+    title: "Address-level roof and exterior pricing",
+    body: "Review planning ranges built around address-level roof data, local pricing bands, and Calgary exterior project context."
   },
   {
-    title: "Get follow-up only when you want it",
-    body: "Detailed quote follow-up happens after the instant estimate, not before, so the tool stays usable and fast."
+    title: "Download a PDF proposal when ready",
+    body: "Use the estimate to compare roofing, siding, and eavestrough scopes, then download a PDF proposal when you are ready."
   }
 ] as const;
 
 export const metadata = buildMetadata({
-  title: "Instant quote",
-  description: "Get an instant roofing, siding, or eavestrough estimate for Calgary homes using address-level property data and local project insights.",
+  title: "Instant Roof Quote Calgary | Free Online Estimate",
+  description: "Get an instant roof quote for Calgary homes using address-level roof data. Compare roofing, siding, and eavestrough estimates before booking a site visit.",
   path: "/online-estimate",
   imagePath: "/Instant_estimate_hero.png"
 });
@@ -38,16 +39,20 @@ export const dynamic = "force-dynamic";
 
 const quoteFlowSteps = [
   {
-    title: "Download a free proposal first",
-    description: "Generate your estimate and download a PDF proposal right away — no name, phone, or email required."
+    title: "Enter your address",
+    description: "Start with your Calgary address so the estimator can build a planning range around the home."
   },
   {
-    title: "Compare scope options quickly",
-    description: "Switch between roofing, siding, eavestrough, or whole-exterior work without leaving the quote flow."
+    title: "Choose roofing or exterior scope",
+    description: "Compare roofing, siding, eavestrough, or bundled exterior work without leaving the quote flow."
   },
   {
-    title: "Get follow-up only when you want it",
-    description: "Detailed quote follow-up happens after the instant estimate, not before, so the tool stays usable and fast."
+    title: "Review your estimate range",
+    description: "See a practical planning range before deciding whether you want a detailed follow-up."
+  },
+  {
+    title: "Download your proposal or request follow-up",
+    description: "Save a PDF proposal when ready or ask the team to review details for next steps."
   }
 ];
 
@@ -68,14 +73,17 @@ export default function QuotePage() {
         <PageContainer>
           <div className="online-estimate-hero__layout">
             <div className="online-estimate-hero__content">
-              <p className="homev3-eyebrow">Instant quote</p>
-              <h1>Instant Roofing & Exterior Estimates for Calgary Homeowners</h1>
+              <p className="homev3-eyebrow">Instant roof quote</p>
+              <h1>Instant Roof Quote for Calgary Homes</h1>
               <p className="online-estimate-hero__description">
-                Enter your address for instant roofing, siding, and eavestrough pricing based on your Calgary home.
+                Enter your address to get an instant roof quote for your Calgary home, then compare roofing, siding, and eavestrough estimate options before deciding whether you want a detailed follow-up.
               </p>
               <ul className="online-estimate-hero__trust-list">
                 {quoteBenefits.map((benefit) => (
-                  <li key={benefit.title}>{benefit.title}</li>
+                  <li key={benefit.title}>
+                    <strong>{benefit.title}</strong>
+                    <span>{benefit.body}</span>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -94,7 +102,8 @@ export default function QuotePage() {
           <div className="quote-page-stack">
             <section className="quote-flow-overview" aria-labelledby="quote-flow-overview-title">
               <div className="quote-flow-overview__header">
-                <h2 id="quote-flow-overview-title">Get the estimate first, then decide what happens next</h2>
+                <h2 id="quote-flow-overview-title">How an instant roof quote works in Calgary</h2>
+                <p>An instant roof quote uses your address to estimate roof size, slope, complexity, and project scope before a site visit. It gives Calgary homeowners a fast planning range for roofing, siding, or eavestrough work so they can compare options before requesting a detailed quote.</p>
               </div>
               <div className="quote-flow-overview__grid">
                 {quoteFlowSteps.map((step) => (
@@ -112,24 +121,37 @@ export default function QuotePage() {
 
             <div className="quote-support-stack">
               <article className="ui-card quote-support-card">
-                <p className="ui-page-hero__eyebrow">How it works</p>
-                <h2>Why this quote tool is different</h2>
+                <p className="ui-page-hero__eyebrow">Estimate factors</p>
+                <h2>What affects your instant roof estimate?</h2>
                 <p>
-                  Most online roofing calculators are little more than a form wrapped around a weak average. They
-                  ask for a postal code, ignore roof complexity, and spit back a number that feels precise but does
-                  not help a homeowner make a real decision.
+                  Your planning range can change with roof size, roof pitch, roof complexity, the number of existing layers, access and disposal needs, shingle or material choice, ventilation, flashing, and other roof details. If you select siding or eavestrough work, the exterior scope also affects the estimate.
                 </p>
                 <p>
-                  This tool is designed to keep the estimate itself first, then give you the context you need after
-                  the pricing appears: what affects the range, how complexity changes the result, and what happens if
-                  you want a detailed follow-up quote.
+                  Use this tool to compare <Link href="/services/roofing">roofing</Link>, <Link href="/services/roof-replacement">roof replacement</Link>, <Link href="/services/roof-repair">roof repair</Link>, <Link href="/services/siding">siding</Link>, and <Link href="/services/eavestrough">eavestrough</Link> options, or review <Link href="/quotes">recent Calgary quote examples</Link> before you decide on next steps.
+                </p>
+                <p>
+                  <Link href="/online-estimate">Start instant roof quote</Link>
+                </p>
+              </article>
+
+              <article className="ui-card quote-support-card">
+                <p className="ui-page-hero__eyebrow">Planning tool</p>
+                <h2>More than a basic roof calculator</h2>
+                <p>
+                  This is not just a generic roofing calculator. It starts from address-level roof and exterior information, then gives a practical planning range for Calgary homeowners before they decide whether to request detailed follow-up.
+                </p>
+                <p>
+                  The estimate experience supports PDF proposal downloads, scope comparison, roofing, siding, and eavestrough options, and Calgary-area pricing context so you can keep planning without moving away from the quote tool.
+                </p>
+                <p>
+                  <Link href="/online-estimate">Get instant roof quote</Link>
                 </p>
               </article>
               <QuoteActivitySummary />
 
               <article className="ui-card quote-support-card">
                 <p className="ui-page-hero__eyebrow">FAQ</p>
-                <h2>Instant quote questions</h2>
+                <h2>Instant roof quote questions</h2>
                 <FaqAccordion items={quoteFaqItems} />
               </article>
             </div>
