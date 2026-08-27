@@ -12,7 +12,14 @@ export const organizationSchema = {
   logo: canonicalUrl("/transparent-logo.png"),
   telephone: "+1-587-288-3351",
   areaServed: ["Calgary, AB"],
-  sameAs: [GOOGLE_BUSINESS_URL]
+  sameAs: [
+    GOOGLE_BUSINESS_URL,
+    "https://facebook.com/TrustedRoofingCalgary",
+    "https://www.linkedin.com/company/trusted-roofing-exteriors/",
+    "https://m.yelp.ca/biz/trusted-roofing-and-exteriors-calgary",
+    "https://www.homestars.com/profile/trusted-roofing-and-exteriors-inc",
+    "https://trustedpros.ca/company/trusted-roofing-and-exteriors"
+  ]
 };
 
 export const localBusinessSchema = {
