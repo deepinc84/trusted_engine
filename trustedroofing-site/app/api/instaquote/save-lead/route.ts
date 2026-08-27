@@ -8,6 +8,7 @@ import {
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { processLeadSubmissionEmails, sendQuoteLeadSubmittedEmail } from "@/lib/email";
 import { normalizeAttributionMetadata } from "@/lib/attribution";
+import { primarySubmittedRange } from "@/lib/instantQuoteSubmission";
 
 function sourceMetadataFromSubmission(body: Record<string, unknown>): Record<string, unknown> | undefined {
   const metadata = normalizeAttributionMetadata(body.sourceMetadata);
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     const serviceType = body.serviceInterest === "roof_rejuvenation"
       ? "Roof Rejuvenation"
       : typeof body.serviceScope === "string" ? body.serviceScope : null;
+    const primaryRange = primarySubmittedRange(body);
     const sourceMetadata = sourceMetadataFromSubmission(body);
     let legacyLeadError: string | null = null;
     try {
@@ -85,8 +87,8 @@ export async function POST(request: Request) {
       budget_response: budget,
       timeline: (body.timeline as string) || null,
       service_type: serviceType,
-      quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
-      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      quote_low: primaryRange.low,
+      quote_high: primaryRange.high,
       source_metadata: sourceMetadata
     });
 
@@ -97,8 +99,8 @@ export async function POST(request: Request) {
       legacy_address_query_id: String(body.addressQueryId),
       address: String(body.address),
       service_type: serviceType,
-      quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
-      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      quote_low: primaryRange.low,
+      quote_high: primaryRange.high,
       has_contact_submission: true,
       project_id: null,
       is_marketing: false,
