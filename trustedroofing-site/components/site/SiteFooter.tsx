@@ -49,7 +49,7 @@ export default function SiteFooter() {
 
         <div>
           <h4>Company</h4>
-          <Link href="/">About <BrandText /></Link>
+          <Link href="/about">About <BrandText /></Link>
           <Link href="/projects">Calgary Roofing & Exterior Projects</Link>
           <Link href="/blog">Blog</Link>
           <Link href="/service-areas">Service Areas</Link>
