@@ -1,32 +1,37 @@
-export const ORGANIZATION_ID = "https://www.trustedroofingcalgary.com/#organization";
+import { canonicalUrl } from "./seo";
+
+export const ORGANIZATION_ID = `${canonicalUrl("/")}#organization`;
 export const GOOGLE_BUSINESS_URL = "https://maps.google.com/?cid=10122718143243142503";
+
+export const organizationProfile = {
+  "@type": "RoofingContractor",
+  "@id": ORGANIZATION_ID,
+  name: "Trusted Roofing & Exteriors",
+  url: canonicalUrl("/"),
+  logo: canonicalUrl("/transparent-logo.png"),
+  image: canonicalUrl("/transparent-logo.png"),
+  telephone: "+1-587-288-3351",
+  priceRange: "$$",
+  hasMap: GOOGLE_BUSINESS_URL,
+  sameAs: [GOOGLE_BUSINESS_URL],
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Calgary",
+    addressRegion: "AB",
+    addressCountry: "CA"
+  },
+  areaServed: [
+    {
+      "@type": "City",
+      name: "Calgary"
+    }
+  ]
+} as const;
 
 export const organizationSchema = {
   "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "RoofingContractor",
-      "@id": ORGANIZATION_ID,
-      name: "Trusted Roofing & Exteriors",
-      url: "https://www.trustedroofingcalgary.com/",
-      logo: "https://www.trustedroofingcalgary.com/transparent-logo.png",
-      image: "https://www.trustedroofingcalgary.com/transparent-logo.png",
-      telephone: "+1-587-288-3351",
-      priceRange: "$$",
-      hasMap: GOOGLE_BUSINESS_URL,
-      sameAs: [GOOGLE_BUSINESS_URL],
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: "Calgary",
-        addressRegion: "AB",
-        addressCountry: "CA"
-      },
-      areaServed: [
-        {
-          "@type": "City",
-          name: "Calgary"
-        }
-      ]
-    }
-  ]
+  // Keep the shared fields available at the top level for LocalBusiness and
+  // service schema builders while retaining the graph consumed by the layout.
+  ...organizationProfile,
+  "@graph": [organizationProfile]
 };

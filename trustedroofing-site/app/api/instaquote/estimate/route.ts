@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
 import {
   createInstaquoteAddressQuery,
+  findInstaquoteAddressQuery,
   findHistoricalRoofProfile,
   refreshInstaquoteAddressQuery,
   upsertInstantQuoteFromAddressQuery,
@@ -247,6 +248,28 @@ async function geocodeAddressNominatim(address: string) {
     lng,
     neighborhood: normalizeNeighborhood(top.address?.neighbourhood ?? top.address?.suburb ?? top.address?.city_district ?? null)
   };
+}
+
+async function reverseGeocodeNeighborhood(lat: number, lng: number) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lng),
+    format: "json",
+    addressdetails: "1",
+    zoom: "14"
+  });
+  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+    headers: { "User-Agent": "TrustedRoofing/1.0", Accept: "application/json" },
+    cache: "no-store"
+  });
+  if (!response.ok) return null;
+  const payload = (await response.json()) as {
+    address?: { neighbourhood?: string; suburb?: string; hamlet?: string; village?: string; town?: string; city_district?: string };
+  };
+  return normalizeNeighborhood(
+    payload.address?.neighbourhood ?? payload.address?.suburb ?? payload.address?.hamlet
+      ?? payload.address?.village ?? payload.address?.town ?? payload.address?.city_district
+  );
 }
 
 function degreesToPitchRatio(pitchDegrees: number) {
@@ -958,6 +981,13 @@ export async function POST(request: Request) {
   }
 
   neighborhood = neighborhood ?? normalizeNeighborhood(extractNeighborhood(normalizedAddress));
+  if (!neighborhood && lat !== null && lng !== null) {
+    try {
+      neighborhood = await reverseGeocodeNeighborhood(lat, lng);
+    } catch (error) {
+      console.warn("[instaquote][neighborhood_reverse_geocode_failed]", error);
+    }
+  }
 
   let estimateResult: EstimateCore | null = null;
   let historicalProfileMatch: Awaited<ReturnType<typeof findHistoricalRoofProfile>> = null;
@@ -1101,7 +1131,15 @@ export async function POST(request: Request) {
         serviceType
       };
 
-      if (historicalProfileMatch) {
+      const matchingAddressQueryId = await findInstaquoteAddressQuery({
+        address: queryPayload.address,
+        serviceType
+      });
+
+      if (matchingAddressQueryId) {
+        addressQueryId = matchingAddressQueryId;
+        await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, { ...queryOptions, sourceMetadata });
+      } else if (historicalProfileMatch) {
         if (estimateResult.dataSource.startsWith("internal_model_historical_")) {
           addressQueryId = historicalProfileMatch.queryId;
           await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, { ...queryOptions, sourceMetadata });
