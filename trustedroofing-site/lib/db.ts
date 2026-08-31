@@ -2438,6 +2438,31 @@ export async function refreshInstaquoteAddressQuery(
   return id;
 }
 
+/**
+ * Finds the durable quote event for a property and quote type. Geocoding makes
+ * addresses consistent in normal operation, while the normalized comparison
+ * also handles harmless differences in case and whitespace from older rows.
+ */
+export async function findInstaquoteAddressQuery(input: {
+  address: string;
+  serviceType: string;
+}) {
+  if (getDataMode() !== "supabase") return null;
+  const client = getServiceClient() ?? getAnonClient();
+  if (!client) throw new Error("Supabase client unavailable");
+
+  const { data, error } = await client
+    .from("instaquote_address_queries")
+    .select("id,address")
+    .eq("service_type", input.serviceType)
+    .ilike("address", input.address.trim().replace(/\s+/g, " "))
+    .order("queried_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error && error.code !== "PGRST116") throw new Error(error.message);
+  return data?.id ? String(data.id) : null;
+}
+
 async function ensureLegacyAddressQueryForInstantQuote(
   client: SupabaseClient,
   input: {
@@ -2504,12 +2529,39 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
     const client = getServiceClient() ?? getAnonClient();
     if (!client) throw new Error("Supabase client unavailable");
 
-    const { data: existing } = await client
+    const { data: existingByQuery } = await client
       .from("instant_quotes")
       .select("*")
       .eq("legacy_address_query_id", input.legacy_address_query_id)
       .maybeSingle();
-    if (existing) return existing as InstantQuoteRecord;
+    const { data: existingByAddress } = existingByQuery
+      ? { data: null }
+      : await client
+        .from("instant_quotes")
+        .select("*")
+        .eq("service_type", input.service_type)
+        .ilike("address", input.address.trim().replace(/\s+/g, " "))
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    const existing = existingByQuery ?? existingByAddress;
+    if (existing) {
+      const { data, error } = await client
+        .from("instant_quotes")
+        .update({
+          address: payload.address,
+          service_type: payload.service_type,
+          quote_low: payload.quote_low,
+          quote_high: payload.quote_high,
+          created_at: payload.created_at,
+          ...input.source_metadata,
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (error) throw new Error(error.message);
+      return data as InstantQuoteRecord;
+    }
 
     // Correlate by this browser and by the normalized/geocoded address. Only
     // operational quote facts are copied; contact details are never exposed.
@@ -2568,10 +2620,21 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
     return data as InstantQuoteRecord;
   }
 
-  const existing = mockInstantQuotes.find(
-    (row) => row.legacy_address_query_id === input.legacy_address_query_id,
+  const normalizedAddress = input.address.trim().replace(/\s+/g, " ").toLowerCase();
+  const existing = mockInstantQuotes.find((row) =>
+    row.legacy_address_query_id === input.legacy_address_query_id ||
+    (row.service_type === input.service_type && row.address.trim().replace(/\s+/g, " ").toLowerCase() === normalizedAddress)
   );
-  if (existing) return existing;
+  if (existing) {
+    Object.assign(existing, {
+      address: payload.address,
+      quote_low: payload.quote_low,
+      quote_high: payload.quote_high,
+      created_at: payload.created_at,
+      ...input.source_metadata,
+    });
+    return existing;
+  }
   mockInstantQuotes.unshift(payload);
   return payload;
 }

@@ -1,4 +1,6 @@
-export const ORGANIZATION_ID = "https://www.trustedroofingcalgary.com/#organization";
+import { canonicalUrl } from "./seo";
+
+export const ORGANIZATION_ID = `${canonicalUrl("/")}#organization`;
 export const GOOGLE_BUSINESS_URL = "https://maps.google.com/?cid=10122718143243142503";
 
 export const organizationSchema = {
@@ -8,9 +10,9 @@ export const organizationSchema = {
       "@type": "RoofingContractor",
       "@id": ORGANIZATION_ID,
       name: "Trusted Roofing & Exteriors",
-      url: "https://www.trustedroofingcalgary.com/",
-      logo: "https://www.trustedroofingcalgary.com/transparent-logo.png",
-      image: "https://www.trustedroofingcalgary.com/transparent-logo.png",
+      url: canonicalUrl("/"),
+      logo: canonicalUrl("/transparent-logo.png"),
+      image: canonicalUrl("/transparent-logo.png"),
       telephone: "+1-587-288-3351",
       priceRange: "$$",
       hasMap: GOOGLE_BUSINESS_URL,
