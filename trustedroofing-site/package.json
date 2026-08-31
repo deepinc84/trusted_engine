@@ -16,7 +16,9 @@
     "seed:demo-estimator": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/demo-estimator.ts",
     "cleanup:demo-estimator": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/demo-estimator.ts --cleanup",
     "test:integration": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/assert-integration-environment.ts && TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/integration-workflow.integration.ts",
-    "verify:deployment-bundles": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/integration-stabilization.test.ts"
+    "verify:deployment-bundles": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/integration-stabilization.test.ts",
+    "geography:update": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register scripts/update-calgary-geography.ts",
+    "test:geography": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test --test-concurrency=1 -r ts-node/register tests/calgary-geography.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.1",
