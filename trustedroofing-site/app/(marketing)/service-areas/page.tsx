@@ -5,7 +5,7 @@ import PageHero from "@/components/ui/PageHero";
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import {
   getQuoteQuadrantHeat,
-  getTopNeighborhoodActivities,
+  getAllNeighborhoodActivities,
 } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ServiceAreasPage() {
   const [areas, heat] = await Promise.all([
-    getTopNeighborhoodActivities(10),
+    getAllNeighborhoodActivities(),
     getQuoteQuadrantHeat(),
   ]);
 
@@ -42,7 +42,7 @@ export default async function ServiceAreasPage() {
         <PageContainer>
           <div className="service-area-shell">
             <article className="ui-card">
-              <h2>Most active neighborhoods</h2>
+              <h2>Active neighborhoods</h2>
               <div className="service-area-list">
                 {areas.map((area) => (
                   <Link key={area.slug} href={`/service-areas/${area.slug}`}>

@@ -6,6 +6,7 @@ import { quoteScopes, type QuoteScope } from "@/lib/quote";
 import { buildPublicQuoteDisplay, buildQuoteStructuredData } from "@/lib/publicQuoteDisplay";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
+import { ensureBrowserAttribution } from "@/lib/attribution";
 
 const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCarousel"), {
   ssr: false,
@@ -435,7 +436,7 @@ export default function QuoteFlow({
   }, []);
 
   const currentSourceMetadata = () => {
-    const attribution = window.trustedAttribution?.snapshot() ?? sourceMetadata.attribution ?? null;
+    const attribution = window.trustedAttribution?.snapshot() ?? ensureBrowserAttribution() ?? sourceMetadata.attribution ?? null;
     return { attribution };
   };
 

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { buildEstimateRanges, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
+import { buildEstimateRanges, calculateHardieRange, complexityBandFromSegments, regionalRoofEstimate } from "@/lib/quote";
 import {
   createInstaquoteAddressQuery,
+  findInstaquoteAddressQuery,
   findHistoricalRoofProfile,
   refreshInstaquoteAddressQuery,
   upsertInstantQuoteFromAddressQuery,
@@ -13,6 +14,7 @@ import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAr
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { calculateRoofRejuvenationQuote } from "@/lib/roof-rejuvenation";
 import { normalizeAttributionMetadata } from "@/lib/attribution";
+import { requestQuoteTelemetry } from "@/lib/quote-telemetry";
 
 type EstimateBody = {
   address?: string;
@@ -248,6 +250,28 @@ async function geocodeAddressNominatim(address: string) {
   };
 }
 
+async function reverseGeocodeNeighborhood(lat: number, lng: number) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lng),
+    format: "json",
+    addressdetails: "1",
+    zoom: "14"
+  });
+  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+    headers: { "User-Agent": "TrustedRoofing/1.0", Accept: "application/json" },
+    cache: "no-store"
+  });
+  if (!response.ok) return null;
+  const payload = (await response.json()) as {
+    address?: { neighbourhood?: string; suburb?: string; hamlet?: string; village?: string; town?: string; city_district?: string };
+  };
+  return normalizeNeighborhood(
+    payload.address?.neighbourhood ?? payload.address?.suburb ?? payload.address?.hamlet
+      ?? payload.address?.village ?? payload.address?.town ?? payload.address?.city_district
+  );
+}
+
 function degreesToPitchRatio(pitchDegrees: number) {
   const rise = Math.tan((pitchDegrees * Math.PI) / 180) * 12;
   const rounded = Math.max(1, Math.min(13, Math.round(rise)));
@@ -384,28 +408,6 @@ function getHardieComplexityTier(score: number): "simple" | "moderate" | "comple
   return "very_complex";
 }
 
-function getHardieRateBandForTier(tier: "simple" | "moderate" | "complex" | "very_complex") {
-  if (tier === "simple") return { low: 9.25, high: 10.75 };
-  if (tier === "moderate") return { low: 11.25, high: 13.25 };
-  if (tier === "complex") return { low: 13.75, high: 15.75 };
-  return { low: 15.25, high: 17.75 };
-}
-
-function scoreOverflowAdjustment(score: number, tier: "simple" | "moderate" | "complex" | "very_complex") {
-  if (tier === "moderate") return Math.max(0, score - 18) * 0.08;
-  if (tier === "complex") return Math.max(0, score - 28) * 0.06;
-  if (tier === "very_complex") return Math.max(0, score - 40) * 0.04;
-  return 0;
-}
-
-function trimIntensityAdjustment(estimatedWindowDoorCount: number, estimatedCornerLf: number, estimatedFasciaLf: number) {
-  return (estimatedWindowDoorCount >= 16 ? 0.35 : 0)
-    + (estimatedWindowDoorCount >= 24 ? 0.35 : 0)
-    + (estimatedCornerLf >= 160 ? 0.35 : 0)
-    + (estimatedFasciaLf >= 250 ? 0.25 : 0)
-    + (estimatedFasciaLf >= 350 ? 0.25 : 0);
-}
-
 function getSidingConfidence(input: {
   roofHeightDeltaFt: number;
   segmentCount: number;
@@ -430,6 +432,10 @@ function buildExtrasFromInputs(
   const complexityMultiplier = eavesComplexityMultiplier(complexityBand);
   const eavesLf = eavesLfOverride ?? Math.round(roofAreaSqft * EAVES_RATIO_BASELINE * complexityMultiplier);
   const sidingSqft = sidingSqftOverride ?? Math.round(roofAreaSqft * SIDING_RATIO_BASELINE);
+  const sidingVinyl = {
+    low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW),
+    high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH)
+  };
 
   return {
     assumedStories: 2 as const,
@@ -439,14 +445,8 @@ function buildExtrasFromInputs(
       high: Math.round(eavesLf * EAVES_RATE_HIGH)
     },
     sidingSqft,
-    sidingVinyl: {
-      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW),
-      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH)
-    },
-    sidingHardie: {
-      low: Math.round(sidingSqft * SIDING_VINYL_RATE_LOW * 2),
-      high: Math.round(sidingSqft * SIDING_VINYL_RATE_HIGH * 2)
-    }
+    sidingVinyl,
+    sidingHardie: calculateHardieRange(sidingVinyl.low, sidingVinyl.high)
   };
 }
 
@@ -460,7 +460,9 @@ function buildLegacyQuoteModel(estimateResult: EstimateCore): QuoteModel {
     roofAreaSqft: pricingRoofAreaSqft,
     pitchDegrees: estimateResult.pitchDegrees,
     complexityBand: estimateResult.complexityBand,
-    areaSource: estimateResult.areaSource
+    areaSource: estimateResult.areaSource,
+    facetCount: estimateResult.segmentCount,
+    pitchSections: estimateResult.roofSegmentsSummary
   });
 
   return {
@@ -541,7 +543,9 @@ function buildExperimentalTestQuoteModel(
     roofAreaSqft: pricingRoofAreaSqft,
     pitchDegrees: weightedPitchDegrees,
     complexityBand: estimateResult.complexityBand,
-    areaSource: estimateResult.areaSource
+    areaSource: estimateResult.areaSource,
+    facetCount: estimateResult.segmentCount,
+    pitchSections: estimateResult.roofSegmentsSummary
   });
 
   const roofGroundAreaSqft = estimateResult.roofGroundAreaSqft as number;
@@ -582,13 +586,13 @@ function buildExperimentalTestQuoteModel(
   });
 
   const hardieComplexityTier = getHardieComplexityTier(hardieComplexityScore);
-  const tierBand = getHardieRateBandForTier(hardieComplexityTier);
-  const scoreOverflowAdj = scoreOverflowAdjustment(hardieComplexityScore, hardieComplexityTier);
-  const trimIntensityAdj = trimIntensityAdjustment(estimatedWindowDoorCount, estimatedCornerLf, estimatedFasciaLf);
-  const adjustedHardieRateLow = Math.round((tierBand.low + scoreOverflowAdj + trimIntensityAdj) * 100) / 100;
-  const adjustedHardieRateHigh = Math.round((tierBand.high + scoreOverflowAdj + trimIntensityAdj) * 100) / 100;
-  const hardieLow = Math.round(experimentalSidingSqft * adjustedHardieRateLow);
-  const hardieHigh = Math.round(experimentalSidingSqft * adjustedHardieRateHigh);
+  const experimentalVinyl = {
+    low: Math.round(experimentalSidingSqft * SIDING_VINYL_RATE_LOW),
+    high: Math.round(experimentalSidingSqft * SIDING_VINYL_RATE_HIGH)
+  };
+  const { low: hardieLow, high: hardieHigh } = calculateHardieRange(experimentalVinyl.low, experimentalVinyl.high);
+  const adjustedHardieRateLow = hardieLow / experimentalSidingSqft;
+  const adjustedHardieRateHigh = hardieHigh / experimentalSidingSqft;
 
   const sidingConfidence = getSidingConfidence({
     roofHeightDeltaFt,
@@ -620,15 +624,6 @@ function buildExperimentalTestQuoteModel(
     fallbackReason = "experimental eaves outside sanity range";
   } else if (experimentalSidingSqft < sidingMin || experimentalSidingSqft > sidingMax) {
     fallbackReason = "experimental siding outside sanity range";
-  } else if (
-    !Number.isFinite(adjustedHardieRateLow)
-    || !Number.isFinite(adjustedHardieRateHigh)
-    || adjustedHardieRateLow <= 0
-    || adjustedHardieRateHigh <= adjustedHardieRateLow
-  ) {
-    fallbackReason = "experimental hardie rates are invalid";
-  } else if (adjustedHardieRateLow < 8.5 || adjustedHardieRateHigh > 19.5) {
-    fallbackReason = "experimental hardie rates outside safety band";
   } else if (!Number.isFinite(hardieLow) || !Number.isFinite(hardieHigh) || hardieLow <= 0 || hardieHigh <= hardieLow) {
     fallbackReason = "experimental hardie range is invalid";
   }
@@ -698,13 +693,7 @@ function buildExperimentalTestQuoteModel(
     isUsable: true,
     value: {
       ranges,
-      extras: {
-        ...baseExtras,
-        sidingHardie: {
-          low: hardieLow,
-          high: hardieHigh
-        }
-      },
+      extras: baseExtras,
       shouldApplyMinimumPricingFloor,
       areaAdjustedToMinimum: pricingRoofAreaSqft !== estimateResult.roofAreaSqft,
       pricingRoofAreaSqft
@@ -905,10 +894,11 @@ export async function POST(request: Request) {
   const serviceScope = body.serviceScope ?? "roofing";
   const requestedScopes = mapScopeToRequestedScopes(serviceScope);
   const serviceType = mapScopeToServiceType(serviceScope);
+  const browserMetadata = normalizeAttributionMetadata(body.sourceMetadata);
   const sourceMetadata = {
-    ...normalizeAttributionMetadata(body.sourceMetadata),
+    ...browserMetadata,
+    ...requestQuoteTelemetry(request, Boolean(browserMetadata.visitor_id && browserMetadata.session_id)),
     quote_generated_at: new Date().toISOString(),
-    user_agent_summary: request.headers.get("user-agent")?.slice(0, 240) ?? null,
   } as QuoteSourceMetadata;
   if (Array.isArray(sourceMetadata.journey)) sourceMetadata.journey = [...sourceMetadata.journey, { event: "estimate_generated", path: String(sourceMetadata.current_page_path ?? "/online-estimate"), at: sourceMetadata.quote_generated_at, label: serviceScope }].slice(-20);
 
@@ -956,6 +946,13 @@ export async function POST(request: Request) {
   }
 
   neighborhood = neighborhood ?? normalizeNeighborhood(extractNeighborhood(normalizedAddress));
+  if (!neighborhood && lat !== null && lng !== null) {
+    try {
+      neighborhood = await reverseGeocodeNeighborhood(lat, lng);
+    } catch (error) {
+      console.warn("[instaquote][neighborhood_reverse_geocode_failed]", error);
+    }
+  }
 
   let estimateResult: EstimateCore | null = null;
   let historicalProfileMatch: Awaited<ReturnType<typeof findHistoricalRoofProfile>> = null;
@@ -1099,7 +1096,15 @@ export async function POST(request: Request) {
         serviceType
       };
 
-      if (historicalProfileMatch) {
+      const matchingAddressQueryId = await findInstaquoteAddressQuery({
+        address: queryPayload.address,
+        serviceType
+      });
+
+      if (matchingAddressQueryId) {
+        addressQueryId = matchingAddressQueryId;
+        await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, { ...queryOptions, sourceMetadata });
+      } else if (historicalProfileMatch) {
         if (estimateResult.dataSource.startsWith("internal_model_historical_")) {
           addressQueryId = historicalProfileMatch.queryId;
           await refreshInstaquoteAddressQuery(addressQueryId, queryPayload, { ...queryOptions, sourceMetadata });

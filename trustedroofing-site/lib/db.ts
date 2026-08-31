@@ -179,6 +179,10 @@ export type QuoteSourceMetadata = {
   attribution?: Record<string, unknown> | null;
   journey?: unknown[];
   quote_history?: Record<string, unknown> | null;
+  daily_ip_hash?: string | null;
+  telemetry_status?: string | null;
+  likely_automation?: boolean | null;
+  same_anonymous_network_today?: boolean | null;
 };
 
 type QuoteEventStep1 = QuoteSourceMetadata & {
@@ -2096,6 +2100,8 @@ export type InstantQuoteRecord = {
   previous_visit_count?: number | null; first_source_category?: string | null;
   last_source_category?: string | null; attribution?: Record<string, unknown> | null;
   journey?: unknown[] | null; quote_history?: Record<string, unknown> | null;
+  daily_ip_hash?: string | null; telemetry_status?: string | null; likely_automation?: boolean | null;
+  same_anonymous_network_today?: boolean | null;
 };
 
 export type LeadRecord = {
@@ -2297,8 +2303,16 @@ export async function createInstaquoteAddressQuery(
         ...sourceMetadata,
       });
       if (isMissingColumnError(error) && Object.keys(sourceMetadata).length > 0) {
-        const retry = await client!.from("quote_events").upsert(quoteEventPayload);
-        error = retry.error;
+        // A newly-added diagnostics column must not cause established visitor
+        // attribution to be discarded while migration 0032 rolls out.
+        const { daily_ip_hash, telemetry_status, likely_automation, same_anonymous_network_today, ...attributionMetadata } = sourceMetadata;
+        void daily_ip_hash; void telemetry_status; void likely_automation; void same_anonymous_network_today;
+        const attributionRetry = await client!.from("quote_events").upsert({ ...quoteEventPayload, ...attributionMetadata });
+        error = attributionRetry.error;
+        if (isMissingColumnError(error)) {
+          const legacyRetry = await client!.from("quote_events").upsert(quoteEventPayload);
+          error = legacyRetry.error;
+        }
       }
 
       if (!error) {
@@ -2424,6 +2438,31 @@ export async function refreshInstaquoteAddressQuery(
   return id;
 }
 
+/**
+ * Finds the durable quote event for a property and quote type. Geocoding makes
+ * addresses consistent in normal operation, while the normalized comparison
+ * also handles harmless differences in case and whitespace from older rows.
+ */
+export async function findInstaquoteAddressQuery(input: {
+  address: string;
+  serviceType: string;
+}) {
+  if (getDataMode() !== "supabase") return null;
+  const client = getServiceClient() ?? getAnonClient();
+  if (!client) throw new Error("Supabase client unavailable");
+
+  const { data, error } = await client
+    .from("instaquote_address_queries")
+    .select("id,address")
+    .eq("service_type", input.serviceType)
+    .ilike("address", input.address.trim().replace(/\s+/g, " "))
+    .order("queried_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error && error.code !== "PGRST116") throw new Error(error.message);
+  return data?.id ? String(data.id) : null;
+}
+
 async function ensureLegacyAddressQueryForInstantQuote(
   client: SupabaseClient,
   input: {
@@ -2490,20 +2529,51 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
     const client = getServiceClient() ?? getAnonClient();
     if (!client) throw new Error("Supabase client unavailable");
 
-    const { data: existing } = await client
+    const { data: existingByQuery } = await client
       .from("instant_quotes")
       .select("*")
       .eq("legacy_address_query_id", input.legacy_address_query_id)
       .maybeSingle();
-    if (existing) return existing as InstantQuoteRecord;
+    const { data: existingByAddress } = existingByQuery
+      ? { data: null }
+      : await client
+        .from("instant_quotes")
+        .select("*")
+        .eq("service_type", input.service_type)
+        .ilike("address", input.address.trim().replace(/\s+/g, " "))
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    const existing = existingByQuery ?? existingByAddress;
+    if (existing) {
+      const { data, error } = await client
+        .from("instant_quotes")
+        .update({
+          address: payload.address,
+          service_type: payload.service_type,
+          quote_low: payload.quote_low,
+          quote_high: payload.quote_high,
+          created_at: payload.created_at,
+          ...input.source_metadata,
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (error) throw new Error(error.message);
+      return data as InstantQuoteRecord;
+    }
 
     // Correlate by this browser and by the normalized/geocoded address. Only
     // operational quote facts are copied; contact details are never exposed.
-    const [{ data: browserHistory }, { data: addressHistory }] = await Promise.all([
+    const dayStart = payload.created_at.slice(0, 10);
+    const dayEnd = new Date(`${dayStart}T00:00:00.000Z`); dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const [{ data: browserHistory }, { data: addressHistory }, { data: networkHistory }] = await Promise.all([
       input.source_metadata?.visitor_id ? client.from("instant_quotes").select("id,service_type,created_at,address").eq("visitor_id", input.source_metadata.visitor_id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
-      client.from("instant_quotes").select("id,service_type,created_at").eq("address", input.address).order("created_at", { ascending: false }).limit(20)
+      client.from("instant_quotes").select("id,service_type,created_at").eq("address", input.address).order("created_at", { ascending: false }).limit(20),
+      input.source_metadata?.daily_ip_hash ? client.from("instant_quotes").select("id").eq("daily_ip_hash", input.source_metadata.daily_ip_hash).gte("created_at", `${dayStart}T00:00:00.000Z`).lt("created_at", dayEnd.toISOString()).limit(1) : Promise.resolve({ data: [] })
     ]);
     payload.quote_history = summarizeQuoteHistory(browserHistory ?? [], addressHistory ?? []);
+    payload.same_anonymous_network_today = Boolean(networkHistory?.length);
 
     await ensureLegacyAddressQueryForInstantQuote(client, input);
 
@@ -2513,7 +2583,17 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       .select("*")
       .single();
     if (isMissingColumnError(error) && input.source_metadata) {
-      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, visitor_id, session_id, first_seen_at, session_started_at, quote_generated_at, is_returning_visitor, previous_visit_count, first_source_category, last_source_category, attribution, journey, quote_history, ...legacyPayload } = payload;
+      const telemetryCompatiblePayload = { ...payload };
+      delete telemetryCompatiblePayload.daily_ip_hash;
+      delete telemetryCompatiblePayload.telemetry_status;
+      delete telemetryCompatiblePayload.likely_automation;
+      delete telemetryCompatiblePayload.same_anonymous_network_today;
+      const attributionRetry = await client.from("instant_quotes").insert(telemetryCompatiblePayload).select("*").single();
+      data = attributionRetry.data;
+      error = attributionRetry.error;
+    }
+    if (isMissingColumnError(error) && input.source_metadata) {
+      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, visitor_id, session_id, first_seen_at, session_started_at, quote_generated_at, is_returning_visitor, previous_visit_count, first_source_category, last_source_category, attribution, journey, quote_history, daily_ip_hash, telemetry_status, likely_automation, same_anonymous_network_today, ...legacyPayload } = payload;
       void source_type;
       void landing_page;
       void referrer;
@@ -2527,6 +2607,7 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       void device_category;
       void user_agent_summary;
       void visitor_id; void session_id; void first_seen_at; void session_started_at; void quote_generated_at; void is_returning_visitor; void previous_visit_count; void first_source_category; void last_source_category; void attribution; void journey; void quote_history;
+      void daily_ip_hash; void telemetry_status; void likely_automation; void same_anonymous_network_today;
       const retry = await client
         .from("instant_quotes")
         .insert(legacyPayload)
@@ -2539,10 +2620,21 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
     return data as InstantQuoteRecord;
   }
 
-  const existing = mockInstantQuotes.find(
-    (row) => row.legacy_address_query_id === input.legacy_address_query_id,
+  const normalizedAddress = input.address.trim().replace(/\s+/g, " ").toLowerCase();
+  const existing = mockInstantQuotes.find((row) =>
+    row.legacy_address_query_id === input.legacy_address_query_id ||
+    (row.service_type === input.service_type && row.address.trim().replace(/\s+/g, " ").toLowerCase() === normalizedAddress)
   );
-  if (existing) return existing;
+  if (existing) {
+    Object.assign(existing, {
+      address: payload.address,
+      quote_low: payload.quote_low,
+      quote_high: payload.quote_high,
+      created_at: payload.created_at,
+      ...input.source_metadata,
+    });
+    return existing;
+  }
   mockInstantQuotes.unshift(payload);
   return payload;
 }
@@ -2588,14 +2680,6 @@ export async function createInstaquoteLead(
         source_metadata: submittedSourceMetadata,
       });
 
-      const leadNotes = [
-        `budget=${payload.budget_response}`,
-        payload.timeline ? `timeline=${payload.timeline}` : null,
-        payload.data_source ? `source=${payload.data_source}` : null,
-      ]
-        .filter(Boolean)
-        .join(" | ");
-
       await client
         .from("quote_events")
         .update({
@@ -2604,7 +2688,6 @@ export async function createInstaquoteLead(
           name: payload.name,
           email: payload.email,
           phone: payload.phone,
-          notes: leadNotes || null,
         })
         .eq("id", payload.address_query_id);
     }
@@ -2737,9 +2820,30 @@ export async function listRecentInstaquoteAddressQueries(
       return /\b(AB|Alberta)\b/i.test(address);
     };
 
-    return (legacyData ?? [])
-      .filter((row: Record<string, unknown>) => isAlbertaRecord(row))
+    const albertaEvents = (legacyData ?? []).filter(
+      (row: Record<string, unknown>) => isAlbertaRecord(row),
+    );
+    const eventIds = albertaEvents.map((row: Record<string, unknown>) =>
+      String(row.id),
+    );
+    const { data: addressQueryData } = eventIds.length > 0
+      ? await readClient
+          .from("instaquote_address_queries")
+          .select(
+            "id,neighborhood,service_type,requested_scopes,place_id,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,solar_status,solar_debug,queried_at",
+          )
+          .in("id", eventIds)
+      : { data: [] };
+    const addressQueriesById = new Map(
+      (addressQueryData ?? []).map((row: Record<string, unknown>) => [
+        String(row.id),
+        row,
+      ]),
+    );
+
+    return albertaEvents
       .map((row: Record<string, unknown>) => {
+        const addressQuery = addressQueriesById.get(String(row.id)) ?? {};
         let parsedNotes: Record<string, unknown> = {};
         if (typeof row.notes === "string") {
           try {
@@ -2754,13 +2858,19 @@ export async function listRecentInstaquoteAddressQueries(
         const lng =
           row.lng === null || row.lng === undefined ? null : Number(row.lng);
         const roofAreaSqft =
-          parsedNotes.roof_area_sqft === null ||
-          parsedNotes.roof_area_sqft === undefined
+          addressQuery.roof_area_sqft !== null &&
+          addressQuery.roof_area_sqft !== undefined
+            ? Number(addressQuery.roof_area_sqft)
+            : parsedNotes.roof_area_sqft === null ||
+                parsedNotes.roof_area_sqft === undefined
             ? null
             : Number(parsedNotes.roof_area_sqft);
         const pitchDegrees =
-          parsedNotes.pitch_degrees === null ||
-          parsedNotes.pitch_degrees === undefined
+          addressQuery.pitch_degrees !== null &&
+          addressQuery.pitch_degrees !== undefined
+            ? Number(addressQuery.pitch_degrees)
+            : parsedNotes.pitch_degrees === null ||
+                parsedNotes.pitch_degrees === undefined
             ? null
             : Number(parsedNotes.pitch_degrees);
         const estimateLow =
@@ -2788,6 +2898,11 @@ export async function listRecentInstaquoteAddressQueries(
               (value): value is string => typeof value === "string",
             )
           : [];
+        const addressQueryScopes = Array.isArray(addressQuery.requested_scopes)
+          ? addressQuery.requested_scopes.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
         const extras =
           typeof parsedNotes.extras === "object" && parsedNotes.extras !== null
             ? (parsedNotes.extras as Record<string, unknown>)
@@ -2802,25 +2917,33 @@ export async function listRecentInstaquoteAddressQueries(
           id: String(row.id),
           address: String(row.address ?? "Calgary, AB"),
           neighborhood:
-            typeof parsedNotes.neighborhood === "string"
+            typeof addressQuery.neighborhood === "string"
+              ? addressQuery.neighborhood
+              : typeof parsedNotes.neighborhood === "string"
               ? parsedNotes.neighborhood
               : null,
           service_type:
             typeof row.service_type === "string"
               ? row.service_type
+              : typeof addressQuery.service_type === "string"
+              ? addressQuery.service_type
               : typeof parsedNotes.service_type === "string"
               ? parsedNotes.service_type
               : "InstantQuote:Roof",
           requested_scopes:
             rowScopes.length > 0
               ? rowScopes
+              : addressQueryScopes.length > 0
+              ? addressQueryScopes
               : noteScopes.length > 0
               ? noteScopes
               : extraScopes.length > 0
                 ? extraScopes
                 : ["roof"],
           place_id:
-            typeof parsedNotes.place_id === "string"
+            typeof addressQuery.place_id === "string"
+              ? addressQuery.place_id
+              : typeof parsedNotes.place_id === "string"
               ? parsedNotes.place_id
               : null,
           lat: Number.isFinite(lat) ? lat : null,
@@ -2828,30 +2951,44 @@ export async function listRecentInstaquoteAddressQueries(
           roof_area_sqft: Number.isFinite(roofAreaSqft) ? roofAreaSqft : null,
           pitch_degrees: Number.isFinite(pitchDegrees) ? pitchDegrees : null,
           complexity_band:
-            typeof parsedNotes.complexity_band === "string"
+            typeof addressQuery.complexity_band === "string"
+              ? addressQuery.complexity_band
+              : typeof parsedNotes.complexity_band === "string"
               ? parsedNotes.complexity_band
               : null,
           area_source:
-            typeof parsedNotes.area_source === "string"
+            typeof addressQuery.area_source === "string"
+              ? addressQuery.area_source
+              : typeof parsedNotes.area_source === "string"
               ? parsedNotes.area_source
               : null,
           data_source:
-            typeof parsedNotes.source === "string"
+            typeof addressQuery.data_source === "string"
+              ? addressQuery.data_source
+              : typeof parsedNotes.source === "string"
               ? parsedNotes.source
               : "quote_events_fallback",
           estimate_low: Number.isFinite(estimateLow) ? estimateLow : null,
           estimate_high: Number.isFinite(estimateHigh) ? estimateHigh : null,
           solar_status:
-            typeof parsedNotes.solar_status === "string"
+            typeof addressQuery.solar_status === "string"
+              ? addressQuery.solar_status
+              : typeof parsedNotes.solar_status === "string"
               ? parsedNotes.solar_status
               : null,
           solar_debug:
-            typeof parsedNotes.solar_debug === "object" &&
+            typeof addressQuery.solar_debug === "object" &&
+            addressQuery.solar_debug !== null
+              ? (addressQuery.solar_debug as Record<string, unknown>)
+              : typeof parsedNotes.solar_debug === "object" &&
             parsedNotes.solar_debug !== null
               ? (parsedNotes.solar_debug as Record<string, unknown>)
               : null,
           queried_at: String(
-            row.updated_at ?? row.created_at ?? new Date().toISOString(),
+            addressQuery.queried_at ??
+              row.created_at ??
+              row.updated_at ??
+              new Date().toISOString(),
           ),
         };
       });
@@ -3047,6 +3184,8 @@ function mapQuoteEventToInstantQuote(
     is_returning_visitor: row.is_returning_visitor ?? null, previous_visit_count: row.previous_visit_count ?? null,
     first_source_category: row.first_source_category ?? null, last_source_category: row.last_source_category ?? null,
     attribution: row.attribution ?? null, journey: row.journey ?? null, quote_history: row.quote_history ?? null,
+    daily_ip_hash: row.daily_ip_hash ?? null, telemetry_status: row.telemetry_status ?? null,
+    likely_automation: row.likely_automation ?? null, same_anonymous_network_today: null,
   };
 }
 
@@ -3150,7 +3289,7 @@ export async function listAdminInstantQuotes(filters?: {
       let eventQuery = client
         .from("quote_events")
         .select(
-          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone, source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, pdf_available, pdf_generated_at, pdf_downloaded_at, pdf_download_count, last_pdf_downloaded_at, quote_event_notified_at, lead_notification_sent_at, pdf_download_notification_sent_at, marketing_tagged_at, marketing_tagged_by, visitor_id,session_id,first_seen_at,session_started_at,quote_generated_at,is_returning_visitor,previous_visit_count,first_source_category,last_source_category,attribution,journey,quote_history",
+          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone, source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, pdf_available, pdf_generated_at, pdf_downloaded_at, pdf_download_count, last_pdf_downloaded_at, quote_event_notified_at, lead_notification_sent_at, pdf_download_notification_sent_at, marketing_tagged_at, marketing_tagged_by, visitor_id,session_id,first_seen_at,session_started_at,quote_generated_at,is_returning_visitor,previous_visit_count,first_source_category,last_source_category,attribution,journey,quote_history,daily_ip_hash,telemetry_status,likely_automation",
         )
         .order("created_at", { ascending: false })
         .limit(limit);

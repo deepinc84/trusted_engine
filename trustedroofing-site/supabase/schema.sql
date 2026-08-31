@@ -118,6 +118,7 @@ create index if not exists geo_posts_created_at_idx on geo_posts(created_at desc
 create table if not exists instaquote_address_queries (
   id uuid primary key default gen_random_uuid(),
   address text not null,
+  address_key text generated always as (lower(regexp_replace(btrim(address), '[[:space:]]+', ' ', 'g'))) stored,
   neighborhood text,
   service_type text,
   requested_scopes text[],
@@ -135,6 +136,7 @@ create table if not exists instaquote_address_queries (
   solar_debug jsonb,
   queried_at timestamptz default now()
 );
+create unique index if not exists instaquote_queries_address_service_unique on instaquote_address_queries(address_key, coalesce(service_type, ''));
 
 create table if not exists instaquote_leads (
   id uuid primary key default gen_random_uuid(),
@@ -240,6 +242,7 @@ create table if not exists instant_quotes (
   id uuid primary key default gen_random_uuid(),
   legacy_address_query_id uuid,
   address text not null,
+  address_key text generated always as (lower(regexp_replace(btrim(address), '[[:space:]]+', ' ', 'g'))) stored,
   service_type text,
   quote_low integer,
   quote_high integer,
@@ -248,6 +251,7 @@ create table if not exists instant_quotes (
   is_marketing boolean not null default false,
   created_at timestamptz not null default now()
 );
+create unique index if not exists instant_quotes_address_service_unique on instant_quotes(address_key, coalesce(service_type, ''));
 
 create table if not exists leads (
   id uuid primary key default gen_random_uuid(),
@@ -400,3 +404,8 @@ alter table if exists instant_quotes
   add column if not exists quote_history jsonb;
 create index if not exists instant_quotes_visitor_created_idx on instant_quotes(visitor_id, created_at desc) where visitor_id is not null;
 create index if not exists quote_events_visitor_created_idx on quote_events(visitor_id, created_at desc) where visitor_id is not null;
+
+-- Server-only, daily rotating anonymous request correlation (0032).
+alter table if exists quote_events add column if not exists daily_ip_hash text, add column if not exists telemetry_status text, add column if not exists likely_automation boolean;
+alter table if exists instant_quotes add column if not exists daily_ip_hash text, add column if not exists telemetry_status text, add column if not exists likely_automation boolean, add column if not exists same_anonymous_network_today boolean;
+create index if not exists instant_quotes_daily_ip_created_idx on instant_quotes(daily_ip_hash, created_at desc) where daily_ip_hash is not null;

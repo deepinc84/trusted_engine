@@ -7,6 +7,7 @@ import PageHero from "@/components/ui/PageHero";
 import ServiceGeoPosts from "@/components/ServiceGeoPosts";
 import { listGeoPosts } from "@/lib/db";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
+import { ORGANIZATION_ID } from "@/lib/organization";
 
 export const metadata = buildMetadata({
   title: "James Hardie Installer Calgary | Fiber Cement Siding",
@@ -57,18 +58,11 @@ function buildHardieSchema() {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "RoofingContractor",
-        "@id": `${canonicalUrl("")}#business`,
-        name: "Trusted Roofing & Exteriors",
-        areaServed: serviceAreas.map((name) => ({ "@type": "City", name })),
-        url: canonicalUrl("")
-      },
-      {
         "@type": "Service",
         "@id": `${serviceUrl}#service`,
         name: "James Hardie Siding Installer Calgary",
         serviceType: "James Hardie siding installation and fiber cement siding installation",
-        provider: { "@id": `${canonicalUrl("")}#business` },
+        provider: { "@id": ORGANIZATION_ID },
         areaServed: serviceAreas.map((name) => ({ "@type": "Place", name })),
         url: serviceUrl
       },
