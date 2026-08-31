@@ -2680,14 +2680,6 @@ export async function createInstaquoteLead(
         source_metadata: submittedSourceMetadata,
       });
 
-      const leadNotes = [
-        `budget=${payload.budget_response}`,
-        payload.timeline ? `timeline=${payload.timeline}` : null,
-        payload.data_source ? `source=${payload.data_source}` : null,
-      ]
-        .filter(Boolean)
-        .join(" | ");
-
       await client
         .from("quote_events")
         .update({
@@ -2696,7 +2688,6 @@ export async function createInstaquoteLead(
           name: payload.name,
           email: payload.email,
           phone: payload.phone,
-          notes: leadNotes || null,
         })
         .eq("id", payload.address_query_id);
     }
@@ -2829,9 +2820,30 @@ export async function listRecentInstaquoteAddressQueries(
       return /\b(AB|Alberta)\b/i.test(address);
     };
 
-    return (legacyData ?? [])
-      .filter((row: Record<string, unknown>) => isAlbertaRecord(row))
+    const albertaEvents = (legacyData ?? []).filter(
+      (row: Record<string, unknown>) => isAlbertaRecord(row),
+    );
+    const eventIds = albertaEvents.map((row: Record<string, unknown>) =>
+      String(row.id),
+    );
+    const { data: addressQueryData } = eventIds.length > 0
+      ? await readClient
+          .from("instaquote_address_queries")
+          .select(
+            "id,neighborhood,service_type,requested_scopes,place_id,roof_area_sqft,pitch_degrees,complexity_band,area_source,data_source,solar_status,solar_debug,queried_at",
+          )
+          .in("id", eventIds)
+      : { data: [] };
+    const addressQueriesById = new Map(
+      (addressQueryData ?? []).map((row: Record<string, unknown>) => [
+        String(row.id),
+        row,
+      ]),
+    );
+
+    return albertaEvents
       .map((row: Record<string, unknown>) => {
+        const addressQuery = addressQueriesById.get(String(row.id)) ?? {};
         let parsedNotes: Record<string, unknown> = {};
         if (typeof row.notes === "string") {
           try {
@@ -2846,13 +2858,19 @@ export async function listRecentInstaquoteAddressQueries(
         const lng =
           row.lng === null || row.lng === undefined ? null : Number(row.lng);
         const roofAreaSqft =
-          parsedNotes.roof_area_sqft === null ||
-          parsedNotes.roof_area_sqft === undefined
+          addressQuery.roof_area_sqft !== null &&
+          addressQuery.roof_area_sqft !== undefined
+            ? Number(addressQuery.roof_area_sqft)
+            : parsedNotes.roof_area_sqft === null ||
+                parsedNotes.roof_area_sqft === undefined
             ? null
             : Number(parsedNotes.roof_area_sqft);
         const pitchDegrees =
-          parsedNotes.pitch_degrees === null ||
-          parsedNotes.pitch_degrees === undefined
+          addressQuery.pitch_degrees !== null &&
+          addressQuery.pitch_degrees !== undefined
+            ? Number(addressQuery.pitch_degrees)
+            : parsedNotes.pitch_degrees === null ||
+                parsedNotes.pitch_degrees === undefined
             ? null
             : Number(parsedNotes.pitch_degrees);
         const estimateLow =
@@ -2880,6 +2898,11 @@ export async function listRecentInstaquoteAddressQueries(
               (value): value is string => typeof value === "string",
             )
           : [];
+        const addressQueryScopes = Array.isArray(addressQuery.requested_scopes)
+          ? addressQuery.requested_scopes.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
         const extras =
           typeof parsedNotes.extras === "object" && parsedNotes.extras !== null
             ? (parsedNotes.extras as Record<string, unknown>)
@@ -2894,25 +2917,33 @@ export async function listRecentInstaquoteAddressQueries(
           id: String(row.id),
           address: String(row.address ?? "Calgary, AB"),
           neighborhood:
-            typeof parsedNotes.neighborhood === "string"
+            typeof addressQuery.neighborhood === "string"
+              ? addressQuery.neighborhood
+              : typeof parsedNotes.neighborhood === "string"
               ? parsedNotes.neighborhood
               : null,
           service_type:
             typeof row.service_type === "string"
               ? row.service_type
+              : typeof addressQuery.service_type === "string"
+              ? addressQuery.service_type
               : typeof parsedNotes.service_type === "string"
               ? parsedNotes.service_type
               : "InstantQuote:Roof",
           requested_scopes:
             rowScopes.length > 0
               ? rowScopes
+              : addressQueryScopes.length > 0
+              ? addressQueryScopes
               : noteScopes.length > 0
               ? noteScopes
               : extraScopes.length > 0
                 ? extraScopes
                 : ["roof"],
           place_id:
-            typeof parsedNotes.place_id === "string"
+            typeof addressQuery.place_id === "string"
+              ? addressQuery.place_id
+              : typeof parsedNotes.place_id === "string"
               ? parsedNotes.place_id
               : null,
           lat: Number.isFinite(lat) ? lat : null,
@@ -2920,30 +2951,44 @@ export async function listRecentInstaquoteAddressQueries(
           roof_area_sqft: Number.isFinite(roofAreaSqft) ? roofAreaSqft : null,
           pitch_degrees: Number.isFinite(pitchDegrees) ? pitchDegrees : null,
           complexity_band:
-            typeof parsedNotes.complexity_band === "string"
+            typeof addressQuery.complexity_band === "string"
+              ? addressQuery.complexity_band
+              : typeof parsedNotes.complexity_band === "string"
               ? parsedNotes.complexity_band
               : null,
           area_source:
-            typeof parsedNotes.area_source === "string"
+            typeof addressQuery.area_source === "string"
+              ? addressQuery.area_source
+              : typeof parsedNotes.area_source === "string"
               ? parsedNotes.area_source
               : null,
           data_source:
-            typeof parsedNotes.source === "string"
+            typeof addressQuery.data_source === "string"
+              ? addressQuery.data_source
+              : typeof parsedNotes.source === "string"
               ? parsedNotes.source
               : "quote_events_fallback",
           estimate_low: Number.isFinite(estimateLow) ? estimateLow : null,
           estimate_high: Number.isFinite(estimateHigh) ? estimateHigh : null,
           solar_status:
-            typeof parsedNotes.solar_status === "string"
+            typeof addressQuery.solar_status === "string"
+              ? addressQuery.solar_status
+              : typeof parsedNotes.solar_status === "string"
               ? parsedNotes.solar_status
               : null,
           solar_debug:
-            typeof parsedNotes.solar_debug === "object" &&
+            typeof addressQuery.solar_debug === "object" &&
+            addressQuery.solar_debug !== null
+              ? (addressQuery.solar_debug as Record<string, unknown>)
+              : typeof parsedNotes.solar_debug === "object" &&
             parsedNotes.solar_debug !== null
               ? (parsedNotes.solar_debug as Record<string, unknown>)
               : null,
           queried_at: String(
-            row.updated_at ?? row.created_at ?? new Date().toISOString(),
+            addressQuery.queried_at ??
+              row.created_at ??
+              row.updated_at ??
+              new Date().toISOString(),
           ),
         };
       });

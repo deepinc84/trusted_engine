@@ -32,13 +32,10 @@ function App() {
   const [refineComplexity, setRefineComplexity] = useState(""); // low | medium | high
   const [regionalRanges, setRegionalRanges] = useState(null);
 
-  // Pricing config (keep your v0.4 feel, still supports complexity)
+  // Pricing config retained for the archived client; live pricing is server-owned.
   const [pricingConfig] = useState({
-    tolerancePercent: 8,        // ±5% band
-    simpleLowPerSq: 550,        // low end
-    complexHighPerSq: 1012,     // high end (your original was higher)
-    wastePercent: 8,            // size padding
-    solarAdjustmentPercent: 8   // apply only to solar sourced area
+    tolerancePercent: 6,
+    installedRatePerSquare: 580
   });
 
   /* -------------------- GOOGLE PLACES WIRING -------------------- */
@@ -147,35 +144,11 @@ function App() {
     return displayPitch;
   };
 
-  const computeRange = ({ roofAreaSqft, pitchOver12, complexityBand, areaSource }) => {
+  const computeRange = ({ roofAreaSqft, pitchOver12 }) => {
     const squares = roofAreaSqft / 100;
-
-    const {
-      tolerancePercent,
-      simpleLowPerSq,
-      complexHighPerSq,
-      wastePercent,
-      solarAdjustmentPercent
-    } = pricingConfig;
-
-    const wasteFactor = (wastePercent ?? 0) / 100;
-    const solarFactor = (solarAdjustmentPercent ?? 0) / 100;
-
-    const drift = areaSource === "solar" ? (1 + solarFactor) : 1;
-    const adjustedSquares = squares * (1 + wasteFactor) * drift;
-
-    // Complexity drives where we land in the band, pitch still matters
-    let centerPerSq;
-    if (pitchOver12 <= 2) {
-      centerPerSq = (simpleLowPerSq + complexHighPerSq) / 2;
-    } else {
-      if (complexityBand === "high") centerPerSq = complexHighPerSq;
-      else if (complexityBand === "medium") centerPerSq = (simpleLowPerSq + complexHighPerSq) / 2;
-      else centerPerSq = simpleLowPerSq; // low or unknown
-    }
-
-    const centerPrice = adjustedSquares * centerPerSq;
-    const tol = (tolerancePercent ?? 0) / 100;
+    const pitchSurchargePerSquare = pitchOver12 > 6 ? (pitchOver12 - 6) * 10 : 0;
+    const centerPrice = squares * (pricingConfig.installedRatePerSquare + pitchSurchargePerSquare);
+    const tol = pricingConfig.tolerancePercent / 100;
 
     let low = centerPrice * (1 - tol);
     let high = centerPrice * (1 + tol);

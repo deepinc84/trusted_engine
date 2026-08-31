@@ -1,0 +1,31 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-height: 230px;
+}
+
+.type {
+  color: var(--brand-orange, #c9532d);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card h3 { margin: 0.55rem 0; }
+.card p { flex: 1; }
+.link { font-weight: 800; }
+.link::after { content: " ↗"; font-size: 0.9em; }
+
+.explanation { margin-top: 2rem; }
+
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .grid { grid-template-columns: 1fr; } .card { min-height: 0; } }
+

@@ -24,24 +24,8 @@ export function defaultServiceTypeFromScope(scope: QuoteScope) {
 }
 
 export const pricingConfig = {
-  roofPerSquareGood: [520, 700] as const,
-  roofPerSquareBetter: [700, 920] as const,
-  roofPerSquareBest: [920, 1220] as const,
   eavesPerLinearFoot: [16, 29] as const,
   sidingPerSqft: [9, 18] as const,
-  baseSquaresMinimum: 8,
-  baseSquaresMaximum: 80,
-  pitchMultipliers: {
-    low: 1,
-    medium: 1.08,
-    steep: 1.16,
-    verySteep: 1.28
-  },
-  complexityMultipliers: {
-    simple: 1,
-    moderate: 1.08,
-    complex: 1.18
-  },
   regionalSqftRanges: {
     NE: [1200, 2400],
     NW: [1400, 2800],
@@ -53,11 +37,91 @@ export const pricingConfig = {
 
 export type ComplexityBand = "simple" | "moderate" | "complex";
 
-export function pitchBandFromDegrees(pitchDegrees: number) {
-  if (pitchDegrees <= 22) return "low" as const;
-  if (pitchDegrees <= 30) return "medium" as const;
-  if (pitchDegrees <= 38) return "steep" as const;
-  return "verySteep" as const;
+export const BASE_RATE_PER_SQUARE = 580;
+export const LOW_RANGE_FACTOR = 0.94;
+export const HIGH_RANGE_FACTOR = 1.06;
+
+export type PitchSection = {
+  areaSqft: number;
+  pitchRatio?: number;
+  pitchDegrees?: number;
+};
+
+export function roundToNearest50(value: number) {
+  return Math.round(value / 50) * 50;
+}
+
+export function pitchDegreesToRatio(pitchDegrees: number) {
+  return 12 * Math.tan((pitchDegrees * Math.PI) / 180);
+}
+
+export function getFacetAdjustment(facetCount?: number | null) {
+  if (!facetCount || facetCount <= 5) return 0;
+  if (facetCount <= 12) return (facetCount - 5) * 0.01;
+  return Math.min(0.07 + ((facetCount - 12) * 0.015), 0.20);
+}
+
+export function getPitchSurchargePerSquare(pitchRatio?: number | null) {
+  if (!pitchRatio || pitchRatio <= 6) return 0;
+  return (pitchRatio - 6) * 10;
+}
+
+export function calculatePitchSurcharge(
+  roofAreaSqft: number,
+  pitchRatio?: number | null,
+  pitchSections?: PitchSection[]
+) {
+  const validSections = pitchSections?.map((section) => ({
+    areaSqft: Number(section.areaSqft),
+    pitchRatio: section.pitchRatio ?? (section.pitchDegrees === undefined
+      ? undefined
+      : pitchDegreesToRatio(section.pitchDegrees))
+  })).filter((section) => section.areaSqft > 0 && Number.isFinite(section.areaSqft)) ?? [];
+
+  if (validSections.length > 0) {
+    const totalPitchAreaSqft = validSections.reduce((total, section) => total + section.areaSqft, 0);
+    return validSections.reduce((total, section) => {
+      const normalizedSectionSquares = (roofAreaSqft * section.areaSqft / totalPitchAreaSqft) / 100;
+      return total + normalizedSectionSquares * getPitchSurchargePerSquare(section.pitchRatio);
+    }, 0);
+  }
+
+  return (roofAreaSqft / 100) * getPitchSurchargePerSquare(pitchRatio);
+}
+
+export function calculateRoofEstimate(input: {
+  roofAreaSqft: number;
+  facetCount?: number | null;
+  pitchRatio?: number | null;
+  pitchDegrees?: number | null;
+  pitchSections?: PitchSection[];
+  dataSource?: string;
+}) {
+  const roofSquares = input.roofAreaSqft / 100;
+  const basePrice = roofSquares * BASE_RATE_PER_SQUARE;
+  const pitchRatio = input.pitchRatio ?? (input.pitchDegrees === null || input.pitchDegrees === undefined
+    ? undefined
+    : pitchDegreesToRatio(input.pitchDegrees));
+  const pitchSurcharge = calculatePitchSurcharge(input.roofAreaSqft, pitchRatio, input.pitchSections);
+  const facetAdjustment = getFacetAdjustment(input.facetCount);
+  const center = (basePrice + pitchSurcharge) * (1 + facetAdjustment);
+
+  return {
+    low: roundToNearest50(center * LOW_RANGE_FACTOR),
+    high: roundToNearest50(center * HIGH_RANGE_FACTOR),
+    center,
+    roofSquares,
+    baseRate: BASE_RATE_PER_SQUARE,
+    facetAdjustment,
+    pitchSurcharge
+  };
+}
+
+export function calculateHardieRange(vinylLow: number, vinylHigh: number) {
+  return {
+    low: roundToNearest50(vinylLow * 1.5),
+    high: roundToNearest50(vinylHigh * 1.8)
+  };
 }
 
 export function complexityBandFromSegments(segmentCount: number): ComplexityBand {
@@ -87,67 +151,25 @@ export function roofSquaresFromSqft(roofAreaSqft: number) {
   return Math.round(raw * 10) / 10;
 }
 
-function rangeFromBase(rateRange: readonly [number, number], base: number, multiplier: number) {
-  return {
-    low: Math.round(base * rateRange[0] * multiplier),
-    high: Math.round(base * rateRange[1] * multiplier)
-  };
-}
-
-function legacyRoofRange(input: {
-  roofAreaSqft: number;
-  pitchDegrees: number;
-  complexityBand: ComplexityBand;
-  areaSource?: "solar" | "regional";
-}) {
-  const tolerancePercent = 8;
-  const simpleLowPerSq = 550;
-  const complexHighPerSq = 1012;
-  const wastePercent = 8;
-  const solarAdjustmentPercent = 8;
-
-  const squares = input.roofAreaSqft / 100;
-  const wasteFactor = 1 + wastePercent / 100;
-  const solarFactor = input.areaSource === "solar" ? 1 + solarAdjustmentPercent / 100 : 1;
-  const adjustedSquares = squares * wasteFactor * solarFactor;
-
-  const complexityAdjustment = input.complexityBand === "complex"
-    ? 1.14
-    : input.complexityBand === "moderate"
-      ? 1.07
-      : 1;
-
-  const centerPerSqBase = input.complexityBand === "complex"
-    ? complexHighPerSq
-    : input.complexityBand === "moderate"
-      ? (simpleLowPerSq + complexHighPerSq) / 2
-      : simpleLowPerSq;
-
-  const centerPerSq = centerPerSqBase * complexityAdjustment;
-  const centerPrice = adjustedSquares * centerPerSq;
-  const tolerance = tolerancePercent / 100;
-
-  return {
-    low: Math.round((centerPrice * (1 - tolerance)) / 50) * 50,
-    high: Math.round((centerPrice * (1 + tolerance)) / 50) * 50
-  };
-}
-
 export function buildEstimateRanges(input: {
   roofAreaSqft: number;
   pitchDegrees: number;
   complexityBand: ComplexityBand;
   areaSource?: "solar" | "regional";
+  facetCount?: number;
+  pitchSections?: PitchSection[];
 }) {
-  const roofSquares = roofSquaresFromSqft(input.roofAreaSqft);
-  const pitchBand = pitchBandFromDegrees(input.pitchDegrees);
-  const pitchMultiplier = pricingConfig.pitchMultipliers[pitchBand];
-  const complexityMultiplier = pricingConfig.complexityMultipliers[input.complexityBand];
-  const combinedMultiplier = pitchMultiplier * complexityMultiplier;
-
-  const good = legacyRoofRange(input);
-  const better = rangeFromBase(pricingConfig.roofPerSquareBetter, roofSquares, combinedMultiplier);
-  const best = rangeFromBase(pricingConfig.roofPerSquareBest, roofSquares, combinedMultiplier);
+  const roofEstimate = calculateRoofEstimate({
+    roofAreaSqft: input.roofAreaSqft,
+    facetCount: input.facetCount,
+    pitchDegrees: input.pitchDegrees,
+    pitchSections: input.pitchSections
+  });
+  const roofSquares = roofEstimate.roofSquares;
+  const good = { low: roofEstimate.low, high: roofEstimate.high };
+  // Preserve the existing upgrade relationships, but anchor every tier to calibrated Good pricing.
+  const better = { low: roundToNearest50(good.low * (700 / 520)), high: roundToNearest50(good.high * (920 / 700)) };
+  const best = { low: roundToNearest50(good.low * (920 / 520)), high: roundToNearest50(good.high * (1220 / 700)) };
 
   const linearFeet = Math.max(100, Math.round(Math.sqrt(input.roofAreaSqft) * 4));
   const eavesLow = Math.round(linearFeet * pricingConfig.eavesPerLinearFoot[0]);
