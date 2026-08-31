@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GOOGLE_BUSINESS_URL, ORGANIZATION_ID, organizationSchema } from "../lib/organization";
+import { GOOGLE_BUSINESS_URL, ORGANIZATION_ID, organizationProfile, organizationSchema } from "../lib/organization";
 import { buildMetadata } from "../lib/seo";
 
 test("publishes the verified organization contact details", () => {
   const business = organizationSchema["@graph"][0];
   assert.equal(business["@id"], ORGANIZATION_ID);
+  assert.equal(business, organizationProfile);
+  assert.equal(organizationSchema.name, business.name);
+  assert.equal(organizationSchema.url, business.url);
+  assert.equal(organizationSchema.telephone, business.telephone);
+  assert.equal(ORGANIZATION_ID, "https://www.trustedroofingcalgary.com/#organization");
+  assert.equal(business.url, "https://www.trustedroofingcalgary.com/");
   assert.equal(business.telephone, "+1-587-288-3351");
   assert.equal(business.logo, "https://www.trustedroofingcalgary.com/transparent-logo.png");
   assert.equal(business.hasMap, GOOGLE_BUSINESS_URL);

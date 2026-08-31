@@ -1,23 +1,39 @@
-export const ORGANIZATION_ID = "https://www.trustedroofingcalgary.com/#organization";
+import { canonicalUrl } from "./seo";
+
+export const ORGANIZATION_ID = `${canonicalUrl("/")}#organization`;
 export const GOOGLE_BUSINESS_URL = "https://maps.google.com/?cid=10122718143243142503";
+
+export const organizationProfile = {
+  "@type": "RoofingContractor",
+  "@id": ORGANIZATION_ID,
+  name: "Trusted Roofing & Exteriors",
+  url: canonicalUrl("/"),
+  logo: canonicalUrl("/transparent-logo.png"),
+  image: canonicalUrl("/transparent-logo.png"),
+  telephone: "+1-587-288-3351",
+  priceRange: "$$",
+  hasMap: GOOGLE_BUSINESS_URL,
+  sameAs: [GOOGLE_BUSINESS_URL],
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Calgary",
+    addressRegion: "AB",
+    addressCountry: "CA"
+  },
+  areaServed: [
+    {
+      "@type": "City",
+      name: "Calgary"
+    }
+  ]
+} as const;
 
 export const organizationSchema = {
   "@context": "https://schema.org",
-  "@type": "Organization",
-  "@id": `${canonicalUrl("")}#organization`,
-  name: "Trusted Roofing & Exteriors",
-  url: canonicalUrl(""),
-  logo: canonicalUrl("/transparent-logo.png"),
-  telephone: "+1-587-288-3351",
-  areaServed: ["Calgary, AB"],
-  sameAs: [
-    GOOGLE_BUSINESS_URL,
-    "https://facebook.com/TrustedRoofingCalgary",
-    "https://www.linkedin.com/company/trusted-roofing-exteriors/",
-    "https://m.yelp.ca/biz/trusted-roofing-and-exteriors-calgary",
-    "https://www.homestars.com/profile/trusted-roofing-and-exteriors-inc",
-    "https://trustedpros.ca/company/trusted-roofing-and-exteriors"
-  ]
+  // Keep the shared fields available at the top level for LocalBusiness and
+  // service schema builders while retaining the graph consumed by the layout.
+  ...organizationProfile,
+  "@graph": [organizationProfile]
 };
 
 export const localBusinessSchema = {
