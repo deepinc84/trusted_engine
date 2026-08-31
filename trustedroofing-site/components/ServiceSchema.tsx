@@ -1,5 +1,6 @@
 import BreadcrumbSchema from "@/components/BreadcrumbSchema";
 import { canonicalUrl } from "@/lib/seo";
+import { ORGANIZATION_ID } from "@/lib/organization";
 
 type Item = { name: string; url: string };
 
@@ -21,13 +22,6 @@ export default function ServiceSchema({
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "RoofingContractor",
-        "@id": `${canonicalUrl("")}#business`,
-        name: "Trusted Roofing & Exteriors",
-        areaServed: "Calgary, AB",
-        url: canonicalUrl("")
-      },
-      {
         "@type": "CollectionPage",
         "@id": `${serviceUrl}#serviceHub`,
         url: serviceUrl,
@@ -38,7 +32,7 @@ export default function ServiceSchema({
         "@id": `${serviceUrl}#service`,
         name: serviceName,
         serviceType: serviceName,
-        provider: { "@id": `${canonicalUrl("")}#business` },
+        provider: { "@id": ORGANIZATION_ID },
         url: serviceUrl
       },
       {

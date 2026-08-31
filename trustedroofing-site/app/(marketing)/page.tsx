@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import LocalBusinessSchema from "@/components/LocalBusinessSchema";
 import ActivitySection from "@/components/home/ActivitySection";
 import FeaturedProjects from "@/components/home/FeaturedProjects";
 import ProofStrip from "@/components/home/ProofStrip";
@@ -15,7 +14,7 @@ import {
   getRecentQuoteSignals,
   getRecentRoofingExteriorActivity,
 } from "@/lib/activity-feed";
-import { getTopQuoteNeighborhoods } from "@/lib/seo-engine";
+import { getAllNeighborhoodActivities } from "@/lib/seo-engine";
 import { buildMetadata } from "@/lib/seo";
 import { formatRelativeTime } from "@/lib/time";
 
@@ -157,11 +156,11 @@ function toTitle(slug: string) {
 }
 
 export default async function HomePage() {
-  const [projects, services, quoteCount, topAreas, quoteSignals, activity] = await Promise.all([
+  const [projects, services, quoteCount, areas, quoteSignals, activity] = await Promise.all([
     listProjects({ limit: 6, include_unpublished: false }),
     listServices(),
     countLiveQuoteSignals(),
-    getTopQuoteNeighborhoods(20),
+    getAllNeighborhoodActivities(),
     getRecentQuoteSignals(5),
     getRecentRoofingExteriorActivity(12)
   ]);
@@ -222,11 +221,10 @@ export default async function HomePage() {
     })
   }));
 
-  const calgaryAreas = topAreas.filter((area) => area.city === "Calgary");
+  const calgaryAreas = areas.filter((area) => area.city === "Calgary");
 
   return (
     <>
-      <LocalBusinessSchema />
       <style>{`
         .home-seo-hero {
           grid-template-columns: minmax(0, 1.35fr) minmax(280px, 360px);

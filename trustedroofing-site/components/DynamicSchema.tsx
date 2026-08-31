@@ -1,6 +1,7 @@
 import type { Project } from "@/lib/db";
 import type { QuoteNeighborhoodSummary } from "@/lib/seo-engine";
 import { canonicalUrl } from "@/lib/seo";
+import { ORGANIZATION_ID } from "@/lib/organization";
 
 type ProjectSchemaProps = {
   projectData: Project;
@@ -44,9 +45,14 @@ function buildProjectSchema(project: Project, relatedNeighborhoods: Array<{ slug
 
   return {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: "Trusted Roofing & Exteriors",
-    url: canonicalUrl(""),
+    "@graph": [{ "@id": ORGANIZATION_ID }, {
+    "@type": "Project",
+    provider: { "@id": ORGANIZATION_ID },
+    name: project.title,
+    description: project.summary,
+    url: projectUrl,
+    category: project.service_slug,
+    image: (project.photos ?? []).map((photo) => photo.public_url),
     areaServed: {
       "@type": "Place",
       name: `${neighborhoodName}, ${project.city}`,
@@ -58,20 +64,8 @@ function buildProjectSchema(project: Project, relatedNeighborhoods: Array<{ slug
       },
       geo: buildNeighborhoodGeo(project.lat_public ?? null, project.lng_public ?? null)
     },
-    hasPart: {
-      "@type": "Project",
-      name: project.title,
-      description: project.summary,
-      url: projectUrl,
-      category: project.service_slug,
-      image: (project.photos ?? []).map((photo) => photo.public_url),
-      areaServed: {
-        "@type": "Place",
-        name: `${neighborhoodName}, ${project.city}`,
-        geo: buildNeighborhoodGeo(project.lat_public ?? null, project.lng_public ?? null)
-      },
-      isRelatedTo: relatedNeighborhoods.map((area) => canonicalUrl(`/service-areas/${area.slug}`))
-    }
+    isRelatedTo: relatedNeighborhoods.map((area) => canonicalUrl(`/service-areas/${area.slug}`))
+    }]
   };
 }
 
@@ -82,21 +76,16 @@ function buildQuoteSchema(quote: QuoteNeighborhoodSummary, relatedNeighborhoods:
 
   return {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: "Trusted Roofing & Exteriors",
-    url: canonicalUrl(""),
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: quote.city,
-      addressRegion: "AB",
-      addressCountry: "CA"
-    },
+    "@graph": [{ "@id": ORGANIZATION_ID }, {
+    "@type": "Service",
+    provider: { "@id": ORGANIZATION_ID },
+    url,
     areaServed: {
       "@type": "Place",
       name: `${quote.neighborhood}, ${quote.city}`,
       geo: buildNeighborhoodGeo(quote.centroidLat ?? null, quote.centroidLng ?? null)
     },
-    makesOffer: {
+    offers: {
       "@type": "AggregateOffer",
       url,
       lowPrice,
@@ -117,6 +106,6 @@ function buildQuoteSchema(quote: QuoteNeighborhoodSummary, relatedNeighborhoods:
         }
       })),
       isRelatedTo: relatedNeighborhoods.map((area) => canonicalUrl(`/service-areas/${area.slug}`))
-    }
+    }}]
   };
 }

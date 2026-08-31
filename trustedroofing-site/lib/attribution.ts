@@ -1,6 +1,7 @@
 export const ATTRIBUTION_STORAGE_KEY = "trusted_attribution_v1";
 export const SESSION_STORAGE_KEY = "trusted_attribution_session_v1";
 export const JOURNEY_LIMIT = 20;
+export const SESSION_INACTIVITY_MS = 30 * 60 * 1000;
 
 export type SourceCategory = "google_organic" | "bing_organic" | "google_business_profile" | "google_ads" | "meta_ads" | "referral" | "direct" | "email" | "other_organic" | "unknown";
 export type JourneyEventName = "landing" | "service_page_viewed" | "project_page_viewed" | "service_area_page_viewed" | "estimator_started" | "address_submitted" | "estimate_generated" | "contact_form_shown" | "contact_submitted" | "pdf_generated" | "pdf_downloaded";
@@ -16,6 +17,31 @@ export type AttributionSnapshot = {
   visit_count: number; is_returning_visitor: boolean; first_touch: Touch; last_touch: Touch;
   journey: JourneyEvent[]; ga_client_id?: string | null; ga_session_id?: string | null;
 };
+
+type StoredSession = { id: string; started_at: string; last_seen_at: string };
+const parseStored = <T>(raw: string | null): T | null => { try { return raw ? JSON.parse(raw) as T : null; } catch { return null; } };
+
+/** Synchronous so an estimator submission cannot race React's effects. */
+export function ensureBrowserAttribution(nowMs = Date.now()): AttributionSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const now = new Date(nowMs).toISOString();
+    const prior = parseStored<AttributionSnapshot>(localStorage.getItem(ATTRIBUTION_STORAGE_KEY));
+    const stored = parseStored<StoredSession>(localStorage.getItem(SESSION_STORAGE_KEY));
+    const expired = !stored?.last_seen_at || nowMs - new Date(stored.last_seen_at).getTime() > SESSION_INACTIVITY_MS;
+    const session: StoredSession = !stored || expired
+      ? { id: crypto.randomUUID(), started_at: now, last_seen_at: now }
+      : { ...stored, last_seen_at: now };
+    const touch = makeTouch(window.location.href, document.referrer);
+    const isNewSession = !prior || prior.session_id !== session.id;
+    const snapshot: AttributionSnapshot = prior
+      ? { ...prior, session_id: session.id, session_started_at: session.started_at, visit_count: prior.visit_count + (isNewSession ? 1 : 0), is_returning_visitor: isNewSession, last_touch: isNewSession ? touch : prior.last_touch }
+      : { visitor_id: crypto.randomUUID(), session_id: session.id, first_seen_at: now, session_started_at: session.started_at, visit_count: 1, is_returning_visitor: false, first_touch: touch, last_touch: touch, journey: [] };
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    localStorage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(snapshot));
+    return snapshot;
+  } catch { return null; }
+}
 
 const TRACKING_KEYS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid", "msclkid"]);
 const value = (params: URLSearchParams, key: string) => params.get(key)?.slice(0, 200) || null;
@@ -78,7 +104,7 @@ export function normalizeAttributionMetadata(raw: unknown): Record<string, unkno
     session_id: String(attribution.session_id || "").slice(0, 64) || null,
     first_seen_at: attribution.first_seen_at || null,
     session_started_at: attribution.session_started_at || null,
-    is_returning_visitor: Boolean(attribution.is_returning_visitor),
+    is_returning_visitor: attribution.visitor_id ? Boolean(attribution.is_returning_visitor) : null,
     previous_visit_count: Math.max(0, Number(attribution.visit_count || 1) - 1),
     source_type: sourceLabel(first.source_category), landing_page: first.landing_path,
     referrer: last.referrer, utm_source: last.utm_source, utm_medium: last.utm_medium,
