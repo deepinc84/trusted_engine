@@ -35,3 +35,26 @@ export const organizationSchema = {
   ...organizationProfile,
   "@graph": [organizationProfile]
 };
+
+export const localBusinessSchema = {
+  "@context": "https://schema.org",
+  "@type": "RoofingContractor",
+  "@id": `${canonicalUrl("")}#localbusiness`,
+  name: organizationSchema.name,
+  url: organizationSchema.url,
+  logo: organizationSchema.logo,
+  telephone: organizationSchema.telephone,
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Calgary",
+    addressRegion: "AB",
+    addressCountry: "CA"
+  },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 51.0276233,
+    longitude: -114.087835
+  },
+  areaServed: organizationSchema.areaServed,
+  sameAs: organizationSchema.sameAs
+};

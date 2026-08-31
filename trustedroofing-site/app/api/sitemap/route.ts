@@ -161,6 +161,7 @@ export async function GET() {
 
   const urls: SitemapEntry[] = [
     { loc: canonicalUrl("/"), lastmod: latestSiteActivityLastmod, changefreq: "daily", priority: 1.0 },
+    { loc: "https://trustedroofingcalgary.com/about", changefreq: "monthly", priority: 0.7 },
     { loc: canonicalUrl("/services"), lastmod: latestIso(latestGeoPostLastmod, latestProjectLastmod) ?? latestSiteActivityLastmod, changefreq: "weekly", priority: 0.9 },
     ...services.map((service) => ({ loc: canonicalUrl(serviceSlugToPublicPath(service.slug)), lastmod: servicePageLastmod(service.slug, service.created_at), changefreq: "weekly" as const, priority: 0.8 })),
     { loc: canonicalUrl("/services/roof-rejuvenation"), lastmod: servicePageLastmod("roofing"), changefreq: "weekly", priority: 0.8 },
