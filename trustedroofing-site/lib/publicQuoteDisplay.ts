@@ -1,4 +1,5 @@
 import type { QuoteScope } from "@/lib/quote";
+import { ORGANIZATION_ID } from "@/lib/organization";
 
 export type PublicQuoteDetailItem = {
   key: string;
@@ -247,10 +248,7 @@ export function buildQuoteStructuredData(input: {
     name: input.serviceName,
     serviceType: input.publicDisplay.serviceType,
     areaServed: input.areaServed,
-    provider: {
-      "@type": "Organization",
-      name: input.providerName
-    },
+    provider: { "@id": ORGANIZATION_ID },
     description: input.pageDescription,
     additionalProperty: buildAdditionalPropertyFromDisplayItems(input.publicDisplay.supportingItems)
   };

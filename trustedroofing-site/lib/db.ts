@@ -179,6 +179,10 @@ export type QuoteSourceMetadata = {
   attribution?: Record<string, unknown> | null;
   journey?: unknown[];
   quote_history?: Record<string, unknown> | null;
+  daily_ip_hash?: string | null;
+  telemetry_status?: string | null;
+  likely_automation?: boolean | null;
+  same_anonymous_network_today?: boolean | null;
 };
 
 type QuoteEventStep1 = QuoteSourceMetadata & {
@@ -2096,6 +2100,8 @@ export type InstantQuoteRecord = {
   previous_visit_count?: number | null; first_source_category?: string | null;
   last_source_category?: string | null; attribution?: Record<string, unknown> | null;
   journey?: unknown[] | null; quote_history?: Record<string, unknown> | null;
+  daily_ip_hash?: string | null; telemetry_status?: string | null; likely_automation?: boolean | null;
+  same_anonymous_network_today?: boolean | null;
 };
 
 export type LeadRecord = {
@@ -2297,8 +2303,16 @@ export async function createInstaquoteAddressQuery(
         ...sourceMetadata,
       });
       if (isMissingColumnError(error) && Object.keys(sourceMetadata).length > 0) {
-        const retry = await client!.from("quote_events").upsert(quoteEventPayload);
-        error = retry.error;
+        // A newly-added diagnostics column must not cause established visitor
+        // attribution to be discarded while migration 0032 rolls out.
+        const { daily_ip_hash, telemetry_status, likely_automation, same_anonymous_network_today, ...attributionMetadata } = sourceMetadata;
+        void daily_ip_hash; void telemetry_status; void likely_automation; void same_anonymous_network_today;
+        const attributionRetry = await client!.from("quote_events").upsert({ ...quoteEventPayload, ...attributionMetadata });
+        error = attributionRetry.error;
+        if (isMissingColumnError(error)) {
+          const legacyRetry = await client!.from("quote_events").upsert(quoteEventPayload);
+          error = legacyRetry.error;
+        }
       }
 
       if (!error) {
@@ -2499,11 +2513,15 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
 
     // Correlate by this browser and by the normalized/geocoded address. Only
     // operational quote facts are copied; contact details are never exposed.
-    const [{ data: browserHistory }, { data: addressHistory }] = await Promise.all([
+    const dayStart = payload.created_at.slice(0, 10);
+    const dayEnd = new Date(`${dayStart}T00:00:00.000Z`); dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const [{ data: browserHistory }, { data: addressHistory }, { data: networkHistory }] = await Promise.all([
       input.source_metadata?.visitor_id ? client.from("instant_quotes").select("id,service_type,created_at,address").eq("visitor_id", input.source_metadata.visitor_id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
-      client.from("instant_quotes").select("id,service_type,created_at").eq("address", input.address).order("created_at", { ascending: false }).limit(20)
+      client.from("instant_quotes").select("id,service_type,created_at").eq("address", input.address).order("created_at", { ascending: false }).limit(20),
+      input.source_metadata?.daily_ip_hash ? client.from("instant_quotes").select("id").eq("daily_ip_hash", input.source_metadata.daily_ip_hash).gte("created_at", `${dayStart}T00:00:00.000Z`).lt("created_at", dayEnd.toISOString()).limit(1) : Promise.resolve({ data: [] })
     ]);
     payload.quote_history = summarizeQuoteHistory(browserHistory ?? [], addressHistory ?? []);
+    payload.same_anonymous_network_today = Boolean(networkHistory?.length);
 
     await ensureLegacyAddressQueryForInstantQuote(client, input);
 
@@ -2513,7 +2531,17 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       .select("*")
       .single();
     if (isMissingColumnError(error) && input.source_metadata) {
-      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, visitor_id, session_id, first_seen_at, session_started_at, quote_generated_at, is_returning_visitor, previous_visit_count, first_source_category, last_source_category, attribution, journey, quote_history, ...legacyPayload } = payload;
+      const telemetryCompatiblePayload = { ...payload };
+      delete telemetryCompatiblePayload.daily_ip_hash;
+      delete telemetryCompatiblePayload.telemetry_status;
+      delete telemetryCompatiblePayload.likely_automation;
+      delete telemetryCompatiblePayload.same_anonymous_network_today;
+      const attributionRetry = await client.from("instant_quotes").insert(telemetryCompatiblePayload).select("*").single();
+      data = attributionRetry.data;
+      error = attributionRetry.error;
+    }
+    if (isMissingColumnError(error) && input.source_metadata) {
+      const { source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, visitor_id, session_id, first_seen_at, session_started_at, quote_generated_at, is_returning_visitor, previous_visit_count, first_source_category, last_source_category, attribution, journey, quote_history, daily_ip_hash, telemetry_status, likely_automation, same_anonymous_network_today, ...legacyPayload } = payload;
       void source_type;
       void landing_page;
       void referrer;
@@ -2527,6 +2555,7 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
       void device_category;
       void user_agent_summary;
       void visitor_id; void session_id; void first_seen_at; void session_started_at; void quote_generated_at; void is_returning_visitor; void previous_visit_count; void first_source_category; void last_source_category; void attribution; void journey; void quote_history;
+      void daily_ip_hash; void telemetry_status; void likely_automation; void same_anonymous_network_today;
       const retry = await client
         .from("instant_quotes")
         .insert(legacyPayload)
@@ -3092,6 +3121,8 @@ function mapQuoteEventToInstantQuote(
     is_returning_visitor: row.is_returning_visitor ?? null, previous_visit_count: row.previous_visit_count ?? null,
     first_source_category: row.first_source_category ?? null, last_source_category: row.last_source_category ?? null,
     attribution: row.attribution ?? null, journey: row.journey ?? null, quote_history: row.quote_history ?? null,
+    daily_ip_hash: row.daily_ip_hash ?? null, telemetry_status: row.telemetry_status ?? null,
+    likely_automation: row.likely_automation ?? null, same_anonymous_network_today: null,
   };
 }
 
@@ -3195,7 +3226,7 @@ export async function listAdminInstantQuotes(filters?: {
       let eventQuery = client
         .from("quote_events")
         .select(
-          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone, source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, pdf_available, pdf_generated_at, pdf_downloaded_at, pdf_download_count, last_pdf_downloaded_at, quote_event_notified_at, lead_notification_sent_at, pdf_download_notification_sent_at, marketing_tagged_at, marketing_tagged_by, visitor_id,session_id,first_seen_at,session_started_at,quote_generated_at,is_returning_visitor,previous_visit_count,first_source_category,last_source_category,attribution,journey,quote_history",
+          "id, created_at, status, service_type, service_slug, address, address_private, estimate_low, estimate_high, name, email, phone, source_type, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, first_page_path, current_page_path, device_category, user_agent_summary, pdf_available, pdf_generated_at, pdf_downloaded_at, pdf_download_count, last_pdf_downloaded_at, quote_event_notified_at, lead_notification_sent_at, pdf_download_notification_sent_at, marketing_tagged_at, marketing_tagged_by, visitor_id,session_id,first_seen_at,session_started_at,quote_generated_at,is_returning_visitor,previous_visit_count,first_source_category,last_source_category,attribution,journey,quote_history,daily_ip_hash,telemetry_status,likely_automation",
         )
         .order("created_at", { ascending: false })
         .limit(limit);

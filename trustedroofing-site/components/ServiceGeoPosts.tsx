@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ResolvedGeoPost } from "@/lib/db";
 import PageContainer from "@/components/ui/PageContainer";
 import { getPlaceholderProjectImage } from "@/lib/images";
-import { organizationSchema } from "@/lib/organization";
+import { ORGANIZATION_ID } from "@/lib/organization";
 import { canonicalUrl } from "@/lib/seo";
 
 const BATCH_SIZE = 10;
@@ -61,17 +61,10 @@ export default function ServiceGeoPosts({ geoPosts, heading }: { geoPosts: Resol
           url: canonicalUrl(post.slug ? `/projects/${post.slug}` : "/projects"),
           datePublished: post.published_at ?? post.created_at,
           author: {
-            "@type": "Organization",
-            name: organizationSchema.name,
-            url: organizationSchema.url,
+            "@id": ORGANIZATION_ID,
           },
           publisher: {
-            "@type": "Organization",
-            name: organizationSchema.name,
-            logo: {
-              "@type": "ImageObject",
-              url: organizationSchema.logo,
-            },
+            "@id": ORGANIZATION_ID,
           },
           image: [canonicalUrl(selectedGeoPostImage(post))],
           contentLocation: {

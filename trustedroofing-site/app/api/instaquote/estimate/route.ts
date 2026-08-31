@@ -13,6 +13,7 @@ import { extractNeighborhood, normalizeLocalityCandidate } from "@/lib/serviceAr
 import { checkRateLimit, requestIp } from "@/lib/rate-limit";
 import { calculateRoofRejuvenationQuote } from "@/lib/roof-rejuvenation";
 import { normalizeAttributionMetadata } from "@/lib/attribution";
+import { requestQuoteTelemetry } from "@/lib/quote-telemetry";
 
 type EstimateBody = {
   address?: string;
@@ -905,10 +906,11 @@ export async function POST(request: Request) {
   const serviceScope = body.serviceScope ?? "roofing";
   const requestedScopes = mapScopeToRequestedScopes(serviceScope);
   const serviceType = mapScopeToServiceType(serviceScope);
+  const browserMetadata = normalizeAttributionMetadata(body.sourceMetadata);
   const sourceMetadata = {
-    ...normalizeAttributionMetadata(body.sourceMetadata),
+    ...browserMetadata,
+    ...requestQuoteTelemetry(request, Boolean(browserMetadata.visitor_id && browserMetadata.session_id)),
     quote_generated_at: new Date().toISOString(),
-    user_agent_summary: request.headers.get("user-agent")?.slice(0, 240) ?? null,
   } as QuoteSourceMetadata;
   if (Array.isArray(sourceMetadata.journey)) sourceMetadata.journey = [...sourceMetadata.journey, { event: "estimate_generated", path: String(sourceMetadata.current_page_path ?? "/online-estimate"), at: sourceMetadata.quote_generated_at, label: serviceScope }].slice(-20);
 
