@@ -1,4 +1,6 @@
 export type BusinessProfileStatus = "verified" | "unverified" | "pending";
+export type SubmissionStatus = "not-submitted" | "submitted" | "live";
+export type LinkFollowStatus = "follow" | "nofollow" | "unknown";
 
 export type BusinessProfile = {
   id: string;
@@ -13,6 +15,11 @@ export type BusinessProfile = {
   googleIndexed: boolean | null;
   backlinkPresent: boolean | null;
   notes: string | null;
+  /** Optional operational fields reserved for future citation management. */
+  submissionStatus?: SubmissionStatus;
+  googleDiscovered?: boolean | null;
+  linkFollowStatus?: LinkFollowStatus;
+  lastChecked?: string | null;
 };
 
 export const businessProfiles: BusinessProfile[] = [
@@ -34,4 +41,3 @@ export const businessProfiles: BusinessProfile[] = [
 export const activeBusinessProfiles = businessProfiles.filter(
   (profile): profile is BusinessProfile & { url: string } => profile.active && Boolean(profile.url)
 );
-
