@@ -58,6 +58,11 @@ const nextConfig = {
         destination: "/online-estimate",
         permanent: true
       },
+      {
+        source: "/harvest-hills",
+        destination: "/service-areas/harvest-hills",
+        statusCode: 301
+      },
       { source: "/services/roofing/roof-repair", destination: "/services/roof-repair", permanent: true },
       { source: "/services/roofing/roof-replacement", destination: "/services/roof-replacement", permanent: true },
       { source: "/services/roofing/roof-inspection", destination: "/services/roof-inspection-maintenance", permanent: true },

@@ -7,6 +7,7 @@ import { getProjectQuadrantHeat, getProjectQuadrantLinks, getTopProjectNeighborh
 
 const links = [
   { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
   { href: "/projects", label: "Projects" }
 ];
 const serviceLinks = [
