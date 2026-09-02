@@ -3,6 +3,7 @@ import BusinessProfilesSection from "@/components/about/BusinessProfilesSection"
 import CtaBand from "@/components/ui/CtaBand";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHero from "@/components/ui/PageHero";
+import { ORGANIZATION_ID } from "@/lib/organization";
 import { buildMetadata } from "@/lib/seo";
 import styles from "./about.module.css";
 
@@ -19,7 +20,8 @@ export default function AboutPage() {
     "@id": "https://trustedroofingcalgary.com/about#webpage",
     url: "https://trustedroofingcalgary.com/about",
     name: "About Trusted Roofing & Exteriors",
-    about: { "@id": "https://www.trustedroofingcalgary.com#organization" }
+    // Reference the site-wide entity instead of publishing another business.
+    about: { "@id": ORGANIZATION_ID }
   };
 
   return (
@@ -79,8 +81,8 @@ export default function AboutPage() {
                 <li><Link href="/services/james-hardie-siding">James Hardie Siding</Link></li>
                 <li><Link href="/services/eavestrough">Eavestrough Installation &amp; Repair</Link></li>
                 <li>Downspouts</li>
-                <li><Link href="/services/soffit-fascia">Soffit</Link></li>
-                <li><Link href="/services/soffit-fascia">Fascia</Link></li>
+                <li><Link href="/services/eavestrough-soffit-fascia">Soffit</Link></li>
+                <li><Link href="/services/eavestrough-soffit-fascia">Fascia</Link></li>
               </ul>
             </article>
           </div>

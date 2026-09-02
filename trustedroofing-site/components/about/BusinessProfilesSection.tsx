@@ -9,9 +9,9 @@ export default function BusinessProfilesSection() {
         <p className="homev3-eyebrow">Independent business references</p>
         <h2 id="business-profiles-heading">Trusted Roofing & Exteriors Around the Web</h2>
         <p>
-          Trusted Roofing & Exteriors maintains business profiles and listings across contractor, social,
-          local business and directory platforms. The active profiles below reference the same Calgary
-          roofing and exterior business represented on this website.
+          Trusted Roofing & Exteriors maintains business profiles and listings across contractor directories,
+          local business platforms, industry resources and social networks. You can find additional information
+          about our Calgary roofing and exterior services through the third-party sources below.
         </p>
         <div className={styles.grid}>
           {activeBusinessProfiles.map((profile) => (
@@ -37,4 +37,3 @@ export default function BusinessProfilesSection() {
     </section>
   );
 }
-
