@@ -2,6 +2,14 @@ import { canonicalUrl } from "./seo";
 
 export const ORGANIZATION_ID = `${canonicalUrl("/")}#organization`;
 export const GOOGLE_BUSINESS_URL = "https://maps.google.com/?cid=10122718143243142503";
+export const ORGANIZATION_SAME_AS = [
+  GOOGLE_BUSINESS_URL,
+  "https://facebook.com/TrustedRoofingCalgary",
+  "https://www.linkedin.com/company/trusted-roofing-exteriors/",
+  "https://trustedpros.ca/company/trusted-roofing-and-exteriors",
+  "https://m.yelp.ca/biz/trusted-roofing-and-exteriors-calgary",
+  "https://www.homestars.com/profile/trusted-roofing-and-exteriors-inc"
+] as const;
 
 export const organizationProfile = {
   "@type": "RoofingContractor",
@@ -13,7 +21,7 @@ export const organizationProfile = {
   telephone: "+1-587-288-3351",
   priceRange: "$$",
   hasMap: GOOGLE_BUSINESS_URL,
-  sameAs: [GOOGLE_BUSINESS_URL],
+  sameAs: ORGANIZATION_SAME_AS,
   address: {
     "@type": "PostalAddress",
     addressLocality: "Calgary",
