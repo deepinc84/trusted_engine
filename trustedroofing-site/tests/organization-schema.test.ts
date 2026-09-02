@@ -16,14 +16,11 @@ test("publishes the verified organization contact details", () => {
   assert.equal(business.logo, "https://www.trustedroofingcalgary.com/transparent-logo.png");
   assert.equal(business.hasMap, GOOGLE_BUSINESS_URL);
   assert.deepEqual(business.sameAs, ORGANIZATION_SAME_AS);
-  assert.deepEqual(business.sameAs, [
-    GOOGLE_BUSINESS_URL,
-    "https://facebook.com/TrustedRoofingCalgary",
-    "https://www.linkedin.com/company/trusted-roofing-exteriors/",
-    "https://trustedpros.ca/company/trusted-roofing-and-exteriors",
-    "https://m.yelp.ca/biz/trusted-roofing-and-exteriors-calgary",
-    "https://www.homestars.com/profile/trusted-roofing-and-exteriors-inc"
-  ]);
+  assert.equal(business.sameAs.length, 17);
+  assert.ok(business.sameAs.includes("https://ca.nextdoor.com/pages/trusted-roofing-exteriors-calgary-ab/"));
+  assert.ok(business.sameAs.includes("https://medium.com/@info_93117/about"));
+  const sameAs: readonly string[] = business.sameAs;
+  assert.ok(!sameAs.includes("https://inspiringclicks.com/calgary-businesses/directory/?category=Roofing"));
   assert.equal("geo" in business, false);
 });
 

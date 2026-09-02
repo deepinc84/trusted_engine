@@ -16,16 +16,15 @@ test("about page keeps permanent metadata and references the shared organization
   assert.equal(ORGANIZATION_ID, "https://www.trustedroofingcalgary.com/#organization");
 });
 
-test("citation data has 13 records and only confirmed active URLs render", () => {
-  assert.equal(businessProfiles.length, 13);
-  assert.equal(activeBusinessProfiles.length, 10);
+test("citation data has 17 confirmed records rendered as direct links", () => {
+  assert.equal(businessProfiles.length, 17);
+  assert.equal(activeBusinessProfiles.length, 17);
   assert.ok(activeBusinessProfiles.every((profile) => profile.active && profile.url.startsWith("https://")));
-  assert.deepEqual(
-    businessProfiles.filter((profile) => !profile.active).map((profile) => profile.name),
-    ["Do I Need A Roofer?", "InspiringClicks", "Alberta Directory"]
-  );
+  assert.ok(activeBusinessProfiles.every((profile) => !profile.url.includes("utm_")));
   assert.match(profileSection, /activeBusinessProfiles\.map/);
   assert.match(profileSection, /href=\{profile\.url\}/);
+  assert.match(profileSection, /rel="noopener noreferrer"/);
+  assert.doesNotMatch(profileSection, /nofollow|sponsored/);
 });
 
 test("about is discoverable without adding another route", () => {
