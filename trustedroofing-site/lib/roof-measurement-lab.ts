@@ -1,0 +1,50 @@
+import { inflateSync } from "node:zlib";
+
+export const SQFT_PER_M2 = 10.7639104167;
+export const LAB_CONSTANTS = {
+  dsmMedianWindowMeters: 0.4,
+  spikeThresholdMeters: 1.5,
+  heightResidualToleranceMeters: 0.3,
+  pitchToleranceDegrees: 5,
+  azimuthToleranceDegrees: 12,
+  minimumPlaneAreaM2: 1,
+  polygonSimplificationMeters: 0.15,
+  planeMergePitchDegrees: 2,
+  planeMergeAzimuthDegrees: 5,
+  planeMergeHeightMeters: 0.15,
+  ridgeVerticalToleranceMeters: 0.15,
+  ridgeGradeToleranceDegrees: 3,
+  edgeClassificationAngularToleranceDegrees: 20,
+  edgeMergeDirectionDegrees: 5,
+  edgeMergeGapMeters: 0.2
+} as const;
+
+export type RasterDiagnostic={compression:number;layout:"tiles"|"strips";predictor:number;bitsPerSample:number[];sampleFormat:number[];samplesPerPixel:number;photometricInterpretation:number;width:number;height:number;pixelScale:number[];noData:number|null};
+export type Raster={width:number;height:number;bands:number;values:number[][];bounds:[number,number,number,number];pixelWidthM:number;pixelHeightM:number;noData:number|null;diagnostic:RasterDiagnostic};
+type Entry={type:number;count:number;valueOffset:number;entryOffset:number};
+const typeSize=(t:number)=>({1:1,2:1,3:2,4:4,5:8,11:4,12:8}[t]||0);
+
+/** Baseline TIFF/GeoTIFF decoder supporting Google strips/tiles, Deflate, horizontal predictor, integer and Float32 samples. */
+export function parseTiff(buffer:Buffer):Raster {
+  const le=buffer.toString("ascii",0,2)==="II", u16=(o:number)=>le?buffer.readUInt16LE(o):buffer.readUInt16BE(o),u32=(o:number)=>le?buffer.readUInt32LE(o):buffer.readUInt32BE(o);
+  if(buffer.toString("ascii",0,2)!=="II"&&buffer.toString("ascii",0,2)!=="MM")throw new Error("Unsupported TIFF byte order signature");if(u16(2)!==42)throw new Error("Unsupported TIFF version (BigTIFF is not supported)");
+  const ifd=u32(4),count=u16(ifd),tags=new Map<number,Entry>();for(let i=0;i<count;i++){const o=ifd+2+i*12;tags.set(u16(o),{type:u16(o+2),count:u32(o+4),valueOffset:u32(o+8),entryOffset:o});}
+  const bytes=(e:Entry)=>{const len=e.count*typeSize(e.type);if(!typeSize(e.type))throw new Error(`Unsupported TIFF field type ${e.type}`);return len<=4?buffer.subarray(e.entryOffset+8,e.entryOffset+8+len):buffer.subarray(e.valueOffset,e.valueOffset+len)};
+  const vals=(id:number):number[]=>{const e=tags.get(id);if(!e)return[];const b=bytes(e),out=[];for(let i=0;i<e.count;i++){const o=i*typeSize(e.type);out.push(e.type===1?b[o]:e.type===3?(le?b.readUInt16LE(o):b.readUInt16BE(o)):e.type===4?(le?b.readUInt32LE(o):b.readUInt32BE(o)):e.type===11?(le?b.readFloatLE(o):b.readFloatBE(o)):e.type===12?(le?b.readDoubleLE(o):b.readDoubleBE(o)):NaN)}return out};
+  const width=vals(256)[0],height=vals(257)[0],spp=vals(277)[0]||1,bits=vals(258),bitsPerSample=bits.length?bits:Array(spp).fill(8),formats=vals(339),sampleFormat=formats.length?formats:Array(spp).fill(1),compression=vals(259)[0]||1,predictor=vals(317)[0]||1,photo=vals(262)[0]||1;
+  if(!width||!height)throw new Error("Invalid TIFF dimensions");if(![1,8,32946].includes(compression))throw new Error(`Unsupported TIFF compression ${compression}`);if(![1,2].includes(predictor))throw new Error(`Unsupported TIFF predictor ${predictor}`);if(bitsPerSample.some(x=>![8,16,32].includes(x)))throw new Error(`Unsupported bits per sample: ${bitsPerSample.join(",")}`);if(sampleFormat.some(x=>![1,2,3].includes(x)))throw new Error(`Unsupported sample format: ${sampleFormat.join(",")}`);if(new Set(bitsPerSample).size!==1)throw new Error("Mixed bits per sample are unsupported");
+  const tiled=tags.has(324),offsets=vals(tiled?324:273),lengths=vals(tiled?325:279),tileW=tiled?vals(322)[0]:width,tileH=tiled?vals(323)[0]:(vals(278)[0]||height),bps=bitsPerSample[0]/8,rowBytes=tileW*spp*bps,bands=Array.from({length:spp},()=>Array(width*height).fill(NaN));
+  offsets.forEach((offset,chunk)=>{const packed=buffer.subarray(offset,offset+lengths[chunk]),raw=compression===1?Buffer.from(packed):inflateSync(packed);const tx=tiled?(chunk%Math.ceil(width/tileW))*tileW:0,ty=tiled?Math.floor(chunk/Math.ceil(width/tileW))*tileH:chunk*tileH;const rows=Math.min(tileH,height-ty);if(predictor===2){for(let y=0;y<rows;y++)for(let x=1;x<tileW;x++)for(let s=0;s<spp;s++){const o=y*rowBytes+(x*spp+s)*bps,p=o-spp*bps;if(bps===1)raw[o]=(raw[o]+raw[p])&255;else if(bps===2){const v=((le?raw.readUInt16LE(o):raw.readUInt16BE(o))+(le?raw.readUInt16LE(p):raw.readUInt16BE(p)))&65535;le?raw.writeUInt16LE(v,o):raw.writeUInt16BE(v,o)}else{const v=((le?raw.readUInt32LE(o):raw.readUInt32BE(o))+(le?raw.readUInt32LE(p):raw.readUInt32BE(p)))>>>0;le?raw.writeUInt32LE(v,o):raw.writeUInt32BE(v,o)}}}
+    for(let y=0;y<rows;y++)for(let x=0;x<Math.min(tileW,width-tx);x++)for(let s=0;s<spp;s++){const o=y*rowBytes+(x*spp+s)*bps,fmt=sampleFormat[s],v=bps===1?(fmt===2?raw.readInt8(o):raw[o]):bps===2?(fmt===2?(le?raw.readInt16LE(o):raw.readInt16BE(o)):(le?raw.readUInt16LE(o):raw.readUInt16BE(o))):fmt===3?(le?raw.readFloatLE(o):raw.readFloatBE(o)):fmt===2?(le?raw.readInt32LE(o):raw.readInt32BE(o)):(le?raw.readUInt32LE(o):raw.readUInt32BE(o));bands[s][(ty+y)*width+tx+x]=v}}
+  );
+  const scale=vals(33550),tie=vals(33922);if(scale.length<2||tie.length<6)throw new Error("GeoTIFF missing ModelPixelScale or ModelTiepoint");const west=tie[3]-tie[0]*scale[0],north=tie[4]+tie[1]*scale[1],east=west+width*scale[0],south=north-height*scale[1],lat=(north+south)/2*Math.PI/180,geographic=Math.abs(scale[0])<.01;
+  const nd=tags.get(42113),noData=nd?Number(bytes(nd).toString("ascii").replace(/\0/g,"")):null;return{width,height,bands:spp,values:bands,bounds:[west,south,east,north],pixelWidthM:Math.abs(geographic?scale[0]*111320*Math.cos(lat):scale[0]),pixelHeightM:Math.abs(geographic?scale[1]*110540:scale[1]),noData:Number.isFinite(noData)?noData:null,diagnostic:{compression,layout:tiled?"tiles":"strips",predictor,bitsPerSample,sampleFormat,samplesPerPixel:spp,photometricInterpretation:photo,width,height,pixelScale:scale,noData:Number.isFinite(noData)?noData:null}};
+}
+
+export function rgbDataUrl(r:Raster){if(r.bands<3)throw new Error(`RGB preview requires 3 bands; raster has ${r.bands}`);const step=Math.max(1,Math.ceil(Math.max(r.width,r.height)/300)),cells:string[]=[];for(let y=0;y<r.height;y+=step)for(let x=0;x<r.width;x+=step){const i=y*r.width+x,c=[0,1,2].map(b=>Math.max(0,Math.min(255,Math.round(r.values[b][i]))));cells.push(`<rect x="${x}" y="${y}" width="${step}" height="${step}" fill="rgb(${c.join(" ")})"/>`)}const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r.width} ${r.height}">${cells.join("")}</svg>`;return`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`}
+export function heatmapDataUrl(r:Raster){const step=Math.max(1,Math.ceil(Math.max(r.width,r.height)/180)),vals=r.values[0].filter(v=>Number.isFinite(v)&&v!==r.noData&&v>-9000),lo=Math.min(...vals),hi=Math.max(...vals),cells:string[]=[];for(let y=0;y<r.height;y+=step)for(let x=0;x<r.width;x+=step){const v=r.values[0][y*r.width+x];if(Number.isFinite(v)&&v!==r.noData&&v>-9000){const t=(v-lo)/Math.max(hi-lo,.001),h=240*(1-t);cells.push(`<rect x="${x}" y="${y}" width="${step}" height="${step}" fill="hsl(${h} 85% 50%)"/>`)}}const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r.width} ${r.height}">${cells.join("")}</svg>`;return`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`}
+export function haversine(a:{latitude:number;longitude:number},b:{latitude:number;longitude:number}){const r=Math.PI/180,dLat=(b.latitude-a.latitude)*r,dLon=(b.longitude-a.longitude)*r,s=Math.sin(dLat/2)**2+Math.cos(a.latitude*r)*Math.cos(b.latitude*r)*Math.sin(dLon/2)**2;return 6371000*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s))}
+export const pctDiff=(a:number,b:number)=>b?Math.abs(a-b)/Math.abs(b)*100:null;
+export function components(mask:Raster,center:{latitude:number;longitude:number}){const v=mask.values[0],active=v.map(x=>Number.isFinite(x)&&x>0),seen=new Uint8Array(active.length),out:{pixels:number[];distancePx:number}[]=[],cx=(center.longitude-mask.bounds[0])/(mask.bounds[2]-mask.bounds[0])*mask.width,cy=(mask.bounds[3]-center.latitude)/(mask.bounds[3]-mask.bounds[1])*mask.height;for(let s=0;s<active.length;s++){if(!active[s]||seen[s])continue;const q=[s],pixels:number[]=[];seen[s]=1;let d=Infinity;for(let h=0;h<q.length;h++){const p=q[h],x=p%mask.width,y=~~(p/mask.width);pixels.push(p);d=Math.min(d,Math.hypot(x-cx,y-cy));for(const n of[p-1,p+1,p-mask.width,p+mask.width])if(n>=0&&n<active.length&&active[n]&&!seen[n]&&Math.abs(n%mask.width-x)<=1){seen[n]=1;q.push(n)}}out.push({pixels,distancePx:d})}return out.sort((a,b)=>a.distancePx-b.distancePx)}
+export function pricing(areaSqft:number,facets:{areaSqft:number;pitchX12:number}[]){const count=facets.length,adj=!count||count<=5?0:count<=12?(count-5)*.01:Math.min(.07+(count-12)*.015,.2),base=areaSqft/100*580,pitch=facets.reduce((s,f)=>s+f.areaSqft/100*Math.max(0,f.pitchX12-6)*10,0),pre=base+pitch,center=pre*(1+adj);return{roofSquares:areaSqft/100,baseRate:580,basePrice:base,facetCount:count,facetAdjustment:adj,facetComplexityDollars:pre*adj,totalPitchSurcharge:pitch,center,low:Math.round(center*.94/50)*50,high:Math.round(center*1.06/50)*50}}
+export function confidence(i:{quality:string;distance:number;coverage:number;maskDiff:number;areaDiff:number;planeCoverage:number;residual:number}){const imagery=i.quality==="HIGH"?15:i.quality==="MEDIUM"?10:5,location=i.distance<=5?15:i.distance<=10?8:0,coverage=i.coverage>=.97?15:i.coverage>=.93?12:i.coverage>=.85?8:i.coverage>=.75?4:0,mask=i.maskDiff<=3?15:i.maskDiff<=5?12:i.maskDiff<=10?8:i.maskDiff<=15?4:0,area=i.areaDiff<=2?20:i.areaDiff<=3?18:i.areaDiff<=5?15:i.areaDiff<=8?10:i.areaDiff<=12?5:0,planes=i.planeCoverage>=.98&&i.residual<=.1?20:i.planeCoverage>=.95&&i.residual<=.15?17:i.planeCoverage>=.9&&i.residual<=.2?13:i.planeCoverage>=.85&&i.residual<=.25?8:0,total=imagery+location+coverage+mask+area+planes;return{components:{imagery,location,googleCoverage:coverage,rasterAgreement:mask,areaAgreement:area,planeQuality:planes},total,label:total>=90?"VERY HIGH":total>=80?"HIGH":total>=70?"MEDIUM":"LOW"}}
