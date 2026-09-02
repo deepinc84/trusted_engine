@@ -452,6 +452,20 @@ export default function RoofCostBlogPost() {
           </div>
         </div>
       </section>
+
+      <section className={styles.section} aria-label="Additional publication">
+        <div className={styles.shell}>
+          <p className={styles.copy} style={{ textAlign: "center" }}>
+            This article is also available on{" "}
+            <a
+              href="https://medium.com/@info_93117/how-much-does-a-roof-replacement-cost-in-calgary-in-2026-trusted-roofing-exteriors-d0816f40637f"
+            >
+              Medium
+            </a>
+            .
+          </p>
+        </div>
+      </section>
     </>
   );
 }
