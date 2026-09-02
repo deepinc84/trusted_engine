@@ -8,6 +8,7 @@ const aboutPage = readFileSync("app/(marketing)/about/page.tsx", "utf8");
 const profileSection = readFileSync("components/about/BusinessProfilesSection.tsx", "utf8");
 const sitemap = readFileSync("app/api/sitemap/route.ts", "utf8");
 const footer = readFileSync("components/site/SiteFooter.tsx", "utf8");
+const header = readFileSync("components/site/SiteHeader.tsx", "utf8");
 
 test("about page keeps permanent metadata and references the shared organization", () => {
   assert.match(aboutPage, /title: "About Trusted Roofing & Exteriors \| Calgary Roofing Contractor"/);
@@ -29,6 +30,7 @@ test("citation data has 17 confirmed records rendered as direct links", () => {
 
 test("about is discoverable without adding another route", () => {
   assert.match(sitemap, /https:\/\/trustedroofingcalgary\.com\/about/);
+  assert.match(header, /\{ href: "\/about", label: "About" \}/);
   assert.match(footer, /href="\/about"/);
   assert.doesNotMatch(aboutPage, /noindex/);
 });
