@@ -1124,8 +1124,15 @@ export async function POST(request: Request) {
         source_metadata: sourceMetadata
       });
       if (!instantQuote.quote_event_notified_at) {
-        await sendQuoteEventCreatedEmail(instantQuote);
-        await updateInstantQuoteNotificationState(addressQueryId, { quote_event_notified_at: new Date().toISOString() });
+        // Notification delivery is secondary to returning a quote. A transient
+        // email-provider failure must not make a successfully persisted repeat
+        // estimate look like a database save failure to the homeowner.
+        try {
+          await sendQuoteEventCreatedEmail(instantQuote);
+          await updateInstantQuoteNotificationState(addressQueryId, { quote_event_notified_at: new Date().toISOString() });
+        } catch (notificationError) {
+          console.error("instaquote quote event notification failed", notificationError);
+        }
       }
     } catch (error) {
       console.error("instaquote estimate query insert failed", error);
