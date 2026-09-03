@@ -24,7 +24,16 @@ export const LAB_CONSTANTS = {
   ridgeGradeToleranceDegrees: 3,
   edgeClassificationAngularToleranceDegrees: 20,
   edgeMergeDirectionDegrees: 5,
-  edgeMergeGapMeters: 0.2
+  edgeMergeGapMeters: 0.2,
+  topologyPitchToleranceDegrees: 3,
+  topologyAzimuthToleranceDegrees: 8,
+  topologyHeightToleranceMeters: 0.2,
+  topologyCombinedRmsMeters: 0.12,
+  pitchFamilyToleranceX12: 1.25,
+  pitchFamilyMinimumAreaRatio: 0.05,
+  topologyPolygonSimplificationMeters: 0.2,
+  minimumInternalEdgeLengthMeters: 0.75,
+  topologyExteriorMergeGapMeters: 0.25
 } as const;
 
 export type GeoKeys = {
