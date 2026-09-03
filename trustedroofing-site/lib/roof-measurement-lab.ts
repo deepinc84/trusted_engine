@@ -33,7 +33,10 @@ export const LAB_CONSTANTS = {
   pitchFamilyMinimumAreaRatio: 0.05,
   topologyPolygonSimplificationMeters: 0.2,
   minimumInternalEdgeLengthMeters: 0.75,
-  topologyExteriorMergeGapMeters: 0.25
+  topologyExteriorMergeGapMeters: 0.25,
+  measurementOutlineSimplificationMeters: 0.05,
+  structureHeightDiscontinuityMeters: 0.75,
+  pitchFamilyStrongAreaRatio: 0.15
 } as const;
 
 export type GeoKeys = {
