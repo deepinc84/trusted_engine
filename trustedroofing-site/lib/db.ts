@@ -2529,6 +2529,24 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
     const client = getServiceClient() ?? getAnonClient();
     if (!client) throw new Error("Supabase client unavailable");
 
+    const updateExisting = async (existing: Record<string, unknown>) => {
+      const { data, error } = await client
+        .from("instant_quotes")
+        .update({
+          address: payload.address,
+          service_type: payload.service_type,
+          quote_low: payload.quote_low,
+          quote_high: payload.quote_high,
+          created_at: payload.created_at,
+          ...input.source_metadata,
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (error) throw new Error(error.message);
+      return data as InstantQuoteRecord;
+    };
+
     const { data: existingByQuery } = await client
       .from("instant_quotes")
       .select("*")
@@ -2546,21 +2564,7 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
         .maybeSingle();
     const existing = existingByQuery ?? existingByAddress;
     if (existing) {
-      const { data, error } = await client
-        .from("instant_quotes")
-        .update({
-          address: payload.address,
-          service_type: payload.service_type,
-          quote_low: payload.quote_low,
-          quote_high: payload.quote_high,
-          created_at: payload.created_at,
-          ...input.source_metadata,
-        })
-        .eq("id", existing.id)
-        .select("*")
-        .single();
-      if (error) throw new Error(error.message);
-      return data as InstantQuoteRecord;
+      return updateExisting(existing);
     }
 
     // Correlate by this browser and by the normalized/geocoded address. Only
@@ -2615,6 +2619,22 @@ export async function upsertInstantQuoteFromAddressQuery(input: {
         .single();
       data = retry.data;
       error = retry.error;
+    }
+    if (error?.code === "23505") {
+      // Two requests for the same normalized address can both finish the
+      // lookup before either insert completes. The unique index correctly
+      // rejects one; recover by refreshing the winner rather than surfacing a
+      // false save failure to the customer.
+      const { data: concurrentExisting, error: lookupError } = await client
+        .from("instant_quotes")
+        .select("*")
+        .eq("service_type", input.service_type)
+        .ilike("address", input.address.trim().replace(/\s+/g, " "))
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lookupError) throw new Error(lookupError.message);
+      if (concurrentExisting) return updateExisting(concurrentExisting);
     }
     if (error) throw new Error(error.message);
     return data as InstantQuoteRecord;
