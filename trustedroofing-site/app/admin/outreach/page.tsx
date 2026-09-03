@@ -1,6 +1,15 @@
+import { revalidatePath } from "next/cache";
+import { discoverRoofingProspects } from "@/lib/outreach/discovery";
 import { listOutreachProspects, outreachDashboardStats } from "@/lib/outreach/repository";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+async function discoverProspectsAction() {
+  "use server";
+  await discoverRoofingProspects();
+  revalidatePath("/admin/outreach");
+}
 
 export default async function OutreachPage() {
   let prospects: any[] = [];
@@ -15,9 +24,16 @@ export default async function OutreachPage() {
 
   return <main className="section admin-shell">
     <div className="admin-hero"><div><p className="admin-kicker">Trusted Engine sales</p><h1>Outreach</h1><p>Prospects, campaign activity, suppressions and sales outcomes.</p></div></div>
-    <div className="estimate-panel"><p><b>{stats.prospects}</b> prospects · <b>{stats.enrollments}</b> enrolled · <b>{stats.messages}</b> messages · <b>{stats.suppressions}</b> suppressed · <b>{stats.won}</b> won</p>{error && <p>{error}</p>}</div>
+    <div className="estimate-panel">
+      <p><b>{stats.prospects}</b> prospects · <b>{stats.enrollments}</b> enrolled · <b>{stats.messages}</b> messages · <b>{stats.suppressions}</b> suppressed · <b>{stats.won}</b> won</p>
+      {error && <p>{error}</p>}
+      <form action={discoverProspectsAction}>
+        <button type="submit" className="button">Discover roofing prospects</button>
+      </form>
+      <p style={{marginTop:"10px",fontSize:"13px",opacity:.75}}>Scans prioritized Canadian roofing markets, excludes Calgary, de-duplicates companies, and adds new discoveries to the pool without enrolling or emailing them.</p>
+    </div>
     <div className="estimate-panel" style={{overflowX:"auto"}}>
-      <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th align="left">Company</th><th align="left">Market</th><th align="left">Email</th><th align="left">Priority</th><th align="left">Status</th></tr></thead><tbody>{prospects.map((prospect:any)=><tr key={prospect.id}><td>{prospect.company_name}</td><td>{[prospect.metro,prospect.province].filter(Boolean).join(", ")}</td><td>{prospect.email}</td><td>{prospect.priority}</td><td>{prospect.status}</td></tr>)}</tbody></table>
+      <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th align="left">Company</th><th align="left">Market</th><th align="left">Email</th><th align="left">Priority</th><th align="left">Status</th></tr></thead><tbody>{prospects.map((prospect:any)=><tr key={prospect.id}><td>{prospect.company_name}</td><td>{[prospect.metro,prospect.province].filter(Boolean).join(", ")}</td><td>{prospect.email ?? "—"}</td><td>{prospect.priority}</td><td>{prospect.status}</td></tr>)}</tbody></table>
       {!prospects.length && !error && <p>No prospects imported yet.</p>}
     </div>
   </main>;
