@@ -11,6 +11,12 @@ test("repeat estimates refresh the existing address and service quote", () => {
   assert.match(estimateRoute, /refreshInstaquoteAddressQuery\(addressQueryId/);
   assert.match(database, /\.eq\("service_type", input\.service_type\)[\s\S]*\.ilike\("address"/);
   assert.match(database, /\.update\(\{[\s\S]*quote_low: payload\.quote_low,[\s\S]*created_at: payload\.created_at/);
+  assert.match(database, /error\?\.code === "23505"[\s\S]*return updateExisting\(concurrentExisting\)/);
+});
+
+test("notification failures do not turn a saved estimate into a customer-facing error", () => {
+  assert.match(estimateRoute, /try \{[\s\S]*sendQuoteEventCreatedEmail\(instantQuote\)[\s\S]*catch \(notificationError\)/);
+  assert.match(estimateRoute, /instaquote quote event notification failed/);
 });
 
 test("database prevents concurrent duplicate address and quote-type rows", () => {
