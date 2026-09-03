@@ -3,7 +3,28 @@ import { sendOutreachEmail } from "./smtp";
 import { ensureUnsubscribeToken } from "./repository";
 import { escapeHtml, renderTemplate } from "./templates";
 
+function isCanadianBusinessSendWindow(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    weekday: "short",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const weekday = parts.find((part) => part.type === "weekday")?.value ?? "";
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "-1");
+  const weekdayAllowed = ["Mon", "Tue", "Wed", "Thu", "Fri"].includes(weekday);
+
+  // 10:00-15:59 Mountain keeps sends inside normal business hours
+  // from Vancouver through Toronto without relying on the HostPapa server timezone.
+  return weekdayAllowed && hour >= 10 && hour < 16;
+}
+
 export async function runOutreachWorker(limit = 10) {
+  if (!isCanadianBusinessSendWindow()) {
+    return { processed: 0, skipped: "outside_business_send_window", results: [] };
+  }
+
   const client = getServiceClient();
   if (!client) throw new Error("Supabase service client unavailable");
 
@@ -47,7 +68,7 @@ export async function runOutreachWorker(limit = 10) {
     }
 
     const token = await ensureUnsubscribeToken(prospect.id);
-    const base = process.env.OUTREACH_PUBLIC_BASE_URL ?? "https://trustedexteriors.ca";
+    const base = process.env.OUTREACH_PUBLIC_BASE_URL ?? "https://trusted-engine.vercel.app";
     const unsubscribeUrl = `${base.replace(/\/$/, "")}/api/outreach/unsubscribe/${token}`;
     const values = {
       company: prospect.company_name,
