@@ -5,6 +5,7 @@ import {usePathname} from "next/navigation";
 const primary = [
   { href: "/admin/estimates", label: "Estimates" },
   { href: "/admin/customers", label: "Customers" },
+  { href: "/admin/outreach", label: "Outreach" },
   { href: "/admin/pricing-catalog", label: "Pricing Defaults" },
   { href: "/admin/roofing-systems", label: "Settings" }
 ];
