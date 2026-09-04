@@ -16,12 +16,12 @@ function isCanadianBusinessSendWindow(date = new Date()) {
   const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "-1");
   const weekdayAllowed = ["Mon", "Tue", "Wed", "Thu", "Fri"].includes(weekday);
 
-  // 10:00-15:59 Mountain keeps sends inside normal business hours
-  // from Vancouver through Toronto without relying on the HostPapa server timezone.
-  return weekdayAllowed && hour >= 10 && hour < 16;
+  // 09:00-16:59 Mountain gives eight hourly send windows while staying within
+  // normal working hours across the main Canadian roofing markets.
+  return weekdayAllowed && hour >= 9 && hour < 17;
 }
 
-export async function runOutreachWorker(limit = 10) {
+export async function runOutreachWorker(limit = 13) {
   // Always process the dedicated outreach inbox first. If IMAP processing fails,
   // fail closed and send nothing so a prospect who replied cannot receive a follow-up.
   const inbound = await processInboundMailbox();
