@@ -527,8 +527,10 @@ export default function QuoteFlow({
           betterHigh: estimate.ranges.better.high,
           bestLow: estimate.ranges.best.low,
           bestHigh: estimate.ranges.best.high,
-          eavesLow: estimate.ranges.eaves.low,
-          eavesHigh: estimate.ranges.eaves.high,
+          // Submit the same eavestrough model shown to the customer. `ranges.eaves`
+          // is a legacy roof-derived comparison and uses a different rate/length.
+          eavesLow: estimate.extras.eaves.low,
+          eavesHigh: estimate.extras.eaves.high,
           sidingLow: selectedSidingRange?.low ?? estimate.extras.sidingVinyl.low,
           sidingHigh: selectedSidingRange?.high ?? estimate.extras.sidingVinyl.high,
           leadScore: estimate.complexityScore,
