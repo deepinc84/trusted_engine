@@ -6,6 +6,7 @@ import OrganizationSchema from "@/components/OrganizationSchema";
 import Script from "next/script";
 import { buildMetadata } from "@/lib/seo";
 import AttributionTracker from "@/components/AttributionTracker";
+import AnalyticsManager from "@/components/AnalyticsManager";
 
 export const metadata = buildMetadata({
   title: "Trusted Roofing & Exteriors | Calgary Roofing Company",
@@ -35,6 +36,7 @@ export default function RootLayout({
         <OrganizationSchema />
         <ChunkLoadRecovery />
         <AttributionTracker />
+        <AnalyticsManager />
         <div className="page">
           <SiteHeader />
           <main id="main-content">{children}</main>
@@ -54,18 +56,19 @@ export default function RootLayout({
           `}
         </Script>
 
-        {/* Google Analytics */}
+        <Script id="google-consent-default" strategy="beforeInteractive">
+          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};window.gtag=gtag;gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});try{var c=JSON.parse(localStorage.getItem('trusted_consent_v1')||'null');if(c)gtag('consent','update',{analytics_storage:c.analytics?'granted':'denied',ad_storage:c.ads?'granted':'denied',ad_user_data:c.ads?'granted':'denied',ad_personalization:c.ads?'granted':'denied'})}catch(e){}`}
+        </Script>
+        {/* Direct GA4; route page views are emitted once by AnalyticsManager. */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-D895RE5E8H"
           strategy="lazyOnload"
         />
         <Script id="google-analytics" strategy="lazyOnload">
           {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
             const initAnalytics = () => {
               gtag('js', new Date());
-              gtag('config', 'G-D895RE5E8H');
+              gtag('config', 'G-D895RE5E8H', { send_page_view: false });
             };
             if ('requestIdleCallback' in window) {
               requestIdleCallback(initAnalytics, { timeout: 3500 });
