@@ -70,6 +70,7 @@ class SimpleImapClient {
 
   static async connect(host: string, port: number) {
     const socket = tls.connect({ host, port, servername: host, rejectUnauthorized: true });
+    socket.setTimeout(10000, () => socket.destroy(new Error("IMAP socket timeout")));
     await new Promise<void>((resolve, reject) => {
       socket.once("secureConnect", () => resolve());
       socket.once("error", reject);
@@ -143,7 +144,7 @@ class SimpleImapClient {
       .trim()
       .split(/\s+/)
       .filter((value) => /^\d+$/.test(value))
-      .slice(-100);
+      .slice(-20);
   }
 
   async fetchRaw(uid: string) {
@@ -153,10 +154,6 @@ class SimpleImapClient {
     const start = literal.index + literal[0].length;
     const length = Number(literal[1]);
     return Buffer.from(response, "utf8").subarray(start, start + length).toString("utf8");
-  }
-
-  async markSeen(uid: string) {
-    await this.command(`UID STORE ${uid} +FLAGS.SILENT (\\Seen)`);
   }
 }
 
@@ -255,8 +252,6 @@ export async function processInboundMailbox(): Promise<ImapResult> {
           else result.bounces += 1;
         }
       }
-
-      await imap.markSeen(uid);
     }
   } finally {
     imap.close();
