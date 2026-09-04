@@ -13,7 +13,7 @@ async function handle(req: NextRequest) {
   if (supplied !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    return NextResponse.json(await runOutreachWorker(10));
+    return NextResponse.json(await runOutreachWorker(13));
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Worker failed" }, { status: 500 });
   }
