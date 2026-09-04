@@ -7,6 +7,13 @@ type Market = {
   tier: 1 | 2 | 3 | 4;
 };
 
+type ProvinceSweep = {
+  provinceName: string;
+  province: string;
+  maxPages: number;
+  tier: 1 | 2 | 3 | 4;
+};
+
 type Candidate = {
   company_name: string;
   metro: string;
@@ -17,6 +24,7 @@ type Candidate = {
 };
 
 const DIRECTORY_BASE = "https://www.doineedaroofer.com";
+const YELLOWPAGES_BASE = "https://www.yellowpages.ca";
 
 // Calgary is intentionally excluded from sales prospecting because it overlaps
 // Trusted Roofing & Exteriors' home market.
@@ -28,7 +36,6 @@ const MARKETS: Market[] = [
   { metro: "Markham", province: "ON", slug: "markham", tier: 1 },
   { metro: "Richmond Hill", province: "ON", slug: "richmond-hill", tier: 1 },
   { metro: "Edmonton", province: "AB", slug: "edmonton", tier: 1 },
-
   { metro: "Hamilton", province: "ON", slug: "hamilton", tier: 2 },
   { metro: "Kitchener", province: "ON", slug: "kitchener", tier: 2 },
   { metro: "Waterloo", province: "ON", slug: "waterloo", tier: 2 },
@@ -42,14 +49,12 @@ const MARKETS: Market[] = [
   { metro: "Langley", province: "BC", slug: "langley", tier: 2 },
   { metro: "Abbotsford", province: "BC", slug: "abbotsford", tier: 2 },
   { metro: "Winnipeg", province: "MB", slug: "winnipeg", tier: 2 },
-
   { metro: "Regina", province: "SK", slug: "regina", tier: 3 },
   { metro: "Saskatoon", province: "SK", slug: "saskatoon", tier: 3 },
   { metro: "Halifax", province: "NS", slug: "halifax", tier: 3 },
   { metro: "Dartmouth", province: "NS", slug: "dartmouth", tier: 3 },
   { metro: "Victoria", province: "BC", slug: "victoria", tier: 3 },
   { metro: "Kelowna", province: "BC", slug: "kelowna", tier: 3 },
-
   { metro: "London", province: "ON", slug: "london", tier: 4 },
   { metro: "Windsor", province: "ON", slug: "windsor", tier: 4 },
   { metro: "Barrie", province: "ON", slug: "barrie", tier: 4 },
@@ -76,6 +81,23 @@ const MARKETS: Market[] = [
   { metro: "Longueuil", province: "QC", slug: "longueuil", tier: 4 },
   { metro: "Gatineau", province: "QC", slug: "gatineau", tier: 4 },
   { metro: "Sherbrooke", province: "QC", slug: "sherbrooke", tier: 4 },
+];
+
+// Province sweeps are intentionally much larger than the city seed list. A full
+// pass represents several thousand public roofing-directory listings. To avoid a
+// single serverless request doing hundreds of network calls, each discovery run
+// scans one page window across every province. Repeated runs advance automatically.
+const PROVINCE_SWEEPS: ProvinceSweep[] = [
+  { provinceName: "Ontario", province: "ON", maxPages: 180, tier: 1 },
+  { provinceName: "Alberta", province: "AB", maxPages: 70, tier: 1 },
+  { provinceName: "British Columbia", province: "BC", maxPages: 90, tier: 2 },
+  { provinceName: "Manitoba", province: "MB", maxPages: 25, tier: 2 },
+  { provinceName: "Saskatchewan", province: "SK", maxPages: 25, tier: 3 },
+  { provinceName: "Nova Scotia", province: "NS", maxPages: 18, tier: 3 },
+  { provinceName: "New Brunswick", province: "NB", maxPages: 12, tier: 4 },
+  { provinceName: "Newfoundland and Labrador", province: "NL", maxPages: 8, tier: 4 },
+  { provinceName: "Prince Edward Island", province: "PE", maxPages: 4, tier: 4 },
+  { provinceName: "Quebec", province: "QC", maxPages: 90, tier: 4 },
 ];
 
 function decodeHtml(value: string) {
@@ -124,8 +146,7 @@ function normalizeCompany(value: string) {
 function looksLikeProspect(name: string) {
   const value = name.toLowerCase();
   if (name.length < 3 || name.length > 180) return false;
-  if (/do i need a roofer|claim listing|request a quote|browse directory|roofing contractors association/.test(value)) return false;
-
+  if (/do i need a roofer|claim listing|request a quote|browse directory|roofing contractors association|yellow pages|pages jaunes/.test(value)) return false;
   return /(roof|roofing|roofer|roofs|toit|toiture|toitures|couvreur|couvreurs|shingle|exterior|exteriors|siding|building envelope|sheet metal)/i.test(name);
 }
 
@@ -154,11 +175,7 @@ function extractDirectoryNames(html: string, market: Market): Candidate[] {
       name = humanizeSlug(companySlug);
     }
 
-    name = name
-      .replace(/\s+[★☆]+.*$/, "")
-      .replace(/\s+Reviews verified.*$/i, "")
-      .trim();
-
+    name = name.replace(/\s+[★☆]+.*$/, "").replace(/\s+Reviews verified.*$/i, "").trim();
     if (!looksLikeProspect(name)) continue;
     const key = normalizeCompany(name);
     if (!key || seen.has(key)) continue;
@@ -177,27 +194,59 @@ function extractDirectoryNames(html: string, market: Market): Candidate[] {
   return candidates;
 }
 
-async function fetchMarket(market: Market) {
-  const urls = [
-    `${DIRECTORY_BASE}/${market.province}/${market.slug}`,
-    `${DIRECTORY_BASE}/${market.slug}`,
+function extractYellowPagesNames(html: string, sweep: ProvinceSweep, sourceUrl: string): Candidate[] {
+  const candidates: Candidate[] = [];
+  const seen = new Set<string>();
+  const patterns = [
+    /<a\b[^>]*class=["'][^"']*listing__name--link[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi,
+    /<h3\b[^>]*class=["'][^"']*listing__name[^"']*["'][^>]*>[\s\S]*?<a\b[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h3>/gi,
   ];
 
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(html))) {
+      const name = stripTags(match[1] ?? "").trim();
+      if (!looksLikeProspect(name)) continue;
+      if (/calgary/i.test(name)) continue;
+      const key = normalizeCompany(name);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      candidates.push({
+        company_name: name,
+        metro: sweep.provinceName,
+        province: sweep.province,
+        source_url: sourceUrl,
+        market_tier: sweep.tier,
+        priority: priorityForTier(sweep.tier),
+      });
+    }
+    if (candidates.length) break;
+  }
+
+  return candidates;
+}
+
+async function fetchHtml(url: string) {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "User-Agent": "TrustedEngineProspectDiscovery/1.0 (+https://trustedexteriors.ca)",
+      Accept: "text/html,application/xhtml+xml",
+    },
+    signal: AbortSignal.timeout(9000),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.text();
+}
+
+async function fetchMarket(market: Market) {
+  const urls = [`${DIRECTORY_BASE}/${market.province}/${market.slug}`, `${DIRECTORY_BASE}/${market.slug}`];
   let best: Candidate[] = [];
   let sourceUrl = urls[0];
 
   for (const url of urls) {
     try {
-      const response = await fetch(url, {
-        cache: "no-store",
-        headers: {
-          "User-Agent": "TrustedEngineProspectDiscovery/1.0 (+https://trustedexteriors.ca)",
-          Accept: "text/html,application/xhtml+xml",
-        },
-        signal: AbortSignal.timeout(9000),
-      });
-      if (!response.ok) continue;
-      const html = await response.text();
+      const html = await fetchHtml(url);
       const candidates = extractDirectoryNames(html, market).map((candidate) => ({ ...candidate, source_url: url }));
       if (candidates.length > best.length) {
         best = candidates;
@@ -211,21 +260,51 @@ async function fetchMarket(market: Market) {
   return { market, sourceUrl, candidates: best };
 }
 
+function discoveryWindow() {
+  // Advances every run/hour and wraps independently for each province. Each run
+  // scans 4 pages per province, so the pool expands continuously without needing
+  // a separate cursor table or manual import files.
+  return Math.floor(Date.now() / 3_600_000);
+}
+
+async function fetchProvinceWindow(sweep: ProvinceSweep, windowId: number) {
+  const pagesPerRun = 4;
+  const start = ((windowId * pagesPerRun) % sweep.maxPages) + 1;
+  const pages = Array.from({ length: pagesPerRun }, (_, index) => ((start - 1 + index) % sweep.maxPages) + 1);
+  const results = await Promise.all(pages.map(async (page) => {
+    const location = encodeURIComponent(`${sweep.provinceName} ${sweep.province}`);
+    const url = `${YELLOWPAGES_BASE}/search/si/${page}/Roofers/${location}`;
+    try {
+      const html = await fetchHtml(url);
+      return extractYellowPagesNames(html, sweep, url);
+    } catch {
+      return [];
+    }
+  }));
+  return results.flat();
+}
+
 export async function discoverRoofingProspects() {
   const client = getServiceClient();
   if (!client) throw new Error("Supabase service client unavailable");
 
   const marketResults: Awaited<ReturnType<typeof fetchMarket>>[] = [];
-  const concurrency = 6;
-
-  for (let i = 0; i < MARKETS.length; i += concurrency) {
-    const batch = MARKETS.slice(i, i + concurrency);
-    const results = await Promise.all(batch.map(fetchMarket));
-    marketResults.push(...results);
+  const marketConcurrency = 8;
+  for (let i = 0; i < MARKETS.length; i += marketConcurrency) {
+    const batch = MARKETS.slice(i, i + marketConcurrency);
+    marketResults.push(...await Promise.all(batch.map(fetchMarket)));
   }
 
-  const allCandidates = marketResults
-    .flatMap((result) => result.candidates)
+  const windowId = discoveryWindow();
+  const provinceResults: Candidate[] = [];
+  const provinceConcurrency = 5;
+  for (let i = 0; i < PROVINCE_SWEEPS.length; i += provinceConcurrency) {
+    const batch = PROVINCE_SWEEPS.slice(i, i + provinceConcurrency);
+    const results = await Promise.all(batch.map((sweep) => fetchProvinceWindow(sweep, windowId)));
+    provinceResults.push(...results.flat());
+  }
+
+  const allCandidates = [...marketResults.flatMap((result) => result.candidates), ...provinceResults]
     .filter((candidate) => candidate.metro.toLowerCase() !== "calgary")
     .sort((a, b) => a.market_tier - b.market_tier || a.metro.localeCompare(b.metro) || a.company_name.localeCompare(b.company_name));
 
@@ -238,19 +317,11 @@ export async function discoverRoofingProspects() {
     uniqueCandidates.push(candidate);
   }
 
-  const { data: existing, error: existingError } = await client
-    .from("outreach_prospects")
-    .select("company_name");
+  const { data: existing, error: existingError } = await client.from("outreach_prospects").select("company_name");
   if (existingError) throw existingError;
-
   const existingNames = new Set((existing ?? []).map((row: any) => normalizeCompany(row.company_name ?? "")).filter(Boolean));
 
-  const { data: ranked } = await client
-    .from("outreach_prospects")
-    .select("rank_order")
-    .not("rank_order", "is", null)
-    .order("rank_order", { ascending: false })
-    .limit(1);
+  const { data: ranked } = await client.from("outreach_prospects").select("rank_order").not("rank_order", "is", null).order("rank_order", { ascending: false }).limit(1);
   let nextRank = Number(ranked?.[0]?.rank_order ?? 0) + 1;
 
   const rows = uniqueCandidates
@@ -285,13 +356,11 @@ export async function discoverRoofingProspects() {
   }
 
   return {
-    markets_scanned: MARKETS.length,
-    markets_with_results: marketResults.filter((result) => result.candidates.length > 0).length,
-    discovered_unique: uniqueCandidates.length,
+    city_markets_scanned: MARKETS.length,
+    province_pages_scanned: PROVINCE_SWEEPS.length * 4,
+    discovered_unique_this_run: uniqueCandidates.length,
     already_present: uniqueCandidates.length - rows.length,
     inserted,
-    failed_markets: marketResults
-      .filter((result) => result.candidates.length === 0)
-      .map((result) => `${result.market.metro}, ${result.market.province}`),
+    pool_strategy: "open_ended_multi_thousand",
   };
 }
