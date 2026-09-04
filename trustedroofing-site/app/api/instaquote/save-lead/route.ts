@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createInstaquoteLead,
+  getServiceClient,
   listAdminInstantQuotes,
   upsertLifecycleLeadFromSubmission,
   updateInstantQuoteNotificationState
@@ -89,6 +90,13 @@ export async function POST(request: Request) {
       quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
       source_metadata: sourceMetadata
     });
+    if (sourceMetadata?.visitor_id && sourceMetadata?.session_id) {
+      const client = getServiceClient();
+      await Promise.all([
+        client?.from("leads").update({ analytics_visitor_id: sourceMetadata.visitor_id, analytics_session_id: sourceMetadata.session_id }).eq("id", lifecycleLead.id),
+        client?.from("instant_quotes").update({ analytics_visitor_id: sourceMetadata.visitor_id, analytics_session_id: sourceMetadata.session_id }).eq("id", lifecycleLead.instant_quote_id)
+      ]);
+    }
 
     const [matchedInstantQuote] = await listAdminInstantQuotes({ q: String(body.address), limit: 50 })
       .then((rows) => rows.filter((row) => row.legacy_address_query_id === String(body.addressQueryId)).slice(0, 1));

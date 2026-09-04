@@ -7,19 +7,12 @@ import { buildPublicQuoteDisplay, buildQuoteStructuredData } from "@/lib/publicQ
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { ensureBrowserAttribution } from "@/lib/attribution";
+import { trackEvent, trackGenerateLead, trackGenerateQuote, trackStartQuote } from "@/lib/analytics";
 
 const NearbyQuotesCarousel = dynamic(() => import("@/components/NearbyQuotesCarousel"), {
   ssr: false,
   loading: () => <p className="instant-quote__meta">Loading nearby quote activity…</p>
 });
-
-type GtagFunction = (command: "event", eventName: string, parameters: Record<string, unknown>) => void;
-
-declare global {
-  interface Window {
-    gtag?: GtagFunction;
-  }
-}
 
 const GOOGLE_ADS_CONVERSION_EVENT = "ads_conversion_Request_quote_1";
 
@@ -213,7 +206,6 @@ export default function QuoteFlow({
   const quoteStartRef = useRef<HTMLDivElement>(null);
   const resultSectionRef = useRef<HTMLElement | null>(null);
   const hasAutoScrolledRef = useRef(false);
-  const rejuvenationViewTrackedRef = useRef(false);
   const [selectedScope, setSelectedScope] = useState<QuoteScope>("roofing");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [status, setStatus] = useState<string | null>(null);
@@ -257,12 +249,6 @@ export default function QuoteFlow({
     if (selectedScope === "hardie_siding") setSidingMaterial("hardie");
     else if (selectedScope === "vinyl_siding") setSidingMaterial("vinyl");
   }, [selectedScope]);
-
-  useEffect(() => {
-    if (!estimate || selectedScope !== "roofing" || rejuvenationViewTrackedRef.current) return;
-    rejuvenationViewTrackedRef.current = true;
-    window.gtag?.("event", "roof_rejuvenation_quote_viewed", { value: estimate.rejuvenation.price, currency: "CAD" });
-  }, [estimate, selectedScope]);
 
   useEffect(() => {
     if (testMode) return;
@@ -431,7 +417,6 @@ export default function QuoteFlow({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.trustedAttribution?.track("estimator_started");
     setSourceMetadata({ attribution: window.trustedAttribution?.snapshot() ?? null });
   }, []);
 
@@ -447,6 +432,7 @@ export default function QuoteFlow({
     setSuggestionsOpen(false);
 
     try {
+      trackStartQuote(selectedScope, "instant_quote_form");
       window.trustedAttribution?.track("address_submitted", selectedLabel);
       const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
@@ -468,6 +454,8 @@ export default function QuoteFlow({
 
       const result = payload as unknown as EstimateResult;
       setEstimate(result);
+      const range = selectedScope === "eavestrough" ? result.ranges.eaves : selectedScope === "vinyl_siding" ? result.extras.sidingVinyl : selectedScope === "hardie_siding" ? result.extras.sidingHardie : result.ranges.good;
+      trackGenerateQuote({ service: selectedScope, low: range.low, high: range.high, status: "generated", contactSubmitted: false });
       window.trustedAttribution?.track("estimate_generated", selectedLabel);
       window.trustedAttribution?.track("contact_form_shown", selectedLabel);
       setAddress(result.address ?? address);
@@ -564,9 +552,8 @@ export default function QuoteFlow({
 
       gtagSendEvent();
       window.trustedAttribution?.track("contact_submitted", selectedLabel);
-      if (serviceInterest === "roof_rejuvenation") {
-        window.gtag?.("event", "roof_rejuvenation_lead_submitted", { value: estimate.rejuvenation.price, currency: "CAD" });
-      }
+      trackGenerateLead({ service: serviceInterest, low: primaryRange?.low, high: primaryRange?.high, status: "submitted" });
+      trackEvent("form_submit", { service: serviceInterest, page_path: location.pathname, form_type: "instant_quote_contact" });
       setStep(3);
       setStatus("Thanks — your request is in.");
     } catch {
@@ -674,6 +661,7 @@ export default function QuoteFlow({
       link.click();
       window.trustedAttribution?.track("pdf_generated", selectedLabel);
       window.trustedAttribution?.track("pdf_downloaded", selectedLabel);
+      trackEvent("quote_pdf_downloaded", { service: selectedScope, page_path: location.pathname });
       setPdfDownloaded(true);
       link.remove();
       URL.revokeObjectURL(url);
@@ -884,7 +872,7 @@ export default function QuoteFlow({
               </div>
               <p>This fixed treatment quote is based on the measured roof area and pitch. The roof must still pass a condition review. The review can approve or disqualify the roof, but it does not change the treatment price. Repairs, required cleaning and additional structures are separate.</p>
               <div className="instant-quote__step-actions">
-                <button className="button" type="button" onClick={() => { setServiceInterest("roof_rejuvenation"); window.gtag?.("event", "roof_rejuvenation_selected", { value: estimate.rejuvenation.price, currency: "CAD" }); }}>Choose Roof Rejuvenation</button>
+                <button className="button" type="button" onClick={() => { setServiceInterest("roof_rejuvenation"); trackEvent("view_service", { service: "roof_rejuvenation", page_path: location.pathname }); }}>Choose Roof Rejuvenation</button>
                 <button className="button button--ghost" type="button" onClick={() => setServiceInterest("roof_replacement")}>Continue With Roof Replacement</button>
               </div>
             </section>
