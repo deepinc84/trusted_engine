@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runOutreachWorker } from "@/lib/outreach/worker";
-import { discoverRoofingProspects } from "@/lib/outreach/discovery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,17 +13,7 @@ async function handle(req: NextRequest) {
   if (supplied !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const outreach = await runOutreachWorker(10);
-
-    let discovery: unknown = null;
-    let discovery_error: string | null = null;
-    try {
-      discovery = await discoverRoofingProspects();
-    } catch (error) {
-      discovery_error = error instanceof Error ? error.message : "Discovery failed";
-    }
-
-    return NextResponse.json({ ...outreach, discovery, discovery_error });
+    return NextResponse.json(await runOutreachWorker(10));
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Worker failed" }, { status: 500 });
   }
