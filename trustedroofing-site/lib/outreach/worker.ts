@@ -1,4 +1,5 @@
 import { getServiceClient } from "@/lib/db";
+import { processInboundMailbox } from "./inbound";
 import { sendOutreachEmail } from "./smtp";
 import { ensureUnsubscribeToken } from "./repository";
 import { escapeHtml, renderTemplate } from "./templates";
@@ -21,8 +22,12 @@ function isCanadianBusinessSendWindow(date = new Date()) {
 }
 
 export async function runOutreachWorker(limit = 10) {
+  // Always process the dedicated outreach inbox first. If IMAP processing fails,
+  // fail closed and send nothing so a prospect who replied cannot receive a follow-up.
+  const inbound = await processInboundMailbox();
+
   if (!isCanadianBusinessSendWindow()) {
-    return { processed: 0, skipped: "outside_business_send_window", results: [] };
+    return { processed: 0, inbound, skipped: "outside_business_send_window", results: [] };
   }
 
   const client = getServiceClient();
@@ -68,7 +73,7 @@ export async function runOutreachWorker(limit = 10) {
     }
 
     const token = await ensureUnsubscribeToken(prospect.id);
-    const base = process.env.OUTREACH_PUBLIC_BASE_URL ?? "https://trusted-engine.vercel.app";
+    const base = process.env.OUTREACH_PUBLIC_BASE_URL ?? "https://www.trustedroofingcalgary.com";
     const unsubscribeUrl = `${base.replace(/\/$/, "")}/api/outreach/unsubscribe/${token}`;
     const values = {
       company: prospect.company_name,
@@ -119,5 +124,5 @@ export async function runOutreachWorker(limit = 10) {
     }
   }
 
-  return { processed: results.length, results };
+  return { processed: results.length, inbound, results };
 }
