@@ -136,14 +136,14 @@ class SimpleImapClient {
     await this.command('SELECT "INBOX"');
   }
 
-  async unseenUids() {
-    const response = await this.command("UID SEARCH UNSEEN");
+  async recentUids() {
+    const response = await this.command("UID SEARCH ALL");
     const match = response.match(/\* SEARCH([^\r\n]*)/i);
     return (match?.[1] ?? "")
       .trim()
       .split(/\s+/)
       .filter((value) => /^\d+$/.test(value))
-      .slice(-50);
+      .slice(-100);
   }
 
   async fetchRaw(uid: string) {
@@ -221,7 +221,7 @@ export async function processInboundMailbox(): Promise<ImapResult> {
   try {
     await imap.login(user, password);
     await imap.selectInbox();
-    const uids = await imap.unseenUids();
+    const uids = await imap.recentUids();
 
     for (const uid of uids) {
       const raw = await imap.fetchRaw(uid);
@@ -244,14 +244,18 @@ export async function processInboundMailbox(): Promise<ImapResult> {
       }
 
       if (prospect && state) {
-        await stopSequence(prospect, state, message.subject);
-        result.processed += 1;
-        if (state === "replied") result.replies += 1;
-        else result.bounces += 1;
+        const alreadyHandled =
+          (state === "replied" && prospect.status === "replied") ||
+          (state === "bounced" && prospect.status === "suppressed");
+
+        if (!alreadyHandled) {
+          await stopSequence(prospect, state, message.subject);
+          result.processed += 1;
+          if (state === "replied") result.replies += 1;
+          else result.bounces += 1;
+        }
       }
 
-      // This mailbox is dedicated to outreach. Mark every inspected message seen
-      // so unrelated mail cannot be reprocessed every hour forever.
       await imap.markSeen(uid);
     }
   } finally {
