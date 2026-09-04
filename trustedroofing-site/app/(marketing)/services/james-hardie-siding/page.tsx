@@ -48,6 +48,16 @@ const hardieFaqItems = [
     question: "Do soffit, fascia, and eavestrough details matter during siding replacement?",
     answer:
       "Yes. Siding transitions near soffit, fascia, eavestrough, rooflines, windows, doors, and wall penetrations can affect drainage, trim planning, and final scope."
+  },
+  {
+    question: "Can damaged James Hardie siding be repaired instead of replaced?",
+    answer:
+      "Sometimes. A localized repair depends on the condition behind the damaged area, access, the availability of a compatible profile and colour, and whether the flashing and clearances can be restored without disturbing a much larger section. Widespread damage or recurring moisture issues may make replacement the sounder scope."
+  },
+  {
+    question: "What should I review in the James Hardie warranty information?",
+    answer:
+      "Review the current written warranty for the exact product, finish, and Canadian market. Confirm registration or documentation requirements, exclusions, maintenance responsibilities, and whether the proposed installation details follow the current manufacturer instructions. Product and finish coverage are not the same as an installer workmanship commitment."
   }
 ] as const;
 
@@ -163,6 +173,66 @@ export default async function JamesHardieSidingPage() {
               </article>
             </div>
           </article>
+        </PageContainer>
+      </section>
+
+      <section className="ui-page-section">
+        <PageContainer>
+          <article className="ui-card">
+            <h2>How a fiber cement siding project is planned</h2>
+            <p>A useful scope starts elevation by elevation rather than treating the house as one wall-area number. The review should identify the existing cladding, wall penetrations, windows and doors, inside and outside corners, roof-to-wall areas, deck attachments, utility equipment, and the soffit line. Those details determine where work can be staged and which connected components need to be removed or protected.</p>
+            <ol>
+              <li><strong>Inspect and measure.</strong> Confirm wall areas, access, existing layers, visible substrate concerns, trim widths, and every transition that affects the cladding layout.</li>
+              <li><strong>Define the assembly.</strong> Select the siding profile and trim approach, then document removal, water-resistive layer, flashing, ventilation openings, penetrations, and disposal in the scope.</li>
+              <li><strong>Prepare the walls.</strong> Remove the agreed materials and assess exposed conditions before covering them. Damaged sheathing or an unresolved water path changes the work and should be addressed first.</li>
+              <li><strong>Install and coordinate.</strong> Lay out courses and joints, use the specified fasteners, maintain the clearances required for the selected product, and integrate flashings and trim as the work progresses.</li>
+              <li><strong>Review the finished exterior.</strong> Check transitions, penetrations, caulked locations, drainage exits, cleanup, and the areas where siding meets roofing, soffit, fascia, decks, or grade.</li>
+            </ol>
+            <p>Exact fastening, joint treatment, flashing, and clearance requirements depend on the selected James Hardie product and the current Canadian installation instructions. They should be confirmed for the project rather than copied from an older detail or a different product zone.</p>
+          </article>
+        </PageContainer>
+      </section>
+
+      <section className="ui-page-section ui-page-section--soft">
+        <PageContainer>
+          <div className="ui-detail-grid">
+            <article className="ui-card">
+              <h2>Repair, partial replacement, or full recladding?</h2>
+              <p>A small impact area may be repairable when the surrounding courses are sound and a compatible replacement can be integrated correctly. A partial elevation can make sense when damage is contained and the termination can be detailed cleanly. Full recladding becomes more practical when failures are widespread, the existing material cannot be matched, multiple elevations need wall repairs, or a homeowner wants to change the complete trim and water-management approach.</p>
+              <p>Before deciding, inspect what caused the visible problem. Replacing a cracked board does not correct missing flashing, poor clearance, a leaking penetration, or deteriorated sheathing behind it.</p>
+            </article>
+            <article className="ui-card">
+              <h2>Failure points worth resolving before new siding</h2>
+              <ul>
+                <li>Window, door, deck, and roof-to-wall transitions that do not direct water back to the drainage plane</li>
+                <li>Courses installed too close to roofing, grade, flatwork, or other surfaces where moisture and debris collect</li>
+                <li>Fasteners, joints, or cut edges handled differently from the selected system requirements</li>
+                <li>Uneven or damaged substrate hidden behind the old cladding</li>
+                <li>Penetrations and fixtures treated as caulking-only details instead of planned transitions</li>
+                <li>New siding sequenced without coordinating soffit, fascia, eavestrough, roofing, or attached structures</li>
+              </ul>
+            </article>
+          </div>
+        </PageContainer>
+      </section>
+
+      <section className="ui-page-section">
+        <PageContainer>
+          <div className="ui-detail-grid">
+            <article className="ui-card">
+              <h2>Maintenance and warranty planning</h2>
+              <p>Fiber cement is a durable cladding choice, but the exterior still needs periodic observation. Watch for physical damage, open joints, failed sealant where sealant is specified, blocked drainage locations, and changes around penetrations or connected rooflines. Keep eavestrough and downspout discharge from repeatedly wetting the wall, and deal with a leak source before refinishing the visible surface.</p>
+              <p>Warranty terms vary by product and finish and can change. Use the current written manufacturer documents for the selected material, keep the final scope and product records, and separate manufacturer product coverage from any installer workmanship terms presented in the proposal.</p>
+            </article>
+            <article className="ui-card">
+              <h2>Two ways to start</h2>
+              <p>If you are comparing broad budget ranges, use the <Link href="/online-estimate">instant exterior estimate</Link>. If you have damage, unusual wall transitions, or do not know whether repair or replacement fits, request a conversation by phone so the next step can be matched to the condition.</p>
+              <p>
+                <Link href="/online-estimate" className="button">Estimate siding options</Link>{" "}
+                <a href="tel:5872883351" className="button button--ghost">Call 587-288-3351</a>
+              </p>
+            </article>
+          </div>
         </PageContainer>
       </section>
 
