@@ -2,6 +2,8 @@ export const ATTRIBUTION_STORAGE_KEY = "trusted_attribution_v1";
 export const SESSION_STORAGE_KEY = "trusted_attribution_session_v1";
 export const JOURNEY_LIMIT = 20;
 export const SESSION_INACTIVITY_MS = 30 * 60 * 1000;
+export const VISITOR_COOKIE = "trusted_visitor_id";
+export const SESSION_COOKIE = "trusted_session_id";
 
 export type SourceCategory = "google_organic" | "bing_organic" | "google_business_profile" | "google_ads" | "meta_ads" | "referral" | "direct" | "email" | "other_organic" | "unknown";
 export type JourneyEventName = "landing" | "service_page_viewed" | "project_page_viewed" | "service_area_page_viewed" | "estimator_started" | "address_submitted" | "estimate_generated" | "contact_form_shown" | "contact_submitted" | "pdf_generated" | "pdf_downloaded";
@@ -10,7 +12,7 @@ export type Touch = {
   landing_path: string; referrer: string | null; referring_domain: string | null;
   utm_source: string | null; utm_medium: string | null; utm_campaign: string | null;
   utm_content: string | null; utm_term: string | null; gclid: string | null;
-  fbclid: string | null; msclkid: string | null; source_category: SourceCategory;
+  fbclid: string | null; msclkid: string | null; gbclid: string | null; dclid: string | null; source_category: SourceCategory;
 };
 export type AttributionSnapshot = {
   visitor_id: string; session_id: string; first_seen_at: string; session_started_at: string;
@@ -20,6 +22,8 @@ export type AttributionSnapshot = {
 
 type StoredSession = { id: string; started_at: string; last_seen_at: string };
 const parseStored = <T>(raw: string | null): T | null => { try { return raw ? JSON.parse(raw) as T : null; } catch { return null; } };
+const cookieValue = (name: string) => document.cookie.split("; ").find(row => row.startsWith(`${name}=`))?.split("=")[1] || null;
+const setAnonymousCookie = (name: string, id: string, maxAge: number) => { document.cookie = `${name}=${encodeURIComponent(id)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; };
 
 /** Synchronous so an estimator submission cannot race React's effects. */
 export function ensureBrowserAttribution(nowMs = Date.now()): AttributionSnapshot | null {
@@ -30,20 +34,22 @@ export function ensureBrowserAttribution(nowMs = Date.now()): AttributionSnapsho
     const stored = parseStored<StoredSession>(localStorage.getItem(SESSION_STORAGE_KEY));
     const expired = !stored?.last_seen_at || nowMs - new Date(stored.last_seen_at).getTime() > SESSION_INACTIVITY_MS;
     const session: StoredSession = !stored || expired
-      ? { id: crypto.randomUUID(), started_at: now, last_seen_at: now }
+      ? { id: !stored ? (decodeURIComponent(cookieValue(SESSION_COOKIE) || "") || crypto.randomUUID()) : crypto.randomUUID(), started_at: now, last_seen_at: now }
       : { ...stored, last_seen_at: now };
     const touch = makeTouch(window.location.href, document.referrer);
     const isNewSession = !prior || prior.session_id !== session.id;
     const snapshot: AttributionSnapshot = prior
       ? { ...prior, session_id: session.id, session_started_at: session.started_at, visit_count: prior.visit_count + (isNewSession ? 1 : 0), is_returning_visitor: isNewSession, last_touch: isNewSession ? touch : prior.last_touch }
-      : { visitor_id: crypto.randomUUID(), session_id: session.id, first_seen_at: now, session_started_at: session.started_at, visit_count: 1, is_returning_visitor: false, first_touch: touch, last_touch: touch, journey: [] };
+      : { visitor_id: decodeURIComponent(cookieValue(VISITOR_COOKIE) || "") || crypto.randomUUID(), session_id: session.id, first_seen_at: now, session_started_at: session.started_at, visit_count: 1, is_returning_visitor: false, first_touch: touch, last_touch: touch, journey: [] };
+    setAnonymousCookie(VISITOR_COOKIE, snapshot.visitor_id, 60 * 60 * 24 * 365);
+    setAnonymousCookie(SESSION_COOKIE, session.id, 60 * 30);
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     localStorage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(snapshot));
     return snapshot;
   } catch { return null; }
 }
 
-const TRACKING_KEYS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid", "msclkid"]);
+const TRACKING_KEYS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "gbclid", "dclid", "wbraid", "gbraid", "fbclid", "msclkid"]);
 const value = (params: URLSearchParams, key: string) => params.get(key)?.slice(0, 200) || null;
 
 export function safePath(input: string): string {
@@ -79,7 +85,7 @@ export function classifySource(input: Pick<Touch, "referrer" | "utm_source" | "u
 export function makeTouch(urlInput: string, referrer?: string | null): Touch {
   const url = new URL(urlInput, "https://trusted.local");
   const params = url.searchParams;
-  const touch = { landing_path: safePath(url.href), referrer: referrer?.slice(0, 500) || null, referring_domain: referringDomain(referrer), utm_source: value(params,"utm_source"), utm_medium: value(params,"utm_medium"), utm_campaign: value(params,"utm_campaign"), utm_content: value(params,"utm_content"), utm_term: value(params,"utm_term"), gclid: value(params,"gclid"), fbclid: value(params,"fbclid"), msclkid: value(params,"msclkid"), source_category: "unknown" as SourceCategory };
+  const touch = { landing_path: safePath(url.href), referrer: referrer?.slice(0, 500) || null, referring_domain: referringDomain(referrer), utm_source: value(params,"utm_source"), utm_medium: value(params,"utm_medium"), utm_campaign: value(params,"utm_campaign"), utm_content: value(params,"utm_content"), utm_term: value(params,"utm_term"), gclid: value(params,"gclid"), gbclid: value(params,"gbclid") || value(params,"gbraid") || value(params,"wbraid"), dclid: value(params,"dclid"), fbclid: value(params,"fbclid"), msclkid: value(params,"msclkid"), source_category: "unknown" as SourceCategory };
   touch.source_category = classifySource(touch);
   return touch;
 }
