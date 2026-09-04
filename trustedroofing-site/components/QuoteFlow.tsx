@@ -259,10 +259,10 @@ export default function QuoteFlow({
   }, [selectedScope]);
 
   useEffect(() => {
-    if (!estimate || selectedScope !== "roofing" || rejuvenationViewTrackedRef.current) return;
+    if (!estimate || serviceInterest !== "roof_rejuvenation" || rejuvenationViewTrackedRef.current) return;
     rejuvenationViewTrackedRef.current = true;
     window.gtag?.("event", "roof_rejuvenation_quote_viewed", { value: estimate.rejuvenation.price, currency: "CAD" });
-  }, [estimate, selectedScope]);
+  }, [estimate, serviceInterest]);
 
   useEffect(() => {
     if (testMode) return;
@@ -447,14 +447,15 @@ export default function QuoteFlow({
     setSuggestionsOpen(false);
 
     try {
-      window.trustedAttribution?.track("address_submitted", selectedLabel);
+      const trackingLabel = serviceInterest === "roof_rejuvenation" ? "Roof rejuvenation" : selectedLabel;
+      window.trustedAttribution?.track("address_submitted", trackingLabel);
       const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
         },
-        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode, sourceMetadata: currentSourceMetadata() })
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, serviceInterest, testMode, sourceMetadata: currentSourceMetadata() })
       });
 
       const text = await res.text();
@@ -468,8 +469,8 @@ export default function QuoteFlow({
 
       const result = payload as unknown as EstimateResult;
       setEstimate(result);
-      window.trustedAttribution?.track("estimate_generated", selectedLabel);
-      window.trustedAttribution?.track("contact_form_shown", selectedLabel);
+      window.trustedAttribution?.track("estimate_generated", trackingLabel);
+      window.trustedAttribution?.track("contact_form_shown", trackingLabel);
       setAddress(result.address ?? address);
       setPlaceId(result.placeId ?? placeId);
       setLat(result.lat ?? lat);

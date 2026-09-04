@@ -95,6 +95,7 @@ export function normalizeNeighborhoodSlug(value: string) {
 }
 
 export function quoteMaterialLabel(serviceType: string | null, requestedScopes: string[] | null) {
+  if (serviceType?.toLowerCase().includes("rejuvenation")) return "Roof rejuvenation";
   if (requestedScopes?.includes("siding_hardie") || serviceType?.includes("Hardie")) return "Hardie siding";
   if (requestedScopes?.includes("siding_vinyl") || serviceType?.includes("Vinyl")) return "Vinyl siding";
   if (requestedScopes?.includes("eavestrough") || serviceType?.includes("Eavestrough")) return "Eavestrough";
