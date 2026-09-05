@@ -251,6 +251,12 @@ export default function QuoteFlow({
   }, [selectedScope]);
 
   useEffect(() => {
+    if (!estimate || serviceInterest !== "roof_rejuvenation" || rejuvenationViewTrackedRef.current) return;
+    rejuvenationViewTrackedRef.current = true;
+    window.gtag?.("event", "roof_rejuvenation_quote_viewed", { value: estimate.rejuvenation.price, currency: "CAD" });
+  }, [estimate, serviceInterest]);
+
+  useEffect(() => {
     if (testMode) return;
     const resumeToken = searchParams.get("resume");
     if (!resumeToken || estimate) return;
@@ -432,15 +438,15 @@ export default function QuoteFlow({
     setSuggestionsOpen(false);
 
     try {
-      trackStartQuote(selectedScope, "instant_quote_form");
-      window.trustedAttribution?.track("address_submitted", selectedLabel);
+      const trackingLabel = serviceInterest === "roof_rejuvenation" ? "Roof rejuvenation" : selectedLabel;
+      window.trustedAttribution?.track("address_submitted", trackingLabel);
       const res = await fetch("/api/instaquote/estimate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(testMode ? { "x-instaquote-test-mode": "1" } : {})
         },
-        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, testMode, sourceMetadata: currentSourceMetadata() })
+        body: JSON.stringify({ address, placeId, lat, lng, serviceScope: selectedScope, serviceInterest, testMode, sourceMetadata: currentSourceMetadata() })
       });
 
       const text = await res.text();
@@ -454,10 +460,8 @@ export default function QuoteFlow({
 
       const result = payload as unknown as EstimateResult;
       setEstimate(result);
-      const range = selectedScope === "eavestrough" ? result.ranges.eaves : selectedScope === "vinyl_siding" ? result.extras.sidingVinyl : selectedScope === "hardie_siding" ? result.extras.sidingHardie : result.ranges.good;
-      trackGenerateQuote({ service: selectedScope, low: range.low, high: range.high, status: "generated", contactSubmitted: false });
-      window.trustedAttribution?.track("estimate_generated", selectedLabel);
-      window.trustedAttribution?.track("contact_form_shown", selectedLabel);
+      window.trustedAttribution?.track("estimate_generated", trackingLabel);
+      window.trustedAttribution?.track("contact_form_shown", trackingLabel);
       setAddress(result.address ?? address);
       setPlaceId(result.placeId ?? placeId);
       setLat(result.lat ?? lat);

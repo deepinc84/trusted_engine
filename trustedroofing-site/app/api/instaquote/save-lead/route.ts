@@ -39,6 +39,12 @@ export async function POST(request: Request) {
     const serviceType = body.serviceInterest === "roof_rejuvenation"
       ? "Roof Rejuvenation"
       : typeof body.serviceScope === "string" ? body.serviceScope : null;
+    const quoteLow = body.serviceInterest === "roof_rejuvenation" && typeof body.rejuvenationPrice === "number"
+      ? body.rejuvenationPrice
+      : typeof body.goodLow === "number" ? body.goodLow : null;
+    const quoteHigh = body.serviceInterest === "roof_rejuvenation" && typeof body.rejuvenationPrice === "number"
+      ? body.rejuvenationPrice
+      : typeof body.goodHigh === "number" ? body.goodHigh : null;
     const sourceMetadata = sourceMetadataFromSubmission(body);
     let legacyLeadError: string | null = null;
     try {
@@ -56,8 +62,8 @@ export async function POST(request: Request) {
         roof_area_sqft: typeof body.roofAreaSqft === "number" ? Math.round(body.roofAreaSqft) : null,
         roof_squares: typeof body.roofSquares === "number" ? body.roofSquares : null,
         pitch: (body.pitch as string) || null,
-        good_low: typeof body.goodLow === "number" ? body.goodLow : null,
-        good_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+        good_low: quoteLow,
+        good_high: quoteHigh,
         better_low: typeof body.betterLow === "number" ? body.betterLow : null,
         better_high: typeof body.betterHigh === "number" ? body.betterHigh : null,
         best_low: typeof body.bestLow === "number" ? body.bestLow : null,
@@ -86,8 +92,8 @@ export async function POST(request: Request) {
       budget_response: budget,
       timeline: (body.timeline as string) || null,
       service_type: serviceType,
-      quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
-      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      quote_low: quoteLow,
+      quote_high: quoteHigh,
       source_metadata: sourceMetadata
     });
     if (sourceMetadata?.visitor_id && sourceMetadata?.session_id) {
@@ -105,8 +111,8 @@ export async function POST(request: Request) {
       legacy_address_query_id: String(body.addressQueryId),
       address: String(body.address),
       service_type: serviceType,
-      quote_low: typeof body.goodLow === "number" ? body.goodLow : null,
-      quote_high: typeof body.goodHigh === "number" ? body.goodHigh : null,
+      quote_low: quoteLow,
+      quote_high: quoteHigh,
       has_contact_submission: true,
       project_id: null,
       is_marketing: false,

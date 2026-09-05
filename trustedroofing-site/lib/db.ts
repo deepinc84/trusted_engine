@@ -2670,7 +2670,9 @@ export async function createInstaquoteLead(
     ...input,
   };
   const submittedServiceType =
-    typeof payload.raw_json?.serviceScope === "string"
+    payload.raw_json?.serviceInterest === "roof_rejuvenation"
+      ? "Roof Rejuvenation"
+      : typeof payload.raw_json?.serviceScope === "string"
       ? payload.raw_json.serviceScope
       : payload.data_source ?? null;
   const submittedSourceMetadata =

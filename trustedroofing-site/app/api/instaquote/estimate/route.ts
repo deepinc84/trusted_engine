@@ -25,6 +25,7 @@ type EstimateBody = {
   benchmarkQuotedAmount?: number | null;
   benchmarkLabel?: string | null;
   serviceScope?: "roofing" | "all" | "vinyl_siding" | "hardie_siding" | "eavestrough";
+  serviceInterest?: "roof_replacement" | "roof_rejuvenation";
   sourceMetadata?: Record<string, unknown>;
 };
 
@@ -893,7 +894,8 @@ export async function POST(request: Request) {
 
   const serviceScope = body.serviceScope ?? "roofing";
   const requestedScopes = mapScopeToRequestedScopes(serviceScope);
-  const serviceType = mapScopeToServiceType(serviceScope);
+  const isRejuvenationQuote = serviceScope === "roofing" && body.serviceInterest === "roof_rejuvenation";
+  const serviceType = isRejuvenationQuote ? "Roof Rejuvenation" : mapScopeToServiceType(serviceScope);
   const browserMetadata = normalizeAttributionMetadata(body.sourceMetadata);
   const sourceMetadata = {
     ...browserMetadata,
@@ -1035,7 +1037,9 @@ export async function POST(request: Request) {
     pitchDegrees: finalModel.ranges.pitchDegrees
   });
 
-  const selectedQuotedRange = serviceScope === "vinyl_siding"
+  const selectedQuotedRange = isRejuvenationQuote
+    ? { low: rejuvenation.price, high: rejuvenation.price }
+    : serviceScope === "vinyl_siding"
     ? finalModel.extras.sidingVinyl
     : serviceScope === "hardie_siding"
       ? finalModel.extras.sidingHardie
